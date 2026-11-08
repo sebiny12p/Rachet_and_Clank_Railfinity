@@ -1,0 +1,139 @@
+#pragma once
+#include "RailTypes.hpp"
+#include "DeterministicRNG.hpp"
+#include "RailAudio.hpp"
+#include <array>
+#include <string>
+
+namespace Railfinity {
+
+class RailGame {
+public:
+    RailGame();
+    ~RailGame();
+
+    void Init();
+    void RunFrame();
+    void Shutdown();
+
+    static const std::array<WeaponDef, NUM_WEAPONS>& GetWeaponCatalog();
+    static const std::array<SkillPointDef, NUM_SKILL_POINTS>& GetSkillPointCatalog();
+
+private:
+    // Save / Load
+    void LoadSave();
+    void SaveProgress() const;
+    void AwardSkillPoint(int idx);
+    void AddWeaponXp(int wIdx, int amount);
+
+    // Run Control
+    void StartNewRun(bool dailySeed);
+    void SwitchLane(int delta);
+    void TriggerJumpOrGlide();
+    void TriggerWrenchSlide();
+    void TriggerFireWeapon();
+    void CycleEquippedWeapon(int delta);
+    void DamagePlayer(float dmg, bool minorBump = false);
+    void AdvanceMultiplier();
+
+    // Fixed-Timestep Simulation
+    void HandleInput();
+    void UpdateFixed(float dt);
+    void UpdatePlayingFixed(float dt);
+    void UpdateBossFixed(float dt);
+    void UpdateParticlesFixed(float dt);
+
+    // Procedural Spawners
+    void SpawnChunkPattern(float startZ);
+    void SpawnHazard(HazardKind kind, int lane, float z, float lengthZ = 3.0f);
+    void SpawnRailBoltLine(int lane, float startZ, int count, float spacing = 2.4f, bool jumpArc = false);
+    void SpawnBoltShower(Vector3 origin, int count, bool includeRaritanium = false);
+    void SpawnProjectile(Vector3 pos, Vector3 vel, int lane, WeaponId wId, float dmg, float radius, Color col, bool friendly, int bounces = 0);
+    void SpawnParticleBurst3D(Vector3 pos, int count, Color color, float minSpd, float maxSpd, float size, float life);
+    void TriggerBossDropship();
+
+    // Helpers (Note: camera looks from -Z toward +Z, so +X is screen-left and -X is screen-right)
+    static float GetLaneX(int lane) { return (1 - lane) * LANE_WIDTH; }
+    float GetTrackCurveX(float z) const;
+    float GetTrackCurveY(float z) const;
+    Vector3 ApplyTrackCurve(float laneX, float y, float z) const;
+    bool IsRailGapAt(int lane, float z) const;
+    GalaxySector GetCurrentSector() const;
+    const char* GetSectorName(GalaxySector s) const;
+    Vector2 GetVirtualMouse() const;
+    bool IsRectHovered(Rectangle r) const;
+    bool IsButtonClicked(Rectangle r) const;
+
+    // Rendering (implemented in RailRenderer3D.cpp)
+    void RenderFrame();
+    void RenderWorld3D();
+    void RenderGrindRails3D() const;
+    void RenderSkyline3D() const;
+    void RenderHazards3D() const;
+    void RenderBolts3D() const;
+    void RenderProjectiles3D() const;
+    void RenderParticles3D() const;
+    void RenderBossDropship3D() const;
+    void RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool gliding, float wrenchTimer, int weaponId) const;
+    void RenderSingleHexBolt3D(Vector3 pos, float spinDeg, float scale, bool titanium) const;
+    void RenderRaritaniumCrystal3D(Vector3 pos, float spinDeg, float scale) const;
+    void RenderHud2D();
+    void RenderTitleFrontPage2D();
+    void RenderMainMenu2D();
+    void RenderGadgetronVendor2D();
+    void RenderRaritaniumLab2D();
+    void RenderSkillPoints2D();
+    void RenderPauseOverlay2D();
+    void RenderGameOver2D();
+    void RenderBrandingFooter2D() const;
+    void RenderSkillToast2D() const;
+
+private:
+    RenderTexture2D renderTarget_{};
+    Camera3D camera_{};
+    RailAudio audio_{};
+    SaveData save_{};
+    PCG32 rng_{};
+
+    ScreenMode mode_ = ScreenMode::TITLE_FRONT_PAGE;
+    bool isDailyRun_ = false;
+    uint64_t activeSeed_ = 0;
+
+    float accumulator_ = 0.0f;
+    float globalTime_ = 0.0f;
+    float runTime_ = 0.0f;
+    float distanceMeters_ = 0.0f;
+    float grindSpeed_ = 38.0f; // Units per second in 3D space
+    float nextChunkZ_ = 40.0f;
+    float distanceSinceBoss_ = 0.0f;
+
+    int runBoltsEarned_ = 0;
+    int runRaritaniumEarned_ = 0;
+    int runKills_ = 0;
+    int runCrates_ = 0;
+
+    // Screen & Camera FX
+    float cameraShake_ = 0.0f;
+    float screenFlashAlpha_ = 0.0f;
+    Color screenFlashColor_ = WHITE;
+    float sectorBannerTimer_ = 0.0f;
+    GalaxySector lastSector_ = GalaxySector::METROPOLIS_KERWAN;
+
+    // Touch / Mouse Swipe Gesture Tracking
+    bool pointerDown_ = false;
+    Vector2 pointerStartPos_ = { 0.0f, 0.0f };
+    float pointerDownTime_ = 0.0f;
+
+    PlayerLombax player_{};
+    BossDropship boss_{};
+    SkillPointToast toast_{};
+
+    // Object Pools
+    std::array<RailHazard, MAX_HAZARDS> hazards_{};
+    std::array<FloatingBolt, MAX_BOLTS> bolts_{};
+    std::array<Projectile3D, MAX_PROJECTILES> projectiles_{};
+    std::array<Particle3D, MAX_PARTICLES_3D> particles_{};
+    std::array<SkyBuilding, MAX_SKY_BUILDINGS> buildings_{};
+};
+
+} // namespace Railfinity

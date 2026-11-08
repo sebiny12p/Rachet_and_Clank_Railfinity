@@ -1,0 +1,215 @@
+#pragma once
+#include "raylib.h"
+#include <array>
+#include <cstdint>
+#include <string>
+
+namespace Railfinity {
+
+constexpr int VIRTUAL_WIDTH = 1280;
+constexpr int VIRTUAL_HEIGHT = 720;
+constexpr float FIXED_DT = 1.0f / 120.0f;
+
+constexpr int NUM_LANES = 3;
+constexpr float LANE_WIDTH = 3.2f; // Screen-Left = +3.2f (Lane 0), Center = 0.0f (Lane 1), Screen-Right = -3.2f (Lane 2)
+
+constexpr size_t MAX_HAZARDS = 96;
+constexpr size_t MAX_BOLTS = 256;
+constexpr size_t MAX_PROJECTILES = 96;
+constexpr size_t MAX_PARTICLES_3D = 512;
+constexpr size_t MAX_SKY_BUILDINGS = 48;
+constexpr size_t NUM_WEAPONS = 6;
+constexpr size_t NUM_SKILL_POINTS = 10;
+
+enum class ScreenMode {
+    TITLE_FRONT_PAGE, // Rift Apart Front Page: "Press Any Key / Tap to Start"
+    MAIN_MENU,
+    GADGETRON_VENDOR,
+    RARITANIUM_LAB,
+    SKILL_POINTS_VIEW,
+    PLAYING,
+    PAUSED,
+    GAME_OVER
+};
+
+enum class WeaponId : int {
+    OMNIWRENCH_8000 = 0, // Starting melee & Comet-Strike boomerang wrench (cleaves crates/enemies + deflects shots)
+    COMBUSTER = 1,       // Rapid-fire Magma pistol (2.5x shield-melter damage + twin/triple plasma stream)
+    SHOCK_BLASTER = 2,   // 3-Lane spread shockwave shotgun (hits all 3 rails + vaporizes enemy projectiles)
+    BUZZ_BLADES = 3,     // Smart cross-rail ricocheting saw discs (seeks targets across all 3 lanes)
+    PLASMA_STRIKER = 4,  // Piercing railgun hyperbeam (pierces entire lane + EMP chain-lightning to side rails)
+    RYNO_INFINITE = 5    // All-rail homing micro-missile swarm (explosive AoE + 50% bonus Bolt jackpot)
+};
+
+enum class GalaxySector : int {
+    METROPOLIS_KERWAN = 0,
+    MEGACORP_FACILITY = 1,
+    ZORDOOM_PRISON = 2,
+    DIMENSIONATOR_RIFT = 3
+};
+
+enum class HazardKind : int {
+    BOLT_CRATE = 0,         // Wooden/gold Gadgetron crate filled with Bolts
+    RARITANIUM_CACHE = 1,   // Crystalline cyan Raritanium cluster
+    TNT_CRATE = 2,          // Cylindrical red/yellow explosive barrel
+    LOW_LASER_BARRIER = 3,  // Low horizontal plasma beams (Jump over)
+    HIGH_LASER_GATE = 4,    // Overhead gantry laser curtain (Slide/Duck under)
+    ELECTRIFIED_RAIL = 5,   // Tesla coil lightning across rail (Switch lane or Jump)
+    BROKEN_RAIL_GAP = 6,    // Missing rail chasm (Jump/Glide or switch lane)
+    HYPER_BOOST_PAD = 7,    // Neon green chevron boost ramp
+    THUG_DRONE = 8,         // Hovering Thugs-4-Less chopper drone
+    SHIELDED_ENFORCER = 9,  // Armored Megacorp Enforcer mech
+    NANOTECH_CRATE = 10     // Translucent cyan glass crate that restores +1 Nanotech HP
+};
+
+struct WeaponDef {
+    int id;
+    const char* name;
+    const char* omegaName;
+    const char* specialPerk;
+    const char* description;
+    int unlockBoltCost;
+    int upgradeRaritaniumCost;
+    float fireCooldown;
+    float baseDamage;
+    Color projectileColor;
+};
+
+struct SkillPointDef {
+    int id;
+    const char* title;
+    const char* requirement;
+    int boltReward;
+};
+
+struct SaveData {
+    uint32_t magic = 0x5241494E; // 'RAIN' v2 (6 weapons starting with OmniWrench)
+    int bolts = 500;
+    int raritanium = 5;
+    int bestDistanceMeters = 0;
+    int bestDailyMeters = 0;
+    int totalEnemiesDestroyed = 0;
+    int totalCratesSmashed = 0;
+    int totalBossesDefeated = 0;
+    int equippedWeapon = 0;
+
+    std::array<bool, NUM_WEAPONS> unlockedWeapons = { true, false, false, false, false, false };
+    std::array<int, NUM_WEAPONS> weaponLevels = { 1, 1, 1, 1, 1, 1 }; // V1 to V5 Omega
+    std::array<int, NUM_WEAPONS> weaponXp = { 0, 0, 0, 0, 0, 0 };
+
+    // Raritanium Lab Upgrades
+    int armorLevel = 0;        // +Max Nanotech HP (0..4) -> 4 to 8 HP
+    int magnetLevel = 0;       // Bolt & Raritanium attractor radius (0..5)
+    int bootThrusterLevel = 0; // Longer Clank Heli-Pack glide & Hyper-Boost duration (0..5)
+    int multiplierModLevel = 0;// Faster Bolt Multiplier escalation (0..5)
+
+    std::array<bool, NUM_SKILL_POINTS> skillPoints = { false };
+};
+
+struct PlayerLombax {
+    int currentLane = 1;      // 0 = Left, 1 = Center, 2 = Right
+    float x = 0.0f;           // Smoothly interpolated X coordinate
+    float y = 0.0f;           // Height above rail
+    float vy = 0.0f;          // Vertical velocity
+    float laneTiltDeg = 0.0f; // Lean angle when switching lanes
+
+    bool grounded = true;
+    bool heliGliding = false;
+    float heliFuel = 1.2f;
+    float maxHeliFuel = 1.2f;
+
+    float slideTimer = 0.0f;  // >0 means crouching/sliding + OmniWrench spin
+    float wrenchSwingTimer = 0.0f;
+    float weaponCooldown = 0.0f;
+    float gunAimTimer = 0.0f;     // Holds forward gun-aiming stance after firing
+    float gunRecoilTimer = 0.0f;  // Drives snappy kickback, muzzle climb & muzzle flash
+    float barrelSpinAngle = 0.0f; // Spins rotary barrels (RYNO / Buzz Blades)
+    float landingSquashTimer = 0.0f; // Knee compression bounce on rail landing or lane hop
+
+    float nanotechHp = 4.0f;
+    float maxNanotechHp = 4.0f;
+    float invulnTimer = 0.0f;
+    float hyperBoostTimer = 0.0f;
+
+    // Bolt Multiplier (1x -> 2x -> 4x -> 8x -> 12x -> 20x)
+    int multiplierTier = 1;
+    float multiplierProgress = 0.0f;
+};
+
+struct RailHazard {
+    bool active = false;
+    HazardKind kind = HazardKind::BOLT_CRATE;
+    int lane = 1;
+    float z = 0.0f;          // Distance ahead of player (player is at Z = 0)
+    float lengthZ = 3.0f;
+    float hp = 10.0f;
+    float maxHp = 10.0f;
+    float animPhase = 0.0f;
+    float shootTimer = 2.0f;
+};
+
+struct FloatingBolt {
+    bool active = false;
+    bool isRaritanium = false;
+    bool isTitanium = false; // Large gleaming silver/gold bolt worth 25 bolts
+    bool onRail = false;     // True if spawned in a clean line/arc on the rail
+    Vector3 pos = { 0.0f, 0.0f, 0.0f };
+    Vector3 vel = { 0.0f, 0.0f, 0.0f };
+    int value = 10;
+    float spin = 0.0f;
+};
+
+struct Projectile3D {
+    bool active = false;
+    bool friendly = true;
+    WeaponId sourceWeapon = WeaponId::COMBUSTER;
+    int lane = 1;
+    Vector3 pos = { 0.0f, 0.0f, 0.0f };
+    Vector3 vel = { 0.0f, 0.0f, 0.0f };
+    float damage = 15.0f;
+    float radius = 0.6f;
+    float life = 2.5f;
+    int bouncesLeft = 0;
+    Color color = ORANGE;
+};
+
+struct Particle3D {
+    bool active = false;
+    Vector3 pos = { 0.0f, 0.0f, 0.0f };
+    Vector3 vel = { 0.0f, 0.0f, 0.0f };
+    float size = 0.25f;
+    float life = 0.0f;
+    float maxLife = 0.5f;
+    Color color = ORANGE;
+};
+
+struct SkyBuilding {
+    Vector3 pos;
+    Vector3 size;
+    Color bodyColor;
+    Color neonColor;
+};
+
+struct BossDropship {
+    bool active = false;
+    int bossTier = 0;
+    std::string name = "PROG TWINS // COMMAND WARSHIP";
+    float z = 42.0f;
+    float hoverX = 0.0f;
+    float hoverY = 4.2f;
+    float phase = 0.0f;
+    std::array<float, NUM_LANES> turretHp = { 120.0f, 120.0f, 120.0f };
+    float maxTurretHp = 120.0f;
+    int telegraphLane = -1;
+    float telegraphTimer = 0.0f;
+    float attackCooldown = 2.2f;
+};
+
+struct SkillPointToast {
+    bool active = false;
+    std::string title;
+    std::string subtitle;
+    float timer = 0.0f;
+};
+
+} // namespace Railfinity

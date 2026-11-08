@@ -1,0 +1,10 @@
+build/
+build-*/
+.vs/
+.idea/
+bin/
+obj/
+*.user
+flappy_ghost_save.dat
+railfinity_save.dat
+*.apk.idsig

@@ -117,6 +117,9 @@ struct PlayerLombax {
     bool heliGliding = false;
     float heliFuel = 1.2f;
     float maxHeliFuel = 1.2f;
+    float heliDeploy = 0.0f;       // Smooth deployment factor: 0.0f (stowed) -> 1.0f (extended & spinning)
+    float heliRotorAngle = 0.0f;   // Continuous spinning angle
+    float jumpTime = 0.0f;         // Time spent airborne in current leap
 
     float slideTimer = 0.0f;  // >0 means crouching/sliding + OmniWrench spin
     float wrenchSwingTimer = 0.0f;

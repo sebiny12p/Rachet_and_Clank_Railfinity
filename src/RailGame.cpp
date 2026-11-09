@@ -887,6 +887,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
     // Vertical Jump & Clank Heli-Pack Physics
     if (!player_.grounded) {
+        player_.jumpTime += dt;
         float grav = player_.heliGliding ? 11.0f : 44.0f;
         if (player_.heliGliding) {
             player_.heliFuel = std::max(0.0f, player_.heliFuel - dt);
@@ -901,16 +902,33 @@ void RailGame::UpdatePlayingFixed(float dt) {
             player_.grounded = true;
             player_.heliGliding = false;
             player_.heliFuel = player_.maxHeliFuel;
+            player_.jumpTime = 0.0f;
             player_.landingSquashTimer = 0.25f;
             audio_.PlayRailHop();
             SpawnParticleBurst3D({ player_.x, 0.1f, 0.0f }, 10, GOLD, 2.0f, 7.0f, 0.18f, 0.25f);
         }
     } else {
+        player_.jumpTime = 0.0f;
         // Continuous Grind Boot sparks!
         if (rng_.Chance(0.65f)) {
             Color sparkCol = (player_.hyperBoostTimer > 0.0f) ? GREEN : ORANGE;
             SpawnParticleBurst3D({ player_.x - 0.18f, 0.08f, -0.2f }, 1, sparkCol, 2.0f, 6.0f, 0.16f, 0.22f);
             SpawnParticleBurst3D({ player_.x + 0.18f, 0.08f, +0.2f }, 1, YELLOW, 2.0f, 6.0f, 0.16f, 0.22f);
+        }
+    }
+
+    // Procedural Clank Heli-Pack Deployment & Spin Animation (NO Pop-in!)
+    if (player_.heliGliding) {
+        player_.heliDeploy = std::min(1.0f, player_.heliDeploy + dt * 6.5f); // Smooth telescoping mast + unfold in ~0.15s
+        player_.heliRotorAngle += dt * (28.0f + 16.0f * player_.heliDeploy);
+        if (player_.heliDeploy > 0.35f && rng_.Chance(0.45f)) {
+            SpawnParticleBurst3D({ player_.x + rng_.RangeFloat(-0.08f, 0.08f), player_.y + 0.65f, -0.25f },
+                                 2, SKYBLUE, 1.2f, 3.8f, 0.10f, 0.20f);
+        }
+    } else {
+        player_.heliDeploy = std::max(0.0f, player_.heliDeploy - dt * 5.2f); // Smooth retract & fold in ~0.19s
+        if (player_.heliDeploy > 0.01f) {
+            player_.heliRotorAngle += dt * 26.0f * player_.heliDeploy;
         }
     }
 

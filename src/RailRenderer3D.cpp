@@ -670,11 +670,29 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Color chromeSilv  = { 196, 208, 224, 255 };
 
     // =========================================================================
-    // 1. LEGS & MAGNETIC GRIND BOOTS
+    // 1. LEGS & MAGNETIC GRIND BOOTS (Dynamic Jump & Glide Animation)
     // =========================================================================
-    float airTuck = airborne ? 0.20f : 0.0f;
-    Vector3 leftFoot  = { pos.x + 0.17f, pos.y + 0.14f + airTuck, pos.z + (sliding ? 0.42f : 0.24f) };
-    Vector3 rightFoot = { pos.x - 0.17f, pos.y + 0.14f + airTuck * 0.6f, pos.z - (sliding ? 0.32f : 0.24f) };
+    float vy = player_.vy;
+    float jumpTuck = 0.0f;
+    float legSway = 0.0f;
+    if (airborne) {
+        if (player_.heliDeploy > 0.12f) {
+            // Dangling in Clank's flight harness with rhythmic Lombax leg kick/sway
+            legSway = std::sin(globalTime_ * 9.0f) * 0.12f * player_.heliDeploy;
+            jumpTuck = 0.18f;
+        } else if (vy > 0.0f) {
+            // Ascending leap: snappy knee tuck tightens with upward momentum
+            float t = std::clamp(vy / 18.5f, 0.0f, 1.0f);
+            jumpTuck = 0.20f + t * 0.28f;
+        } else {
+            // Descending arc: legs extend downward to prepare for rail impact
+            float t = std::clamp(-vy / 24.0f, 0.0f, 1.0f);
+            jumpTuck = std::max(0.04f, 0.20f - t * 0.16f);
+        }
+    }
+
+    Vector3 leftFoot  = { pos.x + 0.17f, pos.y + 0.14f + jumpTuck + legSway, pos.z + (sliding ? 0.42f : 0.24f) };
+    Vector3 rightFoot = { pos.x - 0.17f, pos.y + 0.14f + jumpTuck * 0.82f - legSway, pos.z - (sliding ? 0.32f : 0.24f) };
 
     auto DrawGrindBoot = [&](Vector3 fPos) {
         DrawCylinderEx({ fPos.x, fPos.y - 0.08f, fPos.z - 0.20f },
@@ -687,9 +705,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawGrindBoot(leftFoot);
     DrawGrindBoot(rightFoot);
 
+    float kneeForwardTuck = airborne ? (jumpTuck * 0.32f) : 0.0f;
     Vector3 pelvisPos = { pos.x + leanX * 0.6f, pos.y + 0.72f + crouchDrop, pos.z };
-    Vector3 leftKnee  = { pos.x + 0.23f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f, pos.z + 0.20f };
-    Vector3 rightKnee = { pos.x - 0.23f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f, pos.z - 0.10f };
+    Vector3 leftKnee  = { pos.x + 0.23f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f + jumpTuck * 0.55f, pos.z + 0.20f + kneeForwardTuck };
+    Vector3 rightKnee = { pos.x - 0.23f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f + jumpTuck * 0.45f, pos.z - 0.10f + kneeForwardTuck };
     Vector3 leftHip   = { pelvisPos.x + 0.16f, pelvisPos.y, pelvisPos.z + 0.06f };
     Vector3 rightHip  = { pelvisPos.x - 0.16f, pelvisPos.y, pelvisPos.z - 0.06f };
 
@@ -732,32 +751,65 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawCylinderEx(shoulderCenter, neckTop, 0.18f, 0.16f, 8, furGold);
 
     // =========================================================================
-    // 3. CLANK BACKPACK ON RATCHET'S BACK
+    // 3. CLANK BACKPACK & PROCEDURAL HELI-PACK DEPLOYMENT (NO POP-IN!)
     // =========================================================================
     Vector3 clankPos = { shoulderCenter.x - 0.02f, shoulderCenter.y - 0.16f, shoulderCenter.z - 0.30f };
     DrawCube(clankPos, 0.44f, 0.50f, 0.24f, chromeSilv);
     DrawCubeWires(clankPos, 0.46f, 0.52f, 0.26f, armorDark);
-    // Clank's glowing green power bulb in center of his back (matching screenshot!)
+    // Clank's glowing green power bulb in center of his back
     DrawSphere({ clankPos.x, clankPos.y + 0.12f, clankPos.z - 0.12f }, 0.12f, { 95, 255, 85, 255 });
     DrawSphere({ clankPos.x, clankPos.y + 0.12f, clankPos.z - 0.15f }, 0.07f, WHITE);
-    Vector3 clankHead = { clankPos.x, clankPos.y + 0.34f, clankPos.z - 0.02f };
+
+    // Clank head tilt reactive to Ratchet's vertical momentum
+    float clankHeadNod = airborne ? std::clamp(-player_.vy * 0.005f, -0.05f, 0.05f) : 0.0f;
+    Vector3 clankHead = { clankPos.x, clankPos.y + 0.34f + clankHeadNod, clankPos.z - 0.02f };
     DrawSphere(clankHead, 0.15f, chromeSilv);
     DrawCylinderEx(clankHead, { clankHead.x, clankHead.y + 0.22f, clankHead.z }, 0.02f, 0.02f, 6, chromeSilv);
     DrawSphere({ clankHead.x, clankHead.y + 0.24f, clankHead.z }, 0.045f, RED);
 
-    if (gliding) {
-        float angle = globalTime_ * 28.0f;
-        Vector3 rotorHub = { clankPos.x, clankPos.y + 0.82f, clankPos.z };
-        DrawCylinderEx(clankHead, rotorHub, 0.05f, 0.05f, 6, chromeSilv);
+    // Clank's articulated robot arms wrapped over Ratchet's shoulders
+    Vector3 clankLShoulder = { clankPos.x + 0.19f, clankPos.y + 0.14f, clankPos.z + 0.02f };
+    Vector3 clankRShoulder = { clankPos.x - 0.19f, clankPos.y + 0.14f, clankPos.z + 0.02f };
+    Vector3 clankLHand = { shoulderCenter.x + 0.17f, shoulderCenter.y + 0.03f, shoulderCenter.z + 0.08f };
+    Vector3 clankRHand = { shoulderCenter.x - 0.17f, shoulderCenter.y + 0.03f, shoulderCenter.z + 0.08f };
+    DrawCylinderEx(clankLShoulder, clankLHand, 0.035f, 0.030f, 6, chromeSilv);
+    DrawCylinderEx(clankRShoulder, clankRHand, 0.035f, 0.030f, 6, chromeSilv);
+    DrawSphere(clankLHand, 0.045f, armorDark);
+    DrawSphere(clankRHand, 0.045f, armorDark);
+
+    // Procedural Clank Heli-Pack Deployment (Smoothly telescoping shaft & spinning blades)
+    float deploy = player_.heliDeploy;
+    if (deploy > 0.005f) {
+        // 1. Telescoping mast extends upward from Clank's head hatch (0.0m -> 0.82m)
+        float mastHeight = 0.82f * deploy;
+        Vector3 rotorHub = { clankPos.x, clankHead.y + mastHeight, clankPos.z };
+        DrawCylinderEx(clankHead, rotorHub, 0.048f, 0.042f, 6, chromeSilv);
+        DrawSphere(rotorHub, 0.075f * deploy, armorDark);
+
+        // 2. Twin titanium helicopter blades unfolding and extending
+        float bladeSpan = 1.60f * deploy;
+        float angle = player_.heliRotorAngle;
         for (int b = 0; b < 2; ++b) {
             float a = angle + b * 1.570796f;
-            Vector3 pA = { rotorHub.x + std::cos(a) * 1.60f, rotorHub.y, rotorHub.z + std::sin(a) * 1.60f };
-            Vector3 pB = { rotorHub.x - std::cos(a) * 1.60f, rotorHub.y, rotorHub.z - std::sin(a) * 1.60f };
-            DrawCylinderEx(pA, pB, 0.06f, 0.06f, 4, (b == 0) ? SKYBLUE : WHITE);
+            Vector3 pA = { rotorHub.x + std::cos(a) * bladeSpan, rotorHub.y, rotorHub.z + std::sin(a) * bladeSpan };
+            Vector3 pB = { rotorHub.x - std::cos(a) * bladeSpan, rotorHub.y, rotorHub.z - std::sin(a) * bladeSpan };
+            DrawCylinderEx(pA, pB, 0.055f * deploy, 0.055f * deploy, 4, (b == 0) ? SKYBLUE : WHITE);
+            DrawSphere(pA, 0.04f * deploy, SKYBLUE);
+            DrawSphere(pB, 0.04f * deploy, SKYBLUE);
         }
-        DrawCircle3D(rotorHub, 1.60f, { 1.0f, 0.0f, 0.0f }, 90.0f, SKYBLUE);
+
+        // 3. Hypersonic aerodynamic disc halo (scales & fades smoothly)
+        if (deploy > 0.18f) {
+            float discFrac = (deploy - 0.18f) / 0.82f;
+            DrawCircle3D(rotorHub, bladeSpan, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(SKYBLUE, discFrac * 0.70f));
+            DrawCircle3D(rotorHub, bladeSpan * 0.55f, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, discFrac * 0.35f));
+        }
+
+        // 4. Smooth thruster exhaust cone under Clank's backpack
+        float thrustLen = 0.58f * deploy;
         DrawCylinderEx({ clankPos.x, clankPos.y - 0.24f, clankPos.z },
-                       { clankPos.x, clankPos.y - 0.72f, clankPos.z }, 0.14f, 0.02f, 8, SKYBLUE);
+                       { clankPos.x, clankPos.y - 0.24f - thrustLen, clankPos.z },
+                       0.14f * deploy, 0.02f, 8, ColorAlpha(SKYBLUE, deploy * 0.85f));
     }
 
     // =========================================================================
@@ -861,6 +913,33 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     Vector3 rightElbow = Vector3Lerp(surfRightElbow, aimRightElbow, aimBlend);
     Vector3 rightHand  = Vector3Lerp(surfRightHand,  aimRightHand,  aimBlend);
+
+    // Dynamic Lombax jumping arm balance & Heli-Pack harness grip pose
+    if (airborne && !wrenchSwinging && player_.gunAimTimer <= 0.0f) {
+        if (deploy > 0.22f) {
+            // Reaching both hands up to grip Clank's backpack shoulder straps
+            float gripFrac = (deploy - 0.22f) / 0.78f;
+            Vector3 gripLeftHand   = { leftShoulder.x - 0.10f, leftShoulder.y + 0.16f, leftShoulder.z + 0.06f };
+            Vector3 gripRightHand  = { rightShoulder.x + 0.10f, rightShoulder.y + 0.16f, rightShoulder.z + 0.06f };
+            Vector3 gripLeftElbow  = { leftShoulder.x + 0.18f, leftShoulder.y + 0.06f, leftShoulder.z };
+            Vector3 gripRightElbow = { rightShoulder.x - 0.18f, rightShoulder.y + 0.06f, rightShoulder.z };
+            leftHand   = Vector3Lerp(leftHand, gripLeftHand, gripFrac);
+            rightHand  = Vector3Lerp(rightHand, gripRightHand, gripFrac);
+            leftElbow  = Vector3Lerp(leftElbow, gripLeftElbow, gripFrac);
+            rightElbow = Vector3Lerp(rightElbow, gripRightElbow, gripFrac);
+        } else if (vy > 0.0f) {
+            // Leaping upward: arms flare out and back dynamically for mid-air balance
+            float jumpFrac = std::clamp(vy / 18.5f, 0.0f, 1.0f);
+            leftElbow.y  += jumpFrac * 0.16f;
+            leftElbow.z  -= jumpFrac * 0.12f;
+            leftHand.y   += jumpFrac * 0.20f;
+            leftHand.x   += jumpFrac * 0.14f;
+            rightElbow.y += jumpFrac * 0.16f;
+            rightElbow.z -= jumpFrac * 0.12f;
+            rightHand.y  += jumpFrac * 0.20f;
+            rightHand.x  -= jumpFrac * 0.14f;
+        }
+    }
 
     // Right-to-Left Horizontal Wrench Swing across Ratchet's lane (not a forward knife poke!)
     // Note: Camera looks from -Z toward +Z, so Screen-Right is -X and Screen-Left is +X.

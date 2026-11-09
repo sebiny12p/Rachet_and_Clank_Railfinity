@@ -187,6 +187,7 @@ void RailGame::StartNewRun(bool dailySeed) {
     mode_ = ScreenMode::PLAYING;
     runTime_ = 0.0f;
     distanceMeters_ = 0.0f;
+    totalWorldTravel_ = 0.0f;
     grindSpeed_ = isDailyRun_ ? 42.0f : 38.0f;
     nextChunkZ_ = 36.0f;
     distanceSinceBoss_ = 0.0f;
@@ -269,8 +270,29 @@ bool RailGame::IsRailGapAt(int lane, float z) const {
     return false;
 }
 
+int RailGame::GetCorridorMinLaneAt(float worldZ) const {
+    if (mode_ != ScreenMode::PLAYING && mode_ != ScreenMode::PAUSED && mode_ != ScreenMode::GAME_OVER) {
+        return 1; // In menus, always show the central 3 rails (Lanes 1, 2, 3)
+    }
+    // 240-meter continuous 3D world blocks:
+    // Block 0: Central Corridor (Lanes 1, 2, 3)
+    // Block 1: Left Sky-Freeway (Lanes 0, 1, 2)
+    // Block 2: Re-converging Central Hub (Lanes 1, 2, 3)
+    // Block 3: Right Megacorp Overpass (Lanes 2, 3, 4)
+    int block = static_cast<int>(std::floor(std::max(0.0f, worldZ) / 240.0f));
+    int pat = block % 4;
+    if (pat == 1) return 0; // Left 3 rails
+    if (pat == 3) return 2; // Right 3 rails
+    return 1;               // Center 3 rails
+}
+
 bool RailGame::IsRailActiveAt(int lane, float z) const {
     if (lane < 0 || lane >= NUM_LANES) return false;
+    float worldZ = totalWorldTravel_ + z;
+    int minLane = GetCorridorMinLaneAt(worldZ);
+    if (lane < minLane || lane > minLane + 2) {
+        return false; // Strictly capped at 3 rails at a time!
+    }
     return !IsRailGapAt(lane, z);
 }
 
@@ -306,7 +328,8 @@ bool RailGame::IsButtonClicked(Rectangle r) const {
 }
 
 void RailGame::SwitchLane(int delta) {
-    int target = std::clamp(player_.currentLane + delta, 0, NUM_LANES - 1);
+    int curMin = GetCorridorMinLaneAt(totalWorldTravel_);
+    int target = std::clamp(player_.currentLane + delta, curMin, curMin + 2);
     if (target != player_.currentLane) {
         player_.currentLane = target;
         player_.isHopping = true;
@@ -522,13 +545,9 @@ void RailGame::SpawnChunkPattern(float startZ) {
     float difficulty = std::min(1.0f, distanceMeters_ / 2200.0f);
     int pattern = rng_.RangeInt(0, 6);
 
-    // Calculate active 3-lane route corridor at this world distance (Max 3 rails at any time!)
-    float worldDist = distanceMeters_ + startZ;
-    int block = static_cast<int>(std::floor(std::max(0.0f, worldDist) / 180.0f));
-    int routeMode = block % 4;
-    int minLane = 1;
-    if (routeMode == 1) minLane = 0;       // Left Sky-Freeway branch (Lanes 0, 1, 2)
-    else if (routeMode == 3) minLane = 2;  // Right Megacorp Industrial branch (Lanes 2, 3, 4)
+    // Calculate active 3-lane route corridor at this continuous world distance (Strictly capped at 3 rails!)
+    float worldZ = totalWorldTravel_ + startZ;
+    int minLane = GetCorridorMinLaneAt(worldZ);
     std::array<int, 3> activeLanes = { minLane, minLane + 1, minLane + 2 };
 
     if (pattern == 0) {
@@ -936,6 +955,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
     grindSpeed_ = Lerp(grindSpeed_, baseSpd, 4.0f * dt);
 
     float stepDist = grindSpeed_ * dt;
+    totalWorldTravel_ += stepDist;
     distanceMeters_ += stepDist * 0.45f;
     distanceSinceBoss_ += stepDist * 0.45f;
 

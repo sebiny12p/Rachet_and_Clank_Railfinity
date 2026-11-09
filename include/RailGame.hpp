@@ -54,6 +54,7 @@ private:
 
     // Helpers (5-Lane Matrix: Lane 0 = +6.4m, Lane 1 = +3.2m, Lane 2 = 0m, Lane 3 = -3.2m, Lane 4 = -6.4m)
     static float GetLaneX(int lane) { return (2 - lane) * LANE_WIDTH; }
+    int GetCorridorMinLaneAt(float worldZ) const;
     float GetTrackCurveX(float z) const;
     float GetTrackCurveY(float z) const;
     Vector3 ApplyTrackCurve(float laneX, float y, float z) const;
@@ -104,6 +105,7 @@ private:
     float globalTime_ = 0.0f;
     float runTime_ = 0.0f;
     float distanceMeters_ = 0.0f;
+    float totalWorldTravel_ = 0.0f; // Continuous 3D world travel distance
     float grindSpeed_ = 38.0f; // Units per second in 3D space
     float nextChunkZ_ = 40.0f;
     float distanceSinceBoss_ = 0.0f;

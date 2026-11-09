@@ -288,14 +288,20 @@ void RailGame::RenderSkyline3D() const {
 }
 
 void RailGame::RenderGrindRails3D() const {
-    // 1. Draw 5-Lane Tubular Metallic Grindrails all the way into the Reactor Ports at Z = 146!
+    // 1. Draw 5-Lane Tubular Metallic Grindrails (Strictly capped at 3 active rails at any point!)
     constexpr float segLen = 3.0f;
     for (int l = 0; l < NUM_LANES; ++l) {
         float lx = GetLaneX(l);
         for (float z = -10.0f; z < 145.0f; z += segLen) {
             float midZ = z + segLen * 0.5f;
-            if (IsRailGapAt(l, midZ)) {
-                continue; // Physical gap in the tubular rail!
+            if (!IsRailActiveAt(l, midZ)) {
+                // If previous segment was active and this one is not, draw an illuminated sheared terminus cap!
+                if (z > 0.0f && IsRailActiveAt(l, midZ - segLen)) {
+                    Vector3 pTerm = ApplyTrackCurve(lx, -0.10f, z);
+                    DrawCube(pTerm, 0.72f, 0.44f, 0.36f, { 255, 120, 20, 240 });
+                    DrawCubeWires(pTerm, 0.76f, 0.48f, 0.40f, YELLOW);
+                }
+                continue; // Rail not in active 3-rail window or broken!
             }
             Vector3 pA = ApplyTrackCurve(lx, -0.10f, z);
             Vector3 pB = ApplyTrackCurve(lx, -0.10f, z + segLen + 0.06f);
@@ -315,7 +321,7 @@ void RailGame::RenderGrindRails3D() const {
         }
     }
 
-    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (spanning all 5 lanes across the skyline)
+    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (Enclosing exactly the active 3-rail window)
     float trussSpacing = 16.0f;
     float trussOffset = std::fmod(distanceMeters_ * 2.2f, trussSpacing);
     Color trussCol = { 52, 88, 80, 255 };
@@ -325,9 +331,11 @@ void RailGame::RenderGrindRails3D() const {
         float emerge = GetPortalEmergenceScale(z);
         if (emerge <= 0.02f) continue;
 
-        Vector3 cCenter = ApplyTrackCurve(0.0f, -0.35f, z);
-        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 1.2f) * emerge, -0.35f, z);
-        Vector3 cRight  = ApplyTrackCurve((GetLaneX(NUM_LANES - 1) - 1.2f) * emerge, -0.35f, z);
+        float worldZ = totalWorldTravel_ + z;
+        int minL = GetCorridorMinLaneAt(worldZ);
+        Vector3 cCenter = ApplyTrackCurve(GetLaneX(minL + 1), -0.35f, z);
+        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(minL) + 0.9f) * emerge, -0.35f, z);
+        Vector3 cRight  = ApplyTrackCurve((GetLaneX(minL + 2) - 0.9f) * emerge, -0.35f, z);
 
         DrawCylinderEx(cLeft, cRight, 0.18f * emerge, 0.18f * emerge, 6, trussCol);
         DrawCylinderEx({ cLeft.x * 0.7f, cCenter.y - 2.6f * emerge, z },
@@ -1498,6 +1506,13 @@ void RailGame::RenderHud2D() {
     DrawLine(static_cast<int>(fc.x - 16), static_cast<int>(fc.y), static_cast<int>(fc.x + 16), static_cast<int>(fc.y), ORANGE);
     DrawLine(static_cast<int>(fc.x), static_cast<int>(fc.y - 16), static_cast<int>(fc.x), static_cast<int>(fc.y + 16), ORANGE);
     DrawText("FIRE", static_cast<int>(btnFireRec.x + 24), static_cast<int>(btnFireRec.y + 58), 13, GOLD);
+
+    // Track Terminus Alert (if current rail ends within 32m)
+    if (!IsRailActiveAt(player_.currentLane, 32.0f)) {
+        DrawRectangle(VIRTUAL_WIDTH / 2 - 210, 168, 420, 36, { 35, 12, 16, 230 });
+        DrawRectangleLines(VIRTUAL_WIDTH / 2 - 210, 168, 420, 36, RED);
+        DrawText("! TRACK ENDING AHEAD: HOP OVER !", VIRTUAL_WIDTH / 2 - 185, 177, 18, RED);
+    }
 
     // Sector Entry Banner
     if (sectorBannerTimer_ > 0.0f) {

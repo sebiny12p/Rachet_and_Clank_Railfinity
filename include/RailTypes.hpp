@@ -132,6 +132,15 @@ struct RadioCommMessage {
     float maxTimer = 4.5f;
 };
 
+enum class ArmorSuitId : int {
+    CLASSIC_COMMANDO = 0,
+    CARBONOX = 1,
+    REBEL_LOMBAX = 2,
+    INFERNOX = 3,
+    DEADLOCKED_MARAUDER = 4,
+    LOMBAX_PRAETORIAN = 5
+};
+
 struct SkillPointDef {
     int id;
     const char* title;
@@ -167,7 +176,7 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
     {
         "CLASSIC COMMANDO",
         "SOLANA & BOGON AVIATOR (DEFAULT)",
-        "Ratchet's iconic pilot vest & leather harness. Balanced, agile, and timeless.",
+        "Ratchet's iconic pilot vest & Bogon denim.",
         0, 0,
         Color{ 224, 98, 24, 255 },  // Solana aviator orange vest
         Color{ 85, 48, 22, 255 },   // Rich leather harness & belt
@@ -177,17 +186,27 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
     {
         "CARBONOX ARMOR",
         "GOING COMMANDO / UP YOUR ARSENAL",
-        "Forged from nanotech-bonded graphite alloy. +1 Max Nanotech HP & Cyan Arc Sparks.",
-        2500, 10,
+        "+1 Max Nanotech HP & Cyan Arc Sparks.",
+        2000, 8,
         Color{ 36, 42, 52, 255 },   // Matte graphite composite
         Color{ 18, 22, 28, 255 },   // Deep obsidian trim
         Color{ 0, 235, 255, 255 },  // Electric cyan nanotech power lines
         Color{ 26, 32, 42, 255 }    // Reinforced carbon weave
     },
     {
+        "REBEL LOMBAX",
+        "SARGASSO REBEL CELL // RIFT APART",
+        "Sargasso freedom fighter with cybernetic arm.",
+        2500, 0,
+        Color{ 38, 92, 110, 255 },  // Dark teal rebel flight tunic
+        Color{ 235, 185, 30, 255 }, // Rivet's cybernetic mechanical prosthetic arm
+        Color{ 60, 215, 255, 255 }, // Luminous cyan energy core & eye signature
+        Color{ 30, 38, 52, 255 }    // Sargasso dark indigo combat trousers
+    },
+    {
         "INFERNOX ARMOR",
         "MEGACORP THERMAL WEAPONS LAB",
-        "Active volcanic core plates. Radiates fiery magma embers & magnetizes crates.",
+        "Fiery magma embers & magnetized crates.",
         4500, 15,
         Color{ 175, 40, 16, 255 },  // Scorched molten crimson
         Color{ 38, 24, 22, 255 },   // Basalt heat shield trim
@@ -197,7 +216,7 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
     {
         "DEADLOCKED MARAUDER",
         "DREADZONE COMBAT ARENA",
-        "Heavy spiked gladiator battlegear. 1.25x Wrench Melee Damage & Shockwaves.",
+        "1.25x Wrench Melee Damage & Shockwaves.",
         6500, 25,
         Color{ 170, 26, 32, 255 },  // Dreadzone battle crimson
         Color{ 40, 42, 48, 255 },   // Industrial gunmetal steel
@@ -207,22 +226,12 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
     {
         "LOMBAX PRAETORIAN",
         "ANCIENT DIMENSIONAL ARCHIVE",
-        "Ceremonial pearl-gold royal regalia. 1.5x Bolt Multiplier Escalation.",
+        "1.5x Bolt Multiplier Escalation.",
         9000, 35,
         Color{ 238, 242, 250, 255 },// Polished Royal Pearl & Platinum
         Color{ 230, 180, 50, 255 }, // Ornate 24K Gold Filigree & Winged Crests
         Color{ 200, 90, 255, 255 }, // Luminescent Psionic Violet Matrix
         Color{ 28, 24, 48, 255 }    // Imperial Amethyst Velvet Trousers
-    },
-    {
-        "RIVET (REBEL LOMBAX)",
-        "SARGASSO REBEL CELL // RIFT APART",
-        "Alternate dimension Lombax heroine. Platinum white fur, royal violet stripes & cybernetic arm.",
-        6000, 20,
-        Color{ 38, 92, 110, 255 },  // Dark teal rebel flight tunic
-        Color{ 235, 185, 30, 255 }, // Rivet's cybernetic mechanical prosthetic arm
-        Color{ 60, 215, 255, 255 }, // Luminous cyan energy core & eye signature
-        Color{ 30, 38, 52, 255 }    // Sargasso dark indigo combat trousers
     }
 }};
 
@@ -230,7 +239,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
     {
         "TITANIUM CHASSIS",
         "STANDARD ISSUE (DEFAULT)",
-        "Insomniac titanium-alloy finish with emerald camera lenses and red beacon.",
+        "Insomniac titanium finish & emerald optics.",
         0, 0,
         Color{ 196, 208, 224, 255 }, // Chrome silver
         Color{ 230, 238, 248, 255 }, // Polished highlight
@@ -240,7 +249,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
     {
         "24-KARAT GOLDEN CLANK",
         "GOLD WEAPON FOUNDRY",
-        "Electroplated solid 24K gold with brilliant sapphire-blue optics.",
+        "Gilded alloy with sapphire optics.",
         3500, 12,
         Color{ 235, 185, 48, 255 },  // Pure gold chassis
         Color{ 255, 225, 110, 255 }, // Mirror gold bevels
@@ -250,7 +259,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
     {
         "SECRET AGENT CLANK",
         "HOLOMEDIA ENTERTAINMENT",
-        "Matte stealth-tuxedo black with formal red bowtie and golden spectacles.",
+        "Matte black tuxedo with formal bowtie.",
         5000, 18,
         Color{ 32, 34, 40, 255 },    // Tuxedo obsidian
         Color{ 75, 80, 92, 255 },    // Satin lapel grey
@@ -260,7 +269,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
     {
         "DREAD PIRATE CLANK",
         "SPACE PIRATE FLOTILLA",
-        "Weathered oxidized bronze with brass rivets and glowing ruby optics.",
+        "Weathered bronze with glowing ruby optics.",
         6500, 22,
         Color{ 160, 105, 64, 255 },  // Weathered bronze
         Color{ 210, 150, 95, 255 },  // Polished brass trim
@@ -270,7 +279,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
     {
         "KT-74-610 // KIT",
         "DIMENSION-HOPPER WARBOT // ZORDOMM PRISON",
-        "Rivet's courageous companion warbot. Warm copper alloy chassis with sunny yellow optics.",
+        "Warm copper chassis & sunny yellow optics.",
         5000, 16,
         Color{ 185, 115, 68, 255 },  // Warm copper/bronze chassis
         Color{ 235, 180, 85, 255 },  // Polished brass highlight
@@ -280,7 +289,7 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
 }};
 
 struct SaveData {
-    uint32_t magic = 0x5241494E; // 'RAIN' v2 (6 weapons starting with OmniWrench)
+    uint32_t magic = 0x5241494F; // 'RAIO' v3 (Rebel Lombax 3rd skin at 2500 bolts)
     int bolts = 100;
     int raritanium = 0;
     int bestDistanceMeters = 0;

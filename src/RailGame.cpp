@@ -174,8 +174,15 @@ void RailGame::LoadSave() {
         SaveData loaded{};
         in.read(reinterpret_cast<char*>(&loaded), sizeof(SaveData));
         std::streamsize bytesRead = in.gcount();
-        if (bytesRead >= static_cast<std::streamsize>(sizeof(uint32_t)) && loaded.magic == 0x5241494E) {
+        if (bytesRead >= static_cast<std::streamsize>(sizeof(uint32_t)) &&
+            (loaded.magic == 0x5241494E || loaded.magic == 0x5241494F)) {
             save_ = loaded;
+            save_.magic = 0x5241494F;
+            if (loaded.magic == 0x5241494E) {
+                // Migrating from v2: Rebel Lombax (index 2) requires purchase (2500 bolts)
+                save_.unlockedArmors[2] = false;
+                if (save_.equippedArmor == 2) save_.equippedArmor = 0;
+            }
             save_.unlockedWeapons[0] = true; // OmniWrench is always unlocked!
             save_.equippedWeapon = std::clamp(save_.equippedWeapon, 0, static_cast<int>(NUM_WEAPONS) - 1);
             if (!save_.unlockedWeapons[save_.equippedWeapon]) {
@@ -277,7 +284,7 @@ void RailGame::StartNewRun(bool dailySeed) {
     player_.y = 0.0f;
     player_.isHopping = false;
     player_.maxNanotechHp = 4.0f + static_cast<float>(save_.armorLevel);
-    if (save_.equippedArmor == 1) {
+    if (save_.equippedArmor == static_cast<int>(ArmorSuitId::CARBONOX)) {
         player_.maxNanotechHp += 1.0f; // Carbonox Armor Perk: +1 Extra Nanotech HP pip!
     }
     player_.nanotechHp = player_.maxNanotechHp;
@@ -590,7 +597,7 @@ void RailGame::TriggerFireWeapon() {
 
 void RailGame::AdvanceMultiplier() {
     float step = 0.22f + save_.multiplierModLevel * 0.04f;
-    if (save_.equippedArmor == 4) {
+    if (save_.equippedArmor == static_cast<int>(ArmorSuitId::LOMBAX_PRAETORIAN)) {
         step *= 1.50f; // Lombax Praetorian Perk: +50% faster Bolt Multiplier escalation!
     }
     player_.multiplierProgress += step;
@@ -1632,16 +1639,19 @@ void RailGame::UpdatePlayingFixed(float dt) {
             Color sparkCol = (player_.hyperBoostTimer > 0.0f) ? GREEN : ORANGE;
             Color sparkAlt = YELLOW;
             if (player_.hyperBoostTimer <= 0.0f) {
-                if (save_.equippedArmor == 1) { // Carbonox: Cyan Electric Arcs
+                if (save_.equippedArmor == static_cast<int>(ArmorSuitId::CARBONOX)) { // Carbonox: Cyan Electric Arcs
                     sparkCol = Color{ 40, 220, 255, 255 };
                     sparkAlt = SKYBLUE;
-                } else if (save_.equippedArmor == 2) { // Infernox: Volcanic Magma Embers
+                } else if (save_.equippedArmor == static_cast<int>(ArmorSuitId::REBEL_LOMBAX)) { // Rebel Lombax: Cyan & Violet Motes
+                    sparkCol = Color{ 60, 215, 255, 255 };
+                    sparkAlt = Color{ 200, 110, 255, 255 };
+                } else if (save_.equippedArmor == static_cast<int>(ArmorSuitId::INFERNOX)) { // Infernox: Volcanic Magma Embers
                     sparkCol = Color{ 255, 75, 20, 255 };
                     sparkAlt = RED;
-                } else if (save_.equippedArmor == 3) { // Deadlocked Marauder: Combat Crimson Sparks
+                } else if (save_.equippedArmor == static_cast<int>(ArmorSuitId::DEADLOCKED_MARAUDER)) { // Deadlocked Marauder: Combat Crimson Sparks
                     sparkCol = Color{ 255, 30, 40, 255 };
                     sparkAlt = ORANGE;
-                } else if (save_.equippedArmor == 4) { // Lombax Praetorian: Royal Violet & Gold
+                } else if (save_.equippedArmor == static_cast<int>(ArmorSuitId::LOMBAX_PRAETORIAN)) { // Lombax Praetorian: Royal Violet & Gold
                     sparkCol = Color{ 210, 110, 255, 255 };
                     sparkAlt = GOLD;
                 }
@@ -2086,7 +2096,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
             // Only pull/collect rail bolts if Ratchet is on the SAME rail (and matching jump height)!
             // Upgrading Box Breaker Magnet in the Raritanium Lab slightly widens pickup reach on your rail.
             // Infernox Armor grants an additional +0.65m volcanic magnetic pull!
-            float infBonus = (save_.equippedArmor == 2) ? 0.65f : 0.0f;
+            float infBonus = (save_.equippedArmor == static_cast<int>(ArmorSuitId::INFERNOX)) ? 0.65f : 0.0f;
             float maxDx = 1.25f + save_.magnetLevel * 0.35f + infBonus;
             float maxDy = 1.35f + save_.magnetLevel * 0.25f + infBonus;
             float maxDz = 2.0f  + save_.magnetLevel * 1.1f  + infBonus * 1.5f;

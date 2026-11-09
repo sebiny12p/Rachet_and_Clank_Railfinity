@@ -809,6 +809,11 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // =========================================================================
     DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.04f, pelvisPos.z },
                    { pelvisPos.x, pelvisPos.y + 0.07f, pelvisPos.z }, 0.21f, 0.20f, 8, leatherBrn);
+    // Glowing Cyan Belt Buckle Emblem (Images 1 & 2)
+    Vector3 bucklePos = { pelvisPos.x, pelvisPos.y + 0.015f, pelvisPos.z + 0.205f };
+    DrawCube(bucklePos, 0.095f, 0.050f, 0.022f, armorDark);
+    DrawCube({ bucklePos.x, bucklePos.y, bucklePos.z + 0.012f }, 0.065f, 0.026f, 0.012f, visorCol);
+    DrawCube({ bucklePos.x, bucklePos.y, bucklePos.z + 0.014f }, 0.032f, 0.014f, 0.010f, WHITE);
 
     // Whipping Striped Lombax Tail
     Vector3 t0 = { pelvisPos.x, pelvisPos.y - 0.02f, pelvisPos.z - 0.16f };
@@ -828,9 +833,29 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     float recoilLeanZ = -recoilKick * 0.10f;
     Vector3 shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.44f, pelvisPos.z + recoilLeanZ };
     DrawCylinderEx(pelvisPos, shoulderCenter, 0.19f, 0.24f, 8, armorOrange);
-    // Form-fitting leather harness / vest across chest
-    DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
-                   { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, leatherBrn);
+    // Vertical vest seam lines (Images 1 & 2)
+    DrawCylinderEx({ pelvisPos.x - 0.06f, pelvisPos.y + 0.08f, pelvisPos.z + 0.17f },
+                   { shoulderCenter.x - 0.07f, shoulderCenter.y - 0.05f, shoulderCenter.z + 0.21f }, 0.010f, 0.010f, 4, armorDark);
+    DrawCylinderEx({ pelvisPos.x + 0.06f, pelvisPos.y + 0.08f, pelvisPos.z + 0.17f },
+                   { shoulderCenter.x + 0.07f, shoulderCenter.y - 0.05f, shoulderCenter.z + 0.21f }, 0.010f, 0.010f, 4, armorDark);
+
+    // Shoulder harness straps running up chest
+    DrawCylinderEx({ shoulderCenter.x - 0.11f, shoulderCenter.y - 0.16f, shoulderCenter.z + 0.19f },
+                   { shoulderCenter.x - 0.14f, shoulderCenter.y + 0.05f, shoulderCenter.z + 0.04f }, 0.030f, 0.028f, 6, leatherBrn);
+    DrawCylinderEx({ shoulderCenter.x + 0.11f, shoulderCenter.y - 0.16f, shoulderCenter.z + 0.19f },
+                   { shoulderCenter.x + 0.14f, shoulderCenter.y + 0.05f, shoulderCenter.z + 0.04f }, 0.030f, 0.028f, 6, leatherBrn);
+
+    // Dual Silver Harness Rivets (Images 1 & 2)
+    DrawSphere({ shoulderCenter.x - 0.10f, shoulderCenter.y - 0.06f, shoulderCenter.z + 0.225f }, 0.016f, chromeBright);
+    DrawSphere({ shoulderCenter.x + 0.10f, shoulderCenter.y - 0.06f, shoulderCenter.z + 0.225f }, 0.016f, chromeBright);
+
+    // Iconic Glowing Cyan Chest Badge (Chevron / Inverted Y Crest from Images 1 & 2!)
+    Vector3 chestBadge = { shoulderCenter.x, shoulderCenter.y - 0.055f, shoulderCenter.z + 0.235f };
+    DrawCube(chestBadge, 0.12f, 0.055f, 0.022f, chromeBright);
+    DrawCubeWires(chestBadge, 0.125f, 0.060f, 0.025f, armorDark);
+    DrawCube({ chestBadge.x, chestBadge.y, chestBadge.z + 0.012f }, 0.085f, 0.032f, 0.012f, visorCol);
+    DrawCube({ chestBadge.x, chestBadge.y, chestBadge.z + 0.014f }, 0.045f, 0.016f, 0.010f, WHITE);
+
     // Neck
     Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
     DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
@@ -1129,21 +1154,49 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Color mouthLine  = { 110, 52, 26, 255 };   // Warm brown smile seam
     Color earPeach   = { 228, 175, 148, 255 }; // Peach inner ear lining
 
-    // A. Golden Lombax Head Dome & Cheek Fur Tufts (Bare Head matching Image Reference)
-    DrawSphere(headPos, 0.300f, furGold);
-    DrawSphere({ headPos.x - 0.13f, headPos.y - 0.05f, headPos.z + 0.07f }, 0.15f, furGold);
-    DrawSphere({ headPos.x + 0.13f, headPos.y - 0.05f, headPos.z + 0.07f }, 0.15f, furGold);
+    // A. Golden Lombax Head Dome & Flared Cheek Tufts (Signature Triangular Silhouette)
+    DrawSphere(headPos, 0.285f, furGold);
+    // Flared horizontal cheek tufts extending out to sides (Images 1 & 2)
+    DrawCylinderEx({ headPos.x, headPos.y - 0.05f, headPos.z + 0.04f },
+                   { headPos.x - 0.24f, headPos.y - 0.06f, headPos.z + 0.04f }, 0.110f, 0.020f, 6, furGold);
+    DrawCylinderEx({ headPos.x, headPos.y - 0.05f, headPos.z + 0.04f },
+                   { headPos.x + 0.24f, headPos.y - 0.06f, headPos.z + 0.04f }, 0.110f, 0.020f, 6, furGold);
+    DrawCylinderEx({ headPos.x - 0.12f, headPos.y - 0.01f, headPos.z + 0.05f },
+                   { headPos.x - 0.22f, headPos.y + 0.01f, headPos.z + 0.03f }, 0.070f, 0.015f, 5, furGold);
+    DrawCylinderEx({ headPos.x + 0.12f, headPos.y - 0.01f, headPos.z + 0.05f },
+                   { headPos.x + 0.22f, headPos.y + 0.01f, headPos.z + 0.03f }, 0.070f, 0.015f, 5, furGold);
 
-    // B. Forehead Fur Crest & 3 Iconic Tiger Stripes (Top of head between ears)
-    DrawCylinderEx({ headPos.x, headPos.y + 0.22f, headPos.z + 0.02f },
-                   { headPos.x, headPos.y + 0.34f, headPos.z - 0.06f }, 0.055f, 0.018f, 6, furGold);
-    // 3 Dark-brown vertical stripes running down the forehead
-    DrawCylinderEx({ headPos.x, headPos.y + 0.14f, headPos.z + 0.24f },
-                   { headPos.x, headPos.y + 0.29f, headPos.z + 0.04f }, 0.026f, 0.018f, 4, furStripe);
-    DrawCylinderEx({ headPos.x - 0.070f, headPos.y + 0.14f, headPos.z + 0.22f },
-                   { headPos.x - 0.065f, headPos.y + 0.27f, headPos.z + 0.04f }, 0.020f, 0.014f, 4, furStripe);
-    DrawCylinderEx({ headPos.x + 0.070f, headPos.y + 0.14f, headPos.z + 0.22f },
-                   { headPos.x + 0.065f, headPos.y + 0.27f, headPos.z + 0.04f }, 0.020f, 0.014f, 4, furStripe);
+    // B. Iconic Aviator Pilot Cap with Seams & Silver Rivets (Images 1 & 2)
+    if (armIdx == 0) {
+        // Tapered leather cap dome covering top of skull
+        DrawCylinderEx({ headPos.x, headPos.y + 0.09f, headPos.z - 0.03f },
+                       { headPos.x, headPos.y + 0.26f, headPos.z - 0.01f }, 0.275f, 0.170f, 12, leatherBrn);
+        // Clean arched brow trim above the eyebrows (y + 0.125f, comfortably above eyes at y + 0.06f)
+        DrawCylinderEx({ headPos.x - 0.16f, headPos.y + 0.125f, headPos.z + 0.19f },
+                       { headPos.x + 0.16f, headPos.y + 0.125f, headPos.z + 0.19f }, 0.018f, 0.018f, 6, { 58, 30, 14, 255 });
+        // Center stitch seam
+        DrawCylinderEx({ headPos.x, headPos.y + 0.125f, headPos.z + 0.20f },
+                       { headPos.x, headPos.y + 0.265f, headPos.z + 0.02f }, 0.009f, 0.009f, 4, { 48, 24, 10, 255 });
+        // Dual silver rivets on forehead (Matching PS3 & Rift Apart renders exactly!)
+        DrawSphere({ headPos.x - 0.038f, headPos.y + 0.165f, headPos.z + 0.215f }, 0.011f, chromeBright);
+        DrawSphere({ headPos.x + 0.038f, headPos.y + 0.165f, headPos.z + 0.215f }, 0.011f, chromeBright);
+        // Side leather helmet trim behind ears
+        DrawCylinderEx({ headPos.x - 0.18f, headPos.y + 0.15f, headPos.z + 0.04f },
+                       { headPos.x - 0.21f, headPos.y - 0.02f, headPos.z - 0.02f }, 0.014f, 0.010f, 4, leatherBrn);
+        DrawCylinderEx({ headPos.x + 0.18f, headPos.y + 0.15f, headPos.z + 0.04f },
+                       { headPos.x + 0.21f, headPos.y - 0.02f, headPos.z - 0.02f }, 0.014f, 0.010f, 4, leatherBrn);
+    } else {
+        // Forehead crest fur for armor skins
+        DrawCylinderEx({ headPos.x, headPos.y + 0.22f, headPos.z + 0.02f },
+                       { headPos.x, headPos.y + 0.34f, headPos.z - 0.06f }, 0.055f, 0.018f, 6, furGold);
+        // 3 Dark-brown vertical stripes
+        DrawCylinderEx({ headPos.x, headPos.y + 0.14f, headPos.z + 0.24f },
+                       { headPos.x, headPos.y + 0.29f, headPos.z + 0.04f }, 0.026f, 0.018f, 4, furStripe);
+        DrawCylinderEx({ headPos.x - 0.070f, headPos.y + 0.14f, headPos.z + 0.22f },
+                       { headPos.x - 0.065f, headPos.y + 0.27f, headPos.z + 0.04f }, 0.020f, 0.014f, 4, furStripe);
+        DrawCylinderEx({ headPos.x + 0.070f, headPos.y + 0.14f, headPos.z + 0.22f },
+                       { headPos.x + 0.065f, headPos.y + 0.27f, headPos.z + 0.04f }, 0.020f, 0.014f, 4, furStripe);
+    }
 
     // C. Iconic Cream Muzzle, Whisker Pads, Chin & Black Leather Nose (Reference Image)
     // Snout bridge connecting between eyes to muzzle cushions
@@ -1224,16 +1277,14 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         Vector3 innerTip  = Vector3Lerp(innerRoot, earTip, 0.82f);
         DrawCylinderEx(innerRoot, innerTip, 0.048f, 0.012f, 6, earPeach);
 
-        // 4. Tiger stripes along the back of the ear
-        Vector3 st1Top = Vector3Lerp(rootTop, earTip, 0.35f);
-        Vector3 st1Bot = Vector3Lerp(rootBot, earTip, 0.30f);
-        st1Top.z -= 0.025f; st1Bot.z -= 0.025f;
-        DrawCylinderEx(st1Top, st1Bot, 0.028f, 0.020f, 4, furStripe);
-
-        Vector3 st2Top = Vector3Lerp(rootTop, earTip, 0.65f);
-        Vector3 st2Bot = Vector3Lerp(rootBot, earTip, 0.60f);
-        st2Top.z -= 0.025f; st2Bot.z -= 0.025f;
-        DrawCylinderEx(st2Top, st2Bot, 0.024f, 0.016f, 4, furStripe);
+        // 4. 3 distinct tiger stripes across each ear fan (Matching Images 1 & 2)
+        for (int st = 1; st <= 3; ++st) {
+            float frac = 0.22f + st * 0.22f;
+            Vector3 sTop = Vector3Lerp(rootTop, earTip, frac);
+            Vector3 sBot = Vector3Lerp(rootBot, earTip, frac * 0.90f);
+            sTop.z += 0.004f; sBot.z += 0.004f;
+            DrawCylinderEx(sTop, sBot, 0.024f, 0.016f, 4, furStripe);
+        }
     }
 
     // F. Sleek Headgear / Accessories (Frames the face without covering or obscuring!)
@@ -1396,6 +1447,8 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         // Golden fur upper arm
         DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, furGold);
         DrawSphere(elb, 0.068f, furGold);
+        // Flared gauntlet cuff at elbow (Images 1 & 2)
+        DrawCylinderEx(elb, Vector3Lerp(elb, hnd, 0.22f), 0.088f, 0.084f, 8, leatherBrn);
         // Tapered glove forearm
         DrawCylinderEx(elb, hnd, 0.068f, 0.082f, 8, leatherBrn);
         // Compact gloved fist

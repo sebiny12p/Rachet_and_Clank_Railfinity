@@ -95,7 +95,9 @@ void RailGame::RenderFrame() {
         RenderHud2D();
     }
 
-    if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
+    if (mode_ == ScreenMode::SPLASH_INTRO) {
+        RenderSplashIntro2D();
+    } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         RenderTitleFrontPage2D();
     } else if (mode_ == ScreenMode::MAIN_MENU) {
         RenderMainMenu2D();
@@ -2039,6 +2041,52 @@ void RailGame::RenderHud2D() {
         DrawRectangleLines(VIRTUAL_WIDTH / 2 - sw / 2 - 20, 128, sw + 40, 38, ORANGE);
         DrawText(sName, VIRTUAL_WIDTH / 2 - sw / 2, 137, 20, GOLD);
     }
+}
+
+void RailGame::RenderSplashIntro2D() {
+    // Fill screen with vibrant Sebio sky-blue background
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 128, 219, 255, 255 });
+
+    float t = splashTimer_;
+    // Total splash duration: 2.4s (0.0s - 0.5s fade in, 0.5s - 1.2s flash glow, 1.2s - 1.9s hold, 1.9s - 2.4s fade out)
+    float alpha = 1.0f;
+    if (t < 0.5f) {
+        alpha = t / 0.5f;
+    } else if (t > 1.9f) {
+        alpha = std::clamp((2.4f - t) / 0.5f, 0.0f, 1.0f);
+    }
+
+    // Flash burst pulse between 0.5s and 1.1s
+    float flash = 0.0f;
+    if (t >= 0.5f && t <= 1.1f) {
+        flash = std::sin((t - 0.5f) / 0.6f * 3.14159265f);
+    }
+
+    if (splashLogo_.id != 0) {
+        float scale = 0.92f + flash * 0.05f;
+        float w = splashLogo_.width * scale;
+        float h = splashLogo_.height * scale;
+        Rectangle dest = { (VIRTUAL_WIDTH - w) * 0.5f, (VIRTUAL_HEIGHT - h) * 0.5f, w, h };
+        Color logoCol = { 255, 255, 255, static_cast<unsigned char>(255 * alpha) };
+        DrawTexturePro(splashLogo_, { 0, 0, (float)splashLogo_.width, (float)splashLogo_.height }, dest, { 0, 0 }, 0.0f, logoCol);
+    } else {
+        // Fallback procedural logo if texture fails to load
+        const char* l1 = "SEBINY LABS";
+        int w1 = MeasureText(l1, 56);
+        DrawText(l1, (VIRTUAL_WIDTH - w1) / 2, 310, 56, Color{ 235, 30, 45, static_cast<unsigned char>(255 * alpha) });
+        const char* l2 = "Discover new adventures";
+        int w2 = MeasureText(l2, 22);
+        DrawText(l2, (VIRTUAL_WIDTH - w2) / 2, 385, 22, Color{ 20, 60, 180, static_cast<unsigned char>(255 * alpha) });
+    }
+
+    if (flash > 0.0f) {
+        DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 255, 255, 255, static_cast<unsigned char>(flash * 140) });
+    }
+
+    // Skip prompt indicator
+    const char* skipHint = "TAP OR PRESS SPACE TO SKIP";
+    int shw = MeasureText(skipHint, 13);
+    DrawText(skipHint, (VIRTUAL_WIDTH - shw) / 2, VIRTUAL_HEIGHT - 38, 13, Color{ 40, 80, 140, static_cast<unsigned char>(160 * alpha) });
 }
 
 void RailGame::RenderBrandingFooter2D() const {

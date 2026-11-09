@@ -80,6 +80,7 @@ private:
     void RenderSingleHexBolt3D(Vector3 pos, float spinDeg, float scale, bool titanium) const;
     void RenderRaritaniumCrystal3D(Vector3 pos, float spinDeg, float scale) const;
     void RenderHud2D();
+    void RenderSplashIntro2D();
     void RenderTitleFrontPage2D();
     void RenderMainMenu2D();
     void RenderGadgetronVendor2D();
@@ -98,7 +99,9 @@ private:
     SaveData save_{};
     PCG32 rng_{};
 
-    ScreenMode mode_ = ScreenMode::TITLE_FRONT_PAGE;
+    ScreenMode mode_ = ScreenMode::SPLASH_INTRO;
+    float splashTimer_ = 0.0f;
+    Texture2D splashLogo_{};
     bool isDailyRun_ = false;
     uint64_t activeSeed_ = 0;
 

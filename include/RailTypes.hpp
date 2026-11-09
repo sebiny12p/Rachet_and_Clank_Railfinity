@@ -24,6 +24,7 @@ constexpr size_t NUM_ARMOR_SUITS = 5;
 constexpr size_t NUM_CLANK_SKINS = 4;
 
 enum class ScreenMode {
+    SPLASH_INTRO,     // Sebiny Labs Logo Flash Intro
     TITLE_FRONT_PAGE, // Rift Apart Front Page: "Press Any Key / Tap to Start"
     MAIN_MENU,
     GADGETRON_VENDOR,
@@ -207,8 +208,8 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
 
 struct SaveData {
     uint32_t magic = 0x5241494E; // 'RAIN' v2 (6 weapons starting with OmniWrench)
-    int bolts = 500;
-    int raritanium = 5;
+    int bolts = 100;
+    int raritanium = 0;
     int bestDistanceMeters = 0;
     int bestDailyMeters = 0;
     int totalEnemiesDestroyed = 0;

@@ -38,6 +38,11 @@ set(SOURCES
     src/RailAudio.cpp
 )
 
+if (WIN32 AND NOT ANDROID)
+    set(RC_FILE src/res/resource.rc)
+    set(SOURCES ${SOURCES} ${RC_FILE})
+endif()
+
 if (ANDROID)
     add_library(main SHARED ${SOURCES})
     target_include_directories(main PRIVATE include "${ANDROID_NDK}/sources/android/native_app_glue")

@@ -99,6 +99,13 @@ void RailGame::Init() {
                       (i % 3 == 1) ? Color{ 60, 215, 255, 255 } : Color{ 210, 85, 255, 255 };
     }
 
+    // Load Sebiny Labs Branding Splash Logo
+    const char* splashPath = FileExists("assets/sebiny_splash_logo.png") ? "assets/sebiny_splash_logo.png"
+                           : FileExists("../assets/sebiny_splash_logo.png") ? "../assets/sebiny_splash_logo.png" : nullptr;
+    if (splashPath) {
+        splashLogo_ = LoadTexture(splashPath);
+    }
+
     // Load Authentic 3D Ratchet Head Model (PS3 A Crack in Time)
     const char* modelPath = FileExists("assets/models/ratchet/ratchet_head.obj") ? "assets/models/ratchet/ratchet_head.obj"
                           : FileExists("../assets/models/ratchet/ratchet_head.obj") ? "../assets/models/ratchet/ratchet_head.obj"
@@ -124,6 +131,10 @@ void RailGame::Shutdown() {
     if (ratchetModelLoaded_) {
         UnloadModel(ratchetModel_);
         ratchetModelLoaded_ = false;
+    }
+    if (splashLogo_.id != 0) {
+        UnloadTexture(splashLogo_);
+        splashLogo_.id = 0;
     }
     if (renderTarget_.id != 0) {
         UnloadRenderTexture(renderTarget_);
@@ -570,7 +581,7 @@ void RailGame::SpawnRailBoltLine(int lane, float startZ, int count, float spacin
                 float arcY = jumpArc ? (std::sin(t * 3.14159265f) * 2.45f) : 0.0f;
                 b.pos = { lx, 0.78f + arcY, bz };
                 b.vel = { 0.0f, 0.0f, 0.0f };
-                b.value = b.isTitanium ? 25 : 5;
+                b.value = b.isTitanium ? 5 : 1;
                 b.spin = i * 42.0f;
                 spawned++;
                 break;
@@ -725,7 +736,7 @@ void RailGame::SpawnBoltShower(Vector3 origin, int count, bool includeRaritanium
                       origin.y + rng_.RangeFloat(0.4f, 2.2f),
                       origin.z + rng_.RangeFloat(-1.5f, 1.5f) };
             b.vel = { rng_.RangeFloat(-4.5f, 4.5f), rng_.RangeFloat(4.5f, 9.5f), rng_.RangeFloat(-3.0f, 3.0f) };
-            b.value = b.isRaritanium ? 1 : (b.isTitanium ? 25 : 5);
+            b.value = b.isRaritanium ? 1 : (b.isTitanium ? 5 : 1);
             b.spin = rng_.RangeFloat(0.0f, 360.0f);
             if (++spawned >= count) break;
         }
@@ -937,6 +948,12 @@ void RailGame::HandleInput() {
             }
         } else {
             player_.heliGliding = false;
+        }
+    } else if (mode_ == ScreenMode::SPLASH_INTRO) {
+        splashTimer_ += GetFrameTime();
+        if (splashTimer_ >= 2.4f || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetKeyPressed() > 0) {
+            mode_ = ScreenMode::TITLE_FRONT_PAGE;
         }
     } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
@@ -1670,7 +1687,7 @@ void RailGame::RunFrame() {
 
     HandleInput();
 
-    int musicMode = (mode_ == ScreenMode::TITLE_FRONT_PAGE) ? 0 :
+    int musicMode = (mode_ == ScreenMode::SPLASH_INTRO || mode_ == ScreenMode::TITLE_FRONT_PAGE) ? 0 :
                     (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER) ? 2 : 1;
     audio_.UpdateMusic(musicMode);
 

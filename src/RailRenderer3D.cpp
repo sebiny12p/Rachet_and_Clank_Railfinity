@@ -1538,7 +1538,7 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     }
 
     // =========================================================================
-    // 6. 6 CUSTOM 3D WEAPON MODELS (RIGHT-TO-LEFT OMNIWRENCH + 5 GADGETRON GUNS)
+    // 6. 6 CUSTOM HIGH-FIDELITY 3D WEAPON MODELS (AUTHENTIC INSOMNIAC GADGETRON ARSENAL)
     // =========================================================================
     WeaponId wEnum = static_cast<WeaponId>(weaponId);
     Color weapCol = GetWeaponCatalog()[weaponId].projectileColor;
@@ -1547,27 +1547,49 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         recoilKick * 0.22f - (1.0f - aimBlend) * 0.12f,
         1.0f
     });
-    Vector3 gunBreech = Vector3Subtract(rightHand, Vector3Scale(gunDir, 0.10f));
+    // Orthogonal coordinate frame relative to aiming direction
+    Vector3 gunUp = Vector3Normalize({ 0.0f, 1.0f, -gunDir.y });
+    Vector3 gunRight = Vector3Normalize(Vector3CrossProduct(gunDir, gunUp));
+
+    Vector3 gunBreech = Vector3Subtract(rightHand, Vector3Scale(gunDir, 0.12f));
     Vector3 gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.78f));
 
     if (wEnum == WeaponId::OMNIWRENCH_8000 || wrenchSwinging) {
-        // Draw the 3D OmniWrench 8000 in Ratchet's right hand (ready pose or right-to-left horizontal swing!)
+        // --- 1. OMNIWRENCH 8000 (Machined Fluted Shaft, Ergonomic Grip, Heavy Jaws & Slash Arc) ---
         Vector3 wDir = wrenchForwardDir;
         Vector3 wPerp = wrenchJawPerp;
-        Vector3 wGripBot = Vector3Subtract(rightHand, Vector3Scale(wDir, 0.14f));
-        Vector3 wNeck    = Vector3Add(rightHand, Vector3Scale(wDir, 0.56f));
-        DrawCylinderEx(wGripBot, wNeck, 0.046f, 0.056f, 8, chromeSilv);
+        Vector3 wGripBot = Vector3Subtract(rightHand, Vector3Scale(wDir, 0.16f));
+        Vector3 wNeck    = Vector3Add(rightHand, Vector3Scale(wDir, 0.58f));
 
-        // Wide Perpendicular Wrench Jaw Crossbar
-        Vector3 jawBaseL = Vector3Add(wNeck, Vector3Scale(wPerp, -0.17f));
-        Vector3 jawBaseR = Vector3Add(wNeck, Vector3Scale(wPerp, +0.17f));
-        DrawCylinderEx(jawBaseL, jawBaseR, 0.062f, 0.062f, 6, armorDark);
+        // Textured knurled handle grip
+        DrawCylinderEx(wGripBot, rightHand, 0.046f, 0.048f, 8, armorDark);
+        DrawCylinderEx(Vector3Lerp(wGripBot, rightHand, 0.25f), Vector3Lerp(wGripBot, rightHand, 0.75f), 0.052f, 0.052f, 8, { 52, 44, 38, 255 });
+        // Weighted pommel base with kinetic blue core
+        DrawSphere(wGripBot, 0.056f, chromeSilv);
+        DrawSphere(Vector3Subtract(wGripBot, Vector3Scale(wDir, 0.02f)), 0.024f, SKYBLUE);
 
-        // Twin Open Parallel Wrench Prongs (U-shaped crescent wrench head)
-        Vector3 jawTipL = Vector3Add(jawBaseL, Vector3Scale(wDir, 0.26f));
-        Vector3 jawTipR = Vector3Add(jawBaseR, Vector3Scale(wDir, 0.26f));
-        DrawCylinderEx(jawBaseL, jawTipL, 0.062f, 0.038f, 6, chromeSilv);
-        DrawCylinderEx(jawBaseR, jawTipR, 0.062f, 0.038f, 6, chromeSilv);
+        // Fluted chrome main shaft
+        DrawCylinderEx(rightHand, wNeck, 0.048f, 0.058f, 8, chromeSilv);
+        DrawCylinderEx(Vector3Lerp(rightHand, wNeck, 0.45f), Vector3Lerp(rightHand, wNeck, 0.55f), 0.062f, 0.062f, 8, chromeBright);
+
+        // Heavy Hexagonal Wrench Jaw Crossbar
+        Vector3 jawBaseL = Vector3Add(wNeck, Vector3Scale(wPerp, -0.18f));
+        Vector3 jawBaseR = Vector3Add(wNeck, Vector3Scale(wPerp, +0.18f));
+        DrawCylinderEx(jawBaseL, jawBaseR, 0.068f, 0.068f, 6, armorDark);
+        // Bolt locking nuts on left and right
+        DrawSphere(jawBaseL, 0.048f, chromeBright);
+        DrawSphere(jawBaseR, 0.048f, chromeBright);
+
+        // Twin Open Parallel Crescent Wrench Prongs
+        Vector3 jawTipL = Vector3Add(jawBaseL, Vector3Scale(wDir, 0.28f));
+        Vector3 jawTipR = Vector3Add(jawBaseR, Vector3Scale(wDir, 0.28f));
+        DrawCylinderEx(jawBaseL, jawTipL, 0.066f, 0.038f, 6, chromeSilv);
+        DrawCylinderEx(jawBaseR, jawTipR, 0.066f, 0.038f, 6, chromeSilv);
+        // Striking contact edges
+        DrawSphere(jawTipL, 0.034f, chromeBright);
+        DrawSphere(jawTipR, 0.034f, chromeBright);
+        DrawSphere(jawTipL, 0.018f, SKYBLUE);
+        DrawSphere(jawTipR, 0.018f, SKYBLUE);
 
         // Horizontal Right-to-Left Slash Arc Trail across Ratchet's lane during swing!
         if (wrenchSwinging) {
@@ -1603,46 +1625,201 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             }
         }
     } else if (wEnum == WeaponId::COMBUSTER) {
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.68f));
-        DrawCylinderEx(gunBreech, gunMuzzle, 0.11f, 0.085f, 8, armorOrange);
-        DrawCylinderEx({ gunBreech.x, gunBreech.y + 0.07f, gunBreech.z + 0.08f },
-                       { gunMuzzle.x, gunMuzzle.y + 0.07f, gunMuzzle.z }, 0.06f, 0.06f, 6, chromeSilv);
-        DrawSphere(gunMuzzle, 0.095f, YELLOW);
+        // --- 2. COMBUSTER (Iconic Gadgetron Orange Blaster Pistol with Plasma Chamber & Vented Barrel) ---
+        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.72f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.18f), Vector3Scale(gunDir, -0.06f)));
+        // Ergonomic pistol grip
+        DrawCylinderEx(rightHand, gripBot, 0.042f, 0.036f, 6, armorDark);
+
+        // Gadgetron orange receiver chassis
+        DrawCylinderEx(gunBreech, Vector3Lerp(gunBreech, gunMuzzle, 0.65f), 0.095f, 0.080f, 8, { 235, 105, 20, 255 });
+        // Upper titanium slide rib
+        DrawCylinderEx(Vector3Add(gunBreech, Vector3Scale(gunUp, 0.065f)),
+                       Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.75f), Vector3Scale(gunUp, 0.065f)),
+                       0.048f, 0.042f, 6, chromeSilv);
+
+        // Illuminated Plasma Accelerator Chamber
+        Vector3 coilCenter = Vector3Lerp(gunBreech, gunMuzzle, 0.38f);
+        DrawSphere(coilCenter, 0.052f, { 255, 150, 20, 255 });
+        DrawSphere(coilCenter, 0.028f, YELLOW);
+        DrawSphere(coilCenter, 0.012f, WHITE);
+
+        // Extended primary barrel & underbarrel power cylinder
+        DrawCylinderEx(Vector3Lerp(gunBreech, gunMuzzle, 0.50f), gunMuzzle, 0.052f, 0.046f, 8, chromeSilv);
+        DrawCylinderEx(Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.40f), Vector3Scale(gunUp, -0.045f)),
+                       Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.85f), Vector3Scale(gunUp, -0.045f)),
+                       0.034f, 0.030f, 6, armorDark);
+
+        // Vented rectangular muzzle brake with glowing emitter ring
+        DrawCube(gunMuzzle, 0.095f, 0.090f, 0.065f, armorDark);
+        DrawSphere(gunMuzzle, 0.042f, YELLOW);
+        DrawSphere(Vector3Add(gunMuzzle, Vector3Scale(gunDir, 0.02f)), 0.020f, WHITE);
     } else if (wEnum == WeaponId::SHOCK_BLASTER) {
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.92f));
-        DrawCylinderEx(gunBreech, gunMuzzle, 0.14f, 0.15f, 8, armorDark);
-        DrawCylinderEx({ gunBreech.x - 0.08f, gunBreech.y + 0.03f, gunBreech.z + 0.12f },
-                       { gunMuzzle.x - 0.08f, gunMuzzle.y + 0.03f, gunMuzzle.z }, 0.075f, 0.085f, 8, chromeSilv);
-        DrawCylinderEx({ gunBreech.x + 0.08f, gunBreech.y + 0.03f, gunBreech.z + 0.12f },
-                       { gunMuzzle.x + 0.08f, gunMuzzle.y + 0.03f, gunMuzzle.z }, 0.075f, 0.085f, 8, chromeSilv);
-        DrawCylinderEx(Vector3Lerp(gunBreech, gunMuzzle, 0.35f),
-                       Vector3Lerp(gunBreech, gunMuzzle, 0.68f), 0.12f, 0.12f, 6, SKYBLUE);
-    } else if (wEnum == WeaponId::BUZZ_BLADES) {
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.78f));
-        DrawCylinderEx(gunBreech, gunMuzzle, 0.13f, 0.13f, 8, { 45, 85, 55, 255 });
-        Vector3 discCenter = Vector3Lerp(gunBreech, gunMuzzle, 0.72f);
-        DrawCylinderEx({ discCenter.x, discCenter.y + 0.07f, discCenter.z },
-                       { discCenter.x, discCenter.y + 0.13f, discCenter.z }, 0.28f, 0.28f, 8, GREEN);
-        DrawCylinderWiresEx({ discCenter.x, discCenter.y + 0.07f, discCenter.z },
-                            { discCenter.x, discCenter.y + 0.13f, discCenter.z }, 0.30f, 0.30f, 8, WHITE);
-    } else if (wEnum == WeaponId::PLASMA_STRIKER) {
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.22f));
-        DrawCylinderEx(gunBreech, gunMuzzle, 0.11f, 0.07f, 8, chromeSilv);
-        DrawCylinderEx(Vector3Lerp(gunBreech, gunMuzzle, 0.25f),
-                       Vector3Lerp(gunBreech, gunMuzzle, 0.75f), 0.13f, 0.10f, 6, { 185, 75, 255, 255 });
-        Vector3 scopeA = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.15f), { 0.0f, 0.14f, 0.0f });
-        Vector3 scopeB = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.52f), { 0.0f, 0.14f, 0.0f });
-        DrawCylinderEx(scopeA, scopeB, 0.05f, 0.06f, 8, armorDark);
-    } else if (wEnum == WeaponId::RYNO_INFINITE) {
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.02f));
-        DrawCylinderEx(gunBreech, Vector3Lerp(gunBreech, gunMuzzle, 0.55f), 0.22f, 0.22f, 10, { 185, 28, 35, 255 });
-        DrawCylinderWiresEx(gunBreech, Vector3Lerp(gunBreech, gunMuzzle, 0.55f), 0.23f, 0.23f, 10, GOLD);
-        for (int b = 0; b < 6; ++b) {
-            float ba = (b * 60.0f + player_.barrelSpinAngle) * DEG2RAD;
-            Vector3 offset = { std::cos(ba) * 0.13f, std::sin(ba) * 0.13f, 0.0f };
-            DrawCylinderEx(Vector3Add(gunBreech, offset), Vector3Add(gunMuzzle, offset),
-                           0.048f, 0.048f, 6, chromeSilv);
+        // --- 3. SHOCK BLASTER (Dual-Barrel Scattergun with High-Voltage Cyan Arc Coils) ---
+        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.96f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.20f), Vector3Scale(gunDir, -0.08f)));
+        DrawCylinderEx(rightHand, gripBot, 0.048f, 0.042f, 6, armorDark);
+
+        // Heavy receiver housing in dark obsidian steel
+        Vector3 midBreech = Vector3Lerp(gunBreech, gunMuzzle, 0.35f);
+        DrawCylinderEx(gunBreech, midBreech, 0.135f, 0.125f, 8, { 32, 36, 46, 255 });
+        // Textured pump-action forend
+        Vector3 pumpA = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.25f), Vector3Scale(gunUp, -0.05f));
+        Vector3 pumpB = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.55f), Vector3Scale(gunUp, -0.05f));
+        DrawCylinderEx(pumpA, pumpB, 0.068f, 0.068f, 6, { 52, 58, 70, 255 });
+
+        // Twin Side-by-Side Heavy Chrome Barrels
+        Vector3 barrelLeftA  = Vector3Add(midBreech, Vector3Scale(gunRight, -0.058f));
+        Vector3 barrelRightA = Vector3Add(midBreech, Vector3Scale(gunRight, +0.058f));
+        Vector3 barrelLeftB  = Vector3Add(gunMuzzle, Vector3Scale(gunRight, -0.058f));
+        Vector3 barrelRightB = Vector3Add(gunMuzzle, Vector3Scale(gunRight, +0.058f));
+        DrawCylinderEx(barrelLeftA,  barrelLeftB,  0.054f, 0.050f, 8, chromeSilv);
+        DrawCylinderEx(barrelRightA, barrelRightB, 0.054f, 0.050f, 8, chromeSilv);
+
+        // Triple High-Voltage Cyan Arc Capacitor Rings
+        for (int c = 0; c < 3; ++c) {
+            float frac = 0.42f + c * 0.14f;
+            Vector3 cPos = Vector3Lerp(gunBreech, gunMuzzle, frac);
+            DrawCylinderEx(Vector3Subtract(cPos, Vector3Scale(gunDir, 0.015f)),
+                           Vector3Add(cPos, Vector3Scale(gunDir, 0.015f)), 0.118f, 0.118f, 8, SKYBLUE);
+            DrawSphere(Vector3Add(cPos, Vector3Scale(gunUp, 0.075f)), 0.018f, WHITE);
         }
+
+        // Flared Dual Muzzle Crown Ports with Electric Energy Glow
+        DrawSphere(barrelLeftB,  0.048f, armorDark);
+        DrawSphere(barrelRightB, 0.048f, armorDark);
+        DrawSphere(barrelLeftB,  0.026f, SKYBLUE);
+        DrawSphere(barrelRightB, 0.026f, SKYBLUE);
+        DrawSphere(barrelLeftB,  0.010f, WHITE);
+        DrawSphere(barrelRightB, 0.010f, WHITE);
+    } else if (wEnum == WeaponId::BUZZ_BLADES) {
+        // --- 4. BUZZ BLADES (Tactical Disc Slinger with High-Speed Spinning Plasma Saw Blade) ---
+        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.82f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.18f), Vector3Scale(gunDir, -0.05f)));
+        DrawCylinderEx(rightHand, gripBot, 0.045f, 0.038f, 6, armorDark);
+
+        // Tactical Military Green Frame with Titanium Reinforcements
+        Vector3 bodyMid = Vector3Lerp(gunBreech, gunMuzzle, 0.60f);
+        DrawCylinderEx(gunBreech, bodyMid, 0.115f, 0.105f, 8, { 42, 75, 48, 255 });
+        // Top disc magazine guide tracks
+        DrawCylinderEx(Vector3Add(gunBreech, Vector3Scale(gunUp, 0.075f)),
+                       Vector3Add(bodyMid, Vector3Scale(gunUp, 0.075f)), 0.052f, 0.045f, 6, armorDark);
+
+        // Motorized High-Speed Spinning Saw Blade Disc at Ejection Throat
+        Vector3 discCenter = Vector3Lerp(gunBreech, gunMuzzle, 0.72f);
+        float spinAngle = globalTime_ * 1200.0f * DEG2RAD;
+        DrawCylinderEx(Vector3Subtract(discCenter, Vector3Scale(gunUp, 0.015f)),
+                       Vector3Add(discCenter, Vector3Scale(gunUp, 0.015f)), 0.24f, 0.24f, 12, { 180, 210, 190, 255 });
+        // Energized Green Plasma Perimeter Blade Ring
+        DrawCylinderEx(Vector3Subtract(discCenter, Vector3Scale(gunUp, 0.018f)),
+                       Vector3Add(discCenter, Vector3Scale(gunUp, 0.018f)), 0.265f, 0.265f, 12, GREEN);
+        // Spinning Saw Teeth Spark Points
+        for (int t = 0; t < 6; ++t) {
+            float ta = spinAngle + t * 1.047197f;
+            Vector3 toothTip = Vector3Add(discCenter, Vector3Add(Vector3Scale(gunRight, std::cos(ta) * 0.28f),
+                                                                 Vector3Scale(gunDir,   std::sin(ta) * 0.28f)));
+            DrawSphere(toothTip, 0.022f, LIME);
+            DrawSphere(toothTip, 0.009f, WHITE);
+        }
+
+        // Twin Forward Launch Guide Prongs with Green Laser Emitter Tips
+        Vector3 prongLA = Vector3Add(discCenter, Vector3Scale(gunRight, -0.15f));
+        Vector3 prongRA = Vector3Add(discCenter, Vector3Scale(gunRight, +0.15f));
+        Vector3 prongLB = Vector3Add(gunMuzzle, Vector3Scale(gunRight, -0.12f));
+        Vector3 prongRB = Vector3Add(gunMuzzle, Vector3Scale(gunRight, +0.12f));
+        DrawCylinderEx(prongLA, prongLB, 0.032f, 0.022f, 6, chromeSilv);
+        DrawCylinderEx(prongRA, prongRB, 0.032f, 0.022f, 6, chromeSilv);
+        DrawSphere(prongLB, 0.020f, GREEN);
+        DrawSphere(prongRB, 0.020f, GREEN);
+    } else if (wEnum == WeaponId::PLASMA_STRIKER) {
+        // --- 5. PLASMA STRIKER (Precision Particle Accelerator Sniper with Holographic Scope) ---
+        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.30f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.22f), Vector3Scale(gunDir, -0.08f)));
+        DrawCylinderEx(rightHand, gripBot, 0.046f, 0.038f, 6, armorDark);
+
+        // Extended precision rifle chassis in imperial dark violet & titanium
+        Vector3 midRifle = Vector3Lerp(gunBreech, gunMuzzle, 0.35f);
+        DrawCylinderEx(gunBreech, midRifle, 0.095f, 0.075f, 8, { 85, 42, 125, 255 });
+        // Contoured buttstock / cheek rest
+        DrawCylinderEx(Vector3Subtract(gunBreech, Vector3Scale(gunDir, 0.12f)), gunBreech, 0.075f, 0.095f, 6, armorDark);
+
+        // Long Fluted Chrome Particle Accelerator Barrel
+        DrawCylinderEx(midRifle, gunMuzzle, 0.048f, 0.038f, 8, chromeSilv);
+
+        // 4 Sequential Magnetic Accelerator Rings pulsing with ultraviolet plasma
+        for (int r = 0; r < 4; ++r) {
+            float frac = 0.40f + r * 0.14f;
+            Vector3 rPos = Vector3Lerp(gunBreech, gunMuzzle, frac);
+            DrawCylinderEx(Vector3Subtract(rPos, Vector3Scale(gunDir, 0.018f)),
+                           Vector3Add(rPos, Vector3Scale(gunDir, 0.018f)), 0.076f, 0.076f, 8, { 195, 75, 255, 255 });
+            DrawSphere(Vector3Add(rPos, Vector3Scale(gunUp, 0.055f)), 0.015f, WHITE);
+        }
+
+        // Elevated Telescopic Holographic Scope with Glowing Reticle
+        Vector3 scopeA = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.12f), Vector3Scale(gunUp, 0.11f));
+        Vector3 scopeB = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.48f), Vector3Scale(gunUp, 0.11f));
+        DrawCylinderEx(scopeA, scopeB, 0.038f, 0.044f, 8, armorDark);
+        // Scope mounts connecting to receiver rail
+        DrawCylinderEx(Vector3Lerp(gunBreech, gunMuzzle, 0.18f), Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.18f), Vector3Scale(gunUp, 0.11f)), 0.020f, 0.020f, 4, chromeSilv);
+        DrawCylinderEx(Vector3Lerp(gunBreech, gunMuzzle, 0.42f), Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.42f), Vector3Scale(gunUp, 0.11f)), 0.020f, 0.020f, 4, chromeSilv);
+        // Glowing forward ocular lens & eyepiece
+        DrawSphere(scopeB, 0.036f, { 210, 110, 255, 255 });
+        DrawSphere(Vector3Add(scopeB, Vector3Scale(gunDir, 0.015f)), 0.018f, WHITE);
+        DrawSphere(scopeA, 0.030f, chromeBright);
+
+        // Folded Tactical Bipod under forend
+        Vector3 bipodBase = Vector3Add(Vector3Lerp(gunBreech, gunMuzzle, 0.52f), Vector3Scale(gunUp, -0.045f));
+        DrawCylinderEx(bipodBase, Vector3Add(bipodBase, Vector3Add(Vector3Scale(gunDir, 0.15f), Vector3Scale(gunRight, -0.06f))), 0.014f, 0.010f, 4, chromeSilv);
+        DrawCylinderEx(bipodBase, Vector3Add(bipodBase, Vector3Add(Vector3Scale(gunDir, 0.15f), Vector3Scale(gunRight, +0.06f))), 0.014f, 0.010f, 4, chromeSilv);
+
+        // Linear multi-port muzzle brake with purple plasma crown
+        DrawCube(gunMuzzle, 0.075f, 0.075f, 0.060f, armorDark);
+        DrawSphere(gunMuzzle, 0.032f, { 210, 110, 255, 255 });
+        DrawSphere(gunMuzzle, 0.014f, WHITE);
+    } else if (wEnum == WeaponId::RYNO_INFINITE) {
+        // --- 6. RYNO INFINITE (Massive 6-Barrel Gatling Minigun with Central Rocket Silo) ---
+        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.08f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.22f), Vector3Scale(gunDir, -0.08f)));
+        DrawCylinderEx(rightHand, gripBot, 0.054f, 0.046f, 6, armorDark);
+
+        // Heavy Dreadzone Battle Chassis in Scorched Crimson & 24K Gold Hazard Trim
+        Vector3 midRyno = Vector3Lerp(gunBreech, gunMuzzle, 0.45f);
+        DrawCylinderEx(gunBreech, midRyno, 0.195f, 0.185f, 10, { 180, 24, 32, 255 });
+        DrawCylinderWiresEx(gunBreech, midRyno, 0.200f, 0.190f, 10, GOLD);
+        // Heat-dissipating cooling louvers on top
+        DrawCube(Vector3Add(Vector3Lerp(gunBreech, midRyno, 0.50f), Vector3Scale(gunUp, 0.13f)),
+                 0.18f, 0.05f, 0.22f, armorDark);
+
+        // Central High-Explosive Rocket Silo Bore
+        DrawCylinderEx(midRyno, gunMuzzle, 0.068f, 0.068f, 8, armorDark);
+        // Armed rocket warhead tip inside silo
+        DrawSphere(Vector3Lerp(midRyno, gunMuzzle, 0.85f), 0.052f, { 235, 120, 20, 255 });
+        DrawSphere(Vector3Lerp(midRyno, gunMuzzle, 0.88f), 0.024f, YELLOW);
+
+        // 6 High-Speed Rotary Chrome Gatling Barrels
+        float barrelAngle = player_.barrelSpinAngle * DEG2RAD;
+        float rynoRadius = 0.125f;
+        for (int b = 0; b < 6; ++b) {
+            float ba = barrelAngle + b * 1.047197f;
+            Vector3 offset = Vector3Add(Vector3Scale(gunRight, std::cos(ba) * rynoRadius),
+                                        Vector3Scale(gunUp,    std::sin(ba) * rynoRadius));
+            Vector3 bA = Vector3Add(midRyno, offset);
+            Vector3 bB = Vector3Add(gunMuzzle, offset);
+            DrawCylinderEx(bA, bB, 0.036f, 0.034f, 6, chromeSilv);
+            DrawSphere(bB, 0.032f, chromeBright);
+        }
+
+        // Heavy Muzzle Stabilization Collar locking the 6 barrels together
+        Vector3 collarPos = Vector3Lerp(midRyno, gunMuzzle, 0.75f);
+        DrawCylinderEx(Vector3Subtract(collarPos, Vector3Scale(gunDir, 0.025f)),
+                       Vector3Add(collarPos, Vector3Scale(gunDir, 0.025f)), 0.170f, 0.170f, 12, armorDark);
+        DrawCylinderWiresEx(Vector3Subtract(collarPos, Vector3Scale(gunDir, 0.025f)),
+                            Vector3Add(collarPos, Vector3Scale(gunDir, 0.025f)), 0.172f, 0.172f, 12, GOLD);
+
+        // Gold Ammunition Belt Feed Chute entering side receiver
+        Vector3 ammoChuteA = Vector3Add(Vector3Lerp(gunBreech, midRyno, 0.35f), Vector3Scale(gunRight, -0.16f));
+        Vector3 ammoChuteB = Vector3Add(ammoChuteA, Vector3Scale(gunUp, -0.14f));
+        DrawCylinderEx(ammoChuteA, ammoChuteB, 0.046f, 0.042f, 6, GOLD);
     }
 
     if (recoilFrac > 0.15f && wEnum != WeaponId::OMNIWRENCH_8000) {

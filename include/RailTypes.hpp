@@ -20,8 +20,8 @@ constexpr size_t MAX_PARTICLES_3D = 512;
 constexpr size_t MAX_SKY_BUILDINGS = 48;
 constexpr size_t NUM_WEAPONS = 6;
 constexpr size_t NUM_SKILL_POINTS = 10;
-constexpr size_t NUM_ARMOR_SUITS = 5;
-constexpr size_t NUM_CLANK_SKINS = 4;
+constexpr size_t NUM_ARMOR_SUITS = 6;
+constexpr size_t NUM_CLANK_SKINS = 5;
 
 enum class ScreenMode {
     SPLASH_INTRO,     // Sebiny Labs Logo Flash Intro
@@ -213,6 +213,16 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
         Color{ 230, 180, 50, 255 }, // Ornate 24K Gold Filigree & Winged Crests
         Color{ 200, 90, 255, 255 }, // Luminescent Psionic Violet Matrix
         Color{ 28, 24, 48, 255 }    // Imperial Amethyst Velvet Trousers
+    },
+    {
+        "RIVET (REBEL LOMBAX)",
+        "SARGASSO REBEL CELL // RIFT APART",
+        "Alternate dimension Lombax heroine. Platinum white fur, royal violet stripes & cybernetic arm.",
+        6000, 20,
+        Color{ 38, 92, 110, 255 },  // Dark teal rebel flight tunic
+        Color{ 235, 185, 30, 255 }, // Rivet's cybernetic mechanical prosthetic arm
+        Color{ 60, 215, 255, 255 }, // Luminous cyan energy core & eye signature
+        Color{ 30, 38, 52, 255 }    // Sargasso dark indigo combat trousers
     }
 }};
 
@@ -256,6 +266,16 @@ inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
         Color{ 210, 150, 95, 255 },  // Polished brass trim
         Color{ 255, 45, 45, 255 },   // Menacing ruby eyes
         Color{ 255, 160, 20, 255 }   // Amber lantern beacon
+    },
+    {
+        "KT-74-610 // KIT",
+        "DIMENSION-HOPPER WARBOT // ZORDOMM PRISON",
+        "Rivet's courageous companion warbot. Warm copper alloy chassis with sunny yellow optics.",
+        5000, 16,
+        Color{ 185, 115, 68, 255 },  // Warm copper/bronze chassis
+        Color{ 235, 180, 85, 255 },  // Polished brass highlight
+        Color{ 255, 225, 45, 255 },  // Sunny yellow optics
+        Color{ 255, 210, 50, 255 }   // Golden sensor beacon
     }
 }};
 
@@ -281,10 +301,10 @@ struct SaveData {
     int multiplierModLevel = 0;// Faster Bolt Multiplier escalation (0..5)
 
     // Wardrobe & Cosmetics
-    int equippedArmor = 0;     // 0 = Classic Commando, 1 = Carbonox, 2 = Infernox, 3 = Marauder, 4 = Praetorian
-    int equippedClankSkin = 0; // 0 = Standard Titanium, 1 = 24K Gold, 2 = Secret Agent, 3 = Dread Pirate
-    std::array<bool, NUM_ARMOR_SUITS> unlockedArmors = { true, false, false, false, false };
-    std::array<bool, NUM_CLANK_SKINS> unlockedClankSkins = { true, false, false, false };
+    int equippedArmor = 0;     // 0 = Classic Commando, 1 = Carbonox, 2 = Infernox, 3 = Marauder, 4 = Praetorian, 5 = Rivet
+    int equippedClankSkin = 0; // 0 = Standard Titanium, 1 = 24K Gold, 2 = Secret Agent, 3 = Dread Pirate, 4 = Kit
+    std::array<bool, NUM_ARMOR_SUITS> unlockedArmors = { true, false, false, false, false, false };
+    std::array<bool, NUM_CLANK_SKINS> unlockedClankSkins = { true, false, false, false, false };
 
     std::array<bool, NUM_SKILL_POINTS> skillPoints = { false };
 

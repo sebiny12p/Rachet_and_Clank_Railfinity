@@ -2,6 +2,7 @@
 #include "RailTypes.hpp"
 #include "DeterministicRNG.hpp"
 #include "RailAudio.hpp"
+#include <vector>
 #include <array>
 #include <string>
 
@@ -163,9 +164,16 @@ private:
     bool isDraggingWardrobe_ = false;
     Vector2 lastMousePos_{};
 
-    // Authentic 3D Mesh Assets
+    // Authentic 3D Mesh Assets & Rivet Alternate Textures
     Model ratchetModel_{};
     bool ratchetModelLoaded_ = false;
+    Texture2D rivetHeadDiff_{};
+    Texture2D rivetHead2Diff_{};
+    Texture2D rivetFur_{};
+    Texture2D rivetFur2_{};
+    Texture2D rivetEyeDiff_{};
+    bool rivetTexturesLoaded_ = false;
+    std::vector<Texture2D> defaultModelTextures_{};
 
     PlayerLombax player_{};
     BossDropship boss_{};

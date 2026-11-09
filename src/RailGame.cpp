@@ -124,17 +124,37 @@ void RailGame::Init() {
         if (ratchetModelLoaded_) {
             TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials) from %s",
                      ratchetModel_.meshCount, ratchetModel_.materialCount, modelPath);
+            defaultModelTextures_.resize(ratchetModel_.materialCount);
             for (int i = 0; i < ratchetModel_.materialCount; ++i) {
+                defaultModelTextures_[i] = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
                 TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u",
                          i, ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id);
             }
         }
     }
+
+    // Load Rivet Alternate Dimensional Lombax Textures
+    auto LoadTex = [](const char* p1, const char* p2) -> Texture2D {
+        if (FileExists(p1)) return LoadTexture(p1);
+        if (FileExists(p2)) return LoadTexture(p2);
+        return Texture2D{};
+    };
+    rivetHeadDiff_  = LoadTex("assets/models/ratchet/RivetHeadDiff.png",  "../assets/models/ratchet/RivetHeadDiff.png");
+    rivetHead2Diff_ = LoadTex("assets/models/ratchet/RivetHead2Diff.png", "../assets/models/ratchet/RivetHead2Diff.png");
+    rivetFur_       = LoadTex("assets/models/ratchet/RivetFur.png",       "../assets/models/ratchet/RivetFur.png");
+    rivetFur2_      = LoadTex("assets/models/ratchet/RivetFur2.png",      "../assets/models/ratchet/RivetFur2.png");
+    rivetEyeDiff_   = LoadTex("assets/models/ratchet/RivetEyeDiff.png",   "../assets/models/ratchet/RivetEyeDiff.png");
+    rivetTexturesLoaded_ = (rivetHeadDiff_.id != 0);
 }
 
 void RailGame::Shutdown() {
     SaveProgress();
     audio_.Shutdown();
+    if (rivetHeadDiff_.id != 0)  UnloadTexture(rivetHeadDiff_);
+    if (rivetHead2Diff_.id != 0) UnloadTexture(rivetHead2Diff_);
+    if (rivetFur_.id != 0)       UnloadTexture(rivetFur_);
+    if (rivetFur2_.id != 0)      UnloadTexture(rivetFur2_);
+    if (rivetEyeDiff_.id != 0)   UnloadTexture(rivetEyeDiff_);
     if (ratchetModelLoaded_) {
         UnloadModel(ratchetModel_);
         ratchetModelLoaded_ = false;

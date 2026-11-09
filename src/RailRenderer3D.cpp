@@ -937,17 +937,20 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     armIdx = std::clamp(armIdx, 0, static_cast<int>(NUM_ARMOR_SUITS) - 1);
     clkIdx = std::clamp(clkIdx, 0, static_cast<int>(NUM_CLANK_SKINS) - 1);
 
+    bool isRivet = (armIdx == 5);
+    bool isKit   = (clkIdx == 4);
+
     const auto& armDef = ARMOR_CATALOG[armIdx];
     const auto& clkDef = CLANK_SKIN_CATALOG[clkIdx];
 
-    Color furGold     = { 245, 186, 52, 255 };
-    Color furInner    = { 215, 138, 68, 255 };
-    Color furStripe   = { 128, 52, 16, 255 };
+    Color furGold     = isRivet ? Color{ 232, 236, 246, 255 } : Color{ 245, 186, 52, 255 };
+    Color furInner    = isRivet ? Color{ 192, 182, 218, 255 } : Color{ 215, 138, 68, 255 };
+    Color furStripe   = isRivet ? Color{ 118, 44, 172, 255 }  : Color{ 128, 52, 16, 255 };
     Color armorOrange = armDef.primaryColor;
     Color armorDark   = armDef.accentColor;
     Color pantsBlue   = armDef.pantsColor;
     Color visorCol    = armDef.visorColor;
-    Color leatherBrn  = (armIdx == 0) ? Color{ 92, 50, 22, 255 } : armDef.accentColor;
+    Color leatherBrn  = (armIdx == 0) ? Color{ 92, 50, 22, 255 } : (armIdx == 5) ? Color{ 48, 38, 32, 255 } : armDef.accentColor;
     Color gloveBrn    = (armIdx == 0) ? Color{ 72, 38, 16, 255 } : armDef.accentColor;
 
     Color chromeSilv  = clkDef.chassisColor;
@@ -983,13 +986,13 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Vector3 rightFoot = { pos.x - 0.13f, pos.y + 0.12f + jumpTuck * 0.82f - legSway, pos.z - (sliding ? 0.28f : 0.20f) };
 
     auto DrawGrindBoot = [&](Vector3 fPos) {
-        Color bBase = (armIdx == 0) ? chromeSilv : (armIdx == 4) ? armDef.primaryColor : armorDark;
-        Color bCap  = (armIdx == 0) ? armorOrange : (armIdx == 4) ? armorDark : armorOrange;
+        Color bBase = (armIdx == 0) ? chromeSilv : (armIdx == 4) ? armDef.primaryColor : (armIdx == 5) ? Color{ 28, 34, 46, 255 } : armorDark;
+        Color bCap  = (armIdx == 0) ? armorOrange : (armIdx == 4) ? armorDark : (armIdx == 5) ? armorDark : armorOrange;
         DrawCylinderEx({ fPos.x, fPos.y - 0.06f, fPos.z - 0.15f },
                        { fPos.x, fPos.y - 0.06f, fPos.z + 0.18f }, 0.120f, 0.100f, 8, bBase);
         DrawSphere({ fPos.x, fPos.y - 0.04f, fPos.z + 0.16f }, 0.105f, bCap);
         DrawCylinderEx({ fPos.x, fPos.y - 0.02f, fPos.z - 0.03f },
-                       { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, (armIdx == 4) ? armorDark : armorOrange);
+                       { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, (armIdx == 4 || armIdx == 5) ? armorDark : armorOrange);
         // Magnetic rail lock soles glow with each suit's energy signature!
         DrawCube({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.22f, 0.05f, 0.36f, visorCol);
         DrawCubeWires({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.225f, 0.052f, 0.365f, (armIdx == 4) ? armorDark : WHITE);
@@ -1043,6 +1046,9 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     } else if (armIdx == 4) { // Praetorian: 24K Gold kneecaps with purple psionic gems
         DrawSphere({ leftKnee.x, leftKnee.y, leftKnee.z + 0.08f }, 0.028f, visorCol);
         DrawSphere({ rightKnee.x, rightKnee.y, rightKnee.z + 0.08f }, 0.028f, visorCol);
+    } else if (armIdx == 5) { // Rivet: Indigo combat pants with reinforced yellow knee guard
+        DrawSphere({ leftKnee.x, leftKnee.y, leftKnee.z + 0.075f }, 0.026f, armorDark);
+        DrawSphere({ rightKnee.x, rightKnee.y, rightKnee.z + 0.075f }, 0.026f, armorDark);
     }
 
     DrawCylinderEx(leftKnee, leftHip, 0.095f, 0.115f, 8, pantsBlue);
@@ -1075,6 +1081,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(bucklePos, 0.045f, armorDark);
         DrawSphere({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.026f, visorCol);
         DrawSphere({ bucklePos.x - 0.005f, bucklePos.y + 0.005f, bucklePos.z + 0.018f }, 0.009f, WHITE);
+    } else if (armIdx == 5) { // Rivet: Rebel insurgent buckle with glowing cyan cell
+        DrawCube(bucklePos, 0.085f, 0.06f, 0.025f, armorDark);
+        DrawSphere({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.022f, visorCol);
+        DrawSphere({ bucklePos.x, bucklePos.y, bucklePos.z + 0.015f }, 0.010f, WHITE);
     }
 
     // Whipping Striped Lombax Tail
@@ -1154,6 +1164,17 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
                        { chestCenter.x + 0.12f, chestCenter.y + 0.04f, chestCenter.z }, 0.022f, 0.022f, 6, armorDark);
         DrawSphere({ chestCenter.x, chestCenter.y - 0.01f, chestCenter.z + 0.020f }, 0.042f, visorCol);
         DrawSphere({ chestCenter.x - 0.007f, chestCenter.y + 0.007f, chestCenter.z + 0.032f }, 0.014f, WHITE);
+    } else if (armIdx == 5) {
+        // Rivet: Dark Teal Insurgent Rebel Tunic with diagonal strap & cyan comms beacon
+        DrawCube(chestCenter, 0.20f, 0.14f, 0.028f, armorOrange); // Teal flight tunic
+        // Diagonal harness strap across chest
+        DrawCylinderEx({ chestCenter.x - 0.10f, chestCenter.y + 0.07f, chestCenter.z + 0.01f },
+                       { chestCenter.x + 0.08f, chestCenter.y - 0.07f, chestCenter.z + 0.01f }, 0.020f, 0.020f, 6, leatherBrn);
+        // Insurgent cyan comm badge
+        DrawSphere({ chestCenter.x - 0.045f, chestCenter.y + 0.020f, chestCenter.z + 0.025f }, 0.026f, visorCol);
+        DrawSphere({ chestCenter.x - 0.045f, chestCenter.y + 0.020f, chestCenter.z + 0.030f }, 0.012f, WHITE);
+        // Yellow accent clasp
+        DrawCube({ chestCenter.x + 0.01f, chestCenter.y - 0.01f, chestCenter.z + 0.022f }, 0.035f, 0.035f, 0.014f, armorDark);
     }
 
     // Neck collar & base
@@ -1202,6 +1223,18 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             DrawCylinderEx(shP, wingTip, 0.034f, 0.010f, 6, armorDark); // 24K gold winged crest
             DrawSphere({ shP.x + s * 0.035f, shP.y + 0.035f, shP.z + 0.030f }, 0.024f, visorCol); // Psionic jewel
             DrawSphere({ shP.x + s * 0.035f, shP.y + 0.035f, shP.z + 0.036f }, 0.008f, WHITE);
+        } else if (armIdx == 5) {
+            // Rivet: Asymmetrical insurgent shoulder pauldrons
+            if (side == -1) {
+                // Right shoulder: Yellow mechanical prosthetic housing mount
+                DrawSphere(shP, 0.092f, armorDark); // Bright yellow cybernetic cowl
+                DrawSphere({ shP.x - 0.015f, shP.y, shP.z }, 0.072f, { 38, 42, 48, 255 }); // Dark rotary ring
+                DrawSphere({ shP.x - 0.025f, shP.y, shP.z }, 0.032f, visorCol); // Cyan power core
+            } else {
+                // Left shoulder: Reinforced teal leather flight pad with yellow clasp
+                DrawSphere(shP, 0.085f, armorOrange);
+                DrawSphere({ shP.x + 0.02f, shP.y + 0.01f, shP.z }, 0.024f, armorDark);
+            }
         }
     }
 
@@ -1310,9 +1343,9 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     float eyeFocus = (player_.heliDeploy > 0.25f) ? (0.22f * player_.heliDeploy) : 0.0f;
     float baseEyeRadius = 0.054f * eyeExcitement;
 
-    Color clankEyeBright = { 205, 255, 220, 255 };
+    Color clankEyeBright = isKit ? Color{ 255, 248, 175, 255 } : Color{ 205, 255, 220, 255 };
     if (player_.hyperBoostTimer > 0.0f) {
-        clankEyeGreen = { 90, 255, 180, 255 };
+        clankEyeGreen = isKit ? Color{ 255, 235, 120, 255 } : Color{ 90, 255, 180, 255 };
     }
 
     auto DrawClankEye = [&](Vector3 center) {
@@ -1379,16 +1412,28 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     float antFrac = std::clamp(deploy / 0.15f, 0.0f, 1.0f);
     float antVisible = 1.0f - antFrac;
     if (antVisible > 0.01f) {
-        float stemH = 0.12f * antVisible;
-        Vector3 stemTip = { hatchPos.x, hatchPos.y + 0.018f + stemH, hatchPos.z };
-        DrawCylinderEx({ hatchPos.x, hatchPos.y + 0.018f, hatchPos.z }, stemTip,
-                       0.011f * antVisible, 0.008f * antVisible, 6, chromeSilv);
-        // Red glowing beacon bulb at antenna tip
-        float redRadius = 0.032f * antVisible;
-        Color redCol  = ColorAlpha(clankBeaconCol, antVisible);
-        Color redCore = ColorAlpha(WHITE, antVisible * 0.90f);
-        DrawSphere(stemTip, redRadius, redCol);
-        DrawSphere(stemTip, redRadius * 0.45f, redCore);
+        if (isKit) {
+            // Kit's signature dual angled horn-like sensor antennae with sunny gold beacon tips
+            for (int hSide = -1; hSide <= 1; hSide += 2) {
+                float hs = static_cast<float>(hSide);
+                Vector3 hornBase = { hatchPos.x + hs * 0.045f, hatchPos.y + 0.014f, hatchPos.z };
+                Vector3 hornTip  = { hatchPos.x + hs * 0.088f, hatchPos.y + 0.014f + 0.095f * antVisible, hatchPos.z - 0.015f };
+                DrawCylinderEx(hornBase, hornTip, 0.014f * antVisible, 0.007f * antVisible, 6, chromeSilv);
+                DrawSphere(hornTip, 0.022f * antVisible, clankBeaconCol);
+                DrawSphere(hornTip, 0.011f * antVisible, WHITE);
+            }
+        } else {
+            float stemH = 0.12f * antVisible;
+            Vector3 stemTip = { hatchPos.x, hatchPos.y + 0.018f + stemH, hatchPos.z };
+            DrawCylinderEx({ hatchPos.x, hatchPos.y + 0.018f, hatchPos.z }, stemTip,
+                           0.011f * antVisible, 0.008f * antVisible, 6, chromeSilv);
+            // Red glowing beacon bulb at antenna tip
+            float redRadius = 0.032f * antVisible;
+            Color redCol  = ColorAlpha(clankBeaconCol, antVisible);
+            Color redCore = ColorAlpha(WHITE, antVisible * 0.90f);
+            DrawSphere(stemTip, redRadius, redCol);
+            DrawSphere(stemTip, redRadius * 0.45f, redCore);
+        }
     }
 
     // --- H. Clank's Canonical Backpack Form: Stowed Arms & Dual Shoulder Harness Straps ---
@@ -1457,12 +1502,13 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
         // 4. Twin thruster exhaust plumes under Clank's feet
         float thrustLen = 0.58f * deploy;
+        Color plumeCol = isKit ? ColorAlpha(Color{ 255, 205, 55, 255 }, deploy * 0.90f) : ColorAlpha(SKYBLUE, deploy * 0.90f);
         DrawCylinderEx({ footL.x, footL.y - 0.04f, footL.z },
                        { footL.x, footL.y - 0.04f - thrustLen, footL.z },
-                       0.075f * deploy, 0.015f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
+                       0.075f * deploy, 0.015f, 8, plumeCol);
         DrawCylinderEx({ footR.x, footR.y - 0.04f, footR.z },
                        { footR.x, footR.y - 0.04f - thrustLen, footR.z },
-                       0.075f * deploy, 0.015f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
+                       0.075f * deploy, 0.015f, 8, plumeCol);
     }
 
     // =========================================================================
@@ -1475,7 +1521,27 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Vector3 headPos = { neckTop.x, neckTop.y + 0.22f, neckTop.z + 0.02f };
 
     if (ratchetModelLoaded_) {
-        // --- AUTHENTIC 3D MESH RATCHET HEAD (PS3 A Crack in Time) ---
+        // --- TEXTURE SWAP FOR RIVET (ALTERNATE DIMENSIONAL LOMBAX) ---
+        if (rivetTexturesLoaded_) {
+            if (isRivet) {
+                if (ratchetModel_.materialCount > 0 && rivetHead2Diff_.id != 0)
+                    ratchetModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHead2Diff_;
+                if (ratchetModel_.materialCount > 1 && rivetFur2_.id != 0)
+                    ratchetModel_.materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur2_;
+                if (ratchetModel_.materialCount > 2 && rivetFur_.id != 0)
+                    ratchetModel_.materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur_;
+                if (ratchetModel_.materialCount > 3 && rivetEyeDiff_.id != 0)
+                    ratchetModel_.materials[3].maps[MATERIAL_MAP_DIFFUSE].texture = rivetEyeDiff_;
+                if (ratchetModel_.materialCount > 4 && rivetHeadDiff_.id != 0)
+                    ratchetModel_.materials[4].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHeadDiff_;
+            } else {
+                for (int m = 0; m < ratchetModel_.materialCount && m < static_cast<int>(defaultModelTextures_.size()); ++m) {
+                    ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = defaultModelTextures_[m];
+                }
+            }
+        }
+
+        // --- AUTHENTIC 3D MESH RATCHET/RIVET HEAD (PS3 A Crack in Time) ---
         float mScale = 0.170f;
         float rotDeg = (tiltDeg * 0.45f);
         Matrix matScale = MatrixScale(mScale, mScale, mScale);
@@ -1512,11 +1578,11 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         Color furCream   = { 246, 230, 198, 255 }; // Light cream muzzle fur
         Color noseBlack  = { 24, 20, 26, 255 };    // Dark leather nose button
         Color eyeSclera  = { 252, 252, 255, 255 }; // Pure white eye sclera
-        Color eyeGreen   = { 36, 196, 84, 255 };   // Vibrant Lombax emerald green iris
-        Color eyeBright  = { 108, 246, 150, 255 }; // Radiant iris glow
+        Color eyeGreen   = isRivet ? Color{ 45, 190, 255, 255 } : Color{ 36, 196, 84, 255 };
+        Color eyeBright  = isRivet ? Color{ 135, 230, 255, 255 } : Color{ 108, 246, 150, 255 };
         Color eyePupil   = { 16, 18, 22, 255 };    // Deep dark pupil
         Color mouthLine  = { 110, 52, 26, 255 };   // Warm brown smile seam
-        Color earPeach   = { 228, 175, 148, 255 }; // Peach inner ear lining
+        Color earPeach   = isRivet ? Color{ 205, 185, 225, 255 } : Color{ 228, 175, 148, 255 };
 
         // A. Golden Lombax Head Dome & Cheek Fur Tufts (Bare Head matching Image Reference)
         DrawSphere(headPos, 0.300f, furGold);
@@ -1702,6 +1768,63 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd, int side) {
         float s = static_cast<float>(side);
+        if (side == -1 && isRivet) {
+            // =====================================================================
+            // RIVET'S SIGNATURE YELLOW CYBERNETIC MECHANICAL PROSTHETIC ARM
+            // =====================================================================
+            Color mechYellow = { 235, 185, 30, 255 };  // Rivet's hazard-yellow chassis
+            Color mechJoint  = { 38, 42, 48, 255 };    // Dark gunmetal / carbon joints
+            Color mechChrome = { 195, 205, 218, 255 }; // Chrome hydraulic piston rods
+            Color cyanCore   = { 60, 215, 255, 255 };  // Glowing blue power conduit
+
+            // Upper arm: Heavy yellow industrial plating over exposed chrome hydraulic cylinder
+            DrawCylinderEx(sh, elb, 0.078f, 0.068f, 8, mechYellow);
+            DrawCylinderEx(Vector3Lerp(sh, elb, 0.20f), Vector3Lerp(sh, elb, 0.85f), 0.030f, 0.030f, 6, mechChrome);
+            DrawSphere(sh, 0.084f, mechJoint);
+            DrawSphere({ sh.x - 0.025f, sh.y, sh.z }, 0.040f, mechChrome);
+
+            // Elbow: Articulated dual-disc rotary servo joint
+            DrawSphere(elb, 0.072f, mechJoint);
+            DrawCylinderEx({ elb.x - 0.035f, elb.y, elb.z }, { elb.x + 0.035f, elb.y, elb.z }, 0.052f, 0.052f, 8, mechYellow);
+            DrawSphere({ elb.x - 0.036f, elb.y, elb.z }, 0.028f, mechChrome);
+
+            // Forearm: Dual-segment yellow cybernetic chassis with power conduits
+            DrawCylinderEx(elb, hnd, 0.072f, 0.086f, 8, mechYellow);
+            Vector3 midArm = Vector3Lerp(elb, hnd, 0.50f);
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.22f), Vector3Lerp(elb, hnd, 0.78f), 0.024f, 0.024f, 6, mechJoint);
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.28f), Vector3Lerp(elb, hnd, 0.72f), 0.012f, 0.012f, 4, cyanCore);
+            DrawSphere(midArm, 0.020f, cyanCore);
+            DrawSphere(midArm, 0.010f, WHITE);
+
+            // Heavy industrial wrist clamp
+            Vector3 wristPos = Vector3Lerp(elb, hnd, 0.88f);
+            DrawCylinderEx(wristPos, hnd, 0.088f, 0.080f, 8, mechJoint);
+
+            // Cybernetic Hand & Articulated Mechanical Fingers
+            DrawSphere(hnd, 0.066f, mechJoint);
+            DrawSphere({ hnd.x - 0.022f, hnd.y, hnd.z }, 0.038f, mechYellow);
+
+            // Chrome articulated thumb
+            Vector3 thumbTip = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, 0.028f), Vector3Scale(gunRight, 0.042f)));
+            DrawCylinderEx(hnd, thumbTip, 0.026f, 0.020f, 6, mechChrome);
+            DrawSphere(thumbTip, 0.018f, mechYellow);
+
+            // Chrome articulated mechanical fingers with yellow knuckle pads
+            for (int f = 0; f < 3; ++f) {
+                float fY = -0.012f - f * 0.024f;
+                Vector3 knuckle = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, fY), Vector3Scale(gunRight, -0.030f)));
+                Vector3 fTip    = Vector3Add(knuckle, Vector3Add(Vector3Scale(gunDir, 0.048f), Vector3Scale(gunRight, 0.038f)));
+                DrawSphere(knuckle, 0.020f, mechYellow);
+                DrawCylinderEx(knuckle, fTip, 0.020f, 0.016f, 6, mechChrome);
+                DrawSphere(fTip, 0.016f, mechYellow);
+            }
+            // Trigger finger
+            Vector3 trigA = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, 0.022f), Vector3Scale(gunRight, -0.028f)));
+            Vector3 trigB = Vector3Add(trigA, Vector3Scale(gunDir, 0.062f));
+            DrawCylinderEx(trigA, trigB, 0.018f, 0.014f, 6, mechChrome);
+            return;
+        }
+
         // Upper arm (Sleeve / Armor plate + Fur)
         Color sleeveCol = (armIdx == 0) ? furGold : (armIdx == 4) ? pantsBlue : armorOrange;
         DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, sleeveCol);
@@ -1741,6 +1864,11 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             Vector3 gemP = { midArm.x + s * 0.065f, midArm.y, midArm.z };
             DrawSphere(gemP, 0.024f, visorCol);
             DrawSphere({ gemP.x + s * 0.005f, gemP.y, gemP.z }, 0.010f, WHITE);
+        } else if (armIdx == 5) {
+            // Rivet: Left arm dark teal flight sleeve with reinforced utility communicator
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.35f), Vector3Lerp(elb, hnd, 0.55f), 0.076f, 0.078f, 8, armorDark);
+            Vector3 commP = { midArm.x + s * 0.055f, midArm.y, midArm.z };
+            DrawSphere(commP, 0.018f, visorCol);
         }
 
         // Hand & Glove
@@ -2535,7 +2663,7 @@ void RailGame::RenderMainMenu2D() {
         audio_.PlayUiClick();
     }
 
-    if (MenuButton(btnWardrobe, "ARMOR & CLANK WARDROBE", "Equip Carbonox, Infernox & 24K Gold Clank", PURPLE)) {
+    if (MenuButton(btnWardrobe, "ARMOR & CLANK WARDROBE", "Equip Rivet, Kit, Carbonox & Infernox", PURPLE)) {
         wardrobePreviewArmor_ = save_.equippedArmor;
         wardrobePreviewClank_ = save_.equippedClankSkin;
         wardrobeRotAngle_ = 180.0f; // Start facing camera
@@ -2834,7 +2962,7 @@ void RailGame::RenderArmorWardrobe2D() {
     Color tabLCol = (wardrobeTab_ == 0) ? Color{ 48, 32, 85, 240 } : (hovL ? Color{ 26, 36, 56, 220 } : Color{ 14, 20, 32, 210 });
     DrawRectangleRec(tabLombax, tabLCol);
     DrawRectangleLinesEx(tabLombax, (wardrobeTab_ == 0) ? 2.5f : 1.0f, (wardrobeTab_ == 0) ? GOLD : GRAY);
-    DrawText("LOMBAX ARMOR SUITS (5)", static_cast<int>(tabLombax.x + 40), static_cast<int>(tabLombax.y + 12), 17, (wardrobeTab_ == 0) ? GOLD : WHITE);
+    DrawText("LOMBAX HERO SUITS (6)", static_cast<int>(tabLombax.x + 36), static_cast<int>(tabLombax.y + 12), 17, (wardrobeTab_ == 0) ? GOLD : WHITE);
     if (IsButtonClicked(tabLombax)) {
         wardrobeTab_ = 0;
         audio_.PlayUiClick();
@@ -2844,16 +2972,16 @@ void RailGame::RenderArmorWardrobe2D() {
     Color tabCCol = (wardrobeTab_ == 1) ? Color{ 48, 32, 85, 240 } : (hovC ? Color{ 26, 36, 56, 220 } : Color{ 14, 20, 32, 210 });
     DrawRectangleRec(tabClank, tabCCol);
     DrawRectangleLinesEx(tabClank, (wardrobeTab_ == 1) ? 2.5f : 1.0f, (wardrobeTab_ == 1) ? GOLD : GRAY);
-    DrawText("CLANK OUTFITS (4)", static_cast<int>(tabClank.x + 65), static_cast<int>(tabClank.y + 12), 17, (wardrobeTab_ == 1) ? GOLD : WHITE);
+    DrawText("COMPANION ROBOTS (5)", static_cast<int>(tabClank.x + 48), static_cast<int>(tabClank.y + 12), 17, (wardrobeTab_ == 1) ? GOLD : WHITE);
     if (IsButtonClicked(tabClank)) {
         wardrobeTab_ = 1;
         audio_.PlayUiClick();
     }
 
     // Content Cards
-    float startY = 186.0f;
-    float cardH  = 86.0f;
-    float gapY   = 8.0f;
+    float startY = 184.0f;
+    float cardH  = 74.0f;
+    float gapY   = 6.0f;
 
     if (wardrobeTab_ == 0) {
         for (int i = 0; i < static_cast<int>(NUM_ARMOR_SUITS); ++i) {
@@ -2871,21 +2999,21 @@ void RailGame::RenderArmorWardrobe2D() {
             DrawRectangle(static_cast<int>(cardRec.x), static_cast<int>(cardRec.y), 8, static_cast<int>(cardRec.height), a.visorColor);
 
             // Title & Lore
-            DrawText(a.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 10), 19, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
-            DrawText(a.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 34), 13, SKYBLUE);
-            DrawText(a.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 58), 12, LIGHTGRAY);
+            DrawText(a.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 8), 18, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
+            DrawText(a.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 30), 12, SKYBLUE);
+            DrawText(a.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 50), 12, LIGHTGRAY);
 
             // Action / Status Button on Right
-            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 20.0f, 154.0f, 46.0f };
+            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 16.0f, 154.0f, 42.0f };
             if (isEquipped) {
                 DrawRectangleRec(btnAction, { 22, 65, 34, 220 });
                 DrawRectangleLinesEx(btnAction, 1.5f, GREEN);
-                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 14), 16, GREEN);
+                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 12), 16, GREEN);
             } else if (isUnlocked) {
                 bool bHov = IsRectHovered(btnAction);
                 DrawRectangleRec(btnAction, bHov ? Color{ 40, 85, 130, 240 } : Color{ 22, 50, 80, 220 });
                 DrawRectangleLinesEx(btnAction, 1.5f, bHov ? WHITE : SKYBLUE);
-                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 14), 16, WHITE);
+                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 12), 16, WHITE);
                 if (IsButtonClicked(btnAction)) {
                     save_.equippedArmor = i;
                     wardrobePreviewArmor_ = i;
@@ -2901,8 +3029,8 @@ void RailGame::RenderArmorWardrobe2D() {
                 char costBuf[48];
                 std::snprintf(costBuf, sizeof(costBuf), "%d B / %d R", a.boltCost, a.raritaniumCost);
                 int bw = MeasureText(costBuf, 13);
-                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 6), 14, canAfford ? GOLD : GRAY);
-                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 25), 13, canAfford ? WHITE : LIGHTGRAY);
+                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 5), 13, canAfford ? GOLD : GRAY);
+                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 22), 12, canAfford ? WHITE : LIGHTGRAY);
 
                 if (canAfford && IsButtonClicked(btnAction)) {
                     save_.bolts -= a.boltCost;
@@ -2924,7 +3052,7 @@ void RailGame::RenderArmorWardrobe2D() {
         // Clank Outfits Tab
         for (int i = 0; i < static_cast<int>(NUM_CLANK_SKINS); ++i) {
             const auto& c = CLANK_SKIN_CATALOG[i];
-            Rectangle cardRec = { 580.0f, startY + i * (cardH + 18.0f), 650.0f, cardH + 8.0f };
+            Rectangle cardRec = { 580.0f, startY + i * (cardH + 10.0f), 650.0f, cardH };
             bool isPrev = (wardrobePreviewClank_ == i);
             bool isEquipped = (save_.equippedClankSkin == i);
             bool isUnlocked = save_.unlockedClankSkins[i];
@@ -2936,20 +3064,20 @@ void RailGame::RenderArmorWardrobe2D() {
             // Eye Glow Color Bar
             DrawRectangle(static_cast<int>(cardRec.x), static_cast<int>(cardRec.y), 8, static_cast<int>(cardRec.height), c.eyeColor);
 
-            DrawText(c.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 12), 19, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
-            DrawText(c.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 36), 13, SKYBLUE);
-            DrawText(c.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 60), 12, LIGHTGRAY);
+            DrawText(c.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 8), 18, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
+            DrawText(c.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 30), 12, SKYBLUE);
+            DrawText(c.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 50), 12, LIGHTGRAY);
 
-            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 24.0f, 154.0f, 46.0f };
+            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 16.0f, 154.0f, 42.0f };
             if (isEquipped) {
                 DrawRectangleRec(btnAction, { 22, 65, 34, 220 });
                 DrawRectangleLinesEx(btnAction, 1.5f, GREEN);
-                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 14), 16, GREEN);
+                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 12), 16, GREEN);
             } else if (isUnlocked) {
                 bool bHov = IsRectHovered(btnAction);
                 DrawRectangleRec(btnAction, bHov ? Color{ 40, 85, 130, 240 } : Color{ 22, 50, 80, 220 });
                 DrawRectangleLinesEx(btnAction, 1.5f, bHov ? WHITE : SKYBLUE);
-                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 14), 16, WHITE);
+                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 12), 16, WHITE);
                 if (IsButtonClicked(btnAction)) {
                     save_.equippedClankSkin = i;
                     wardrobePreviewClank_ = i;
@@ -2965,8 +3093,8 @@ void RailGame::RenderArmorWardrobe2D() {
                 char costBuf[48];
                 std::snprintf(costBuf, sizeof(costBuf), "%d B / %d R", c.boltCost, c.raritaniumCost);
                 int bw = MeasureText(costBuf, 13);
-                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 6), 14, canAfford ? GOLD : GRAY);
-                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 25), 13, canAfford ? WHITE : LIGHTGRAY);
+                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 5), 13, canAfford ? GOLD : GRAY);
+                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 22), 12, canAfford ? WHITE : LIGHTGRAY);
 
                 if (canAfford && IsButtonClicked(btnAction)) {
                     save_.bolts -= c.boltCost;

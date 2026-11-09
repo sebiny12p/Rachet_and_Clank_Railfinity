@@ -319,12 +319,13 @@ void RailGame::TriggerJumpOrGlide() {
         audio_.PlayJump();
         SpawnParticleBurst3D({ player_.x, 0.1f, 0.0f }, 15, SKYBLUE, 2.0f, 7.0f, 0.24f, 0.35f);
     } else if (player_.heliFuel > 0.0f) {
-        // Engage Clank Heli-Pack Thruster Glide!
+        // Double-jump / Mid-air Space: Engage Clank Heli-Pack Thruster Glide with lift boost!
         player_.heliGliding = true;
-        if (player_.vy < 3.5f) {
-            player_.vy = 5.5f;
+        if (player_.vy < 5.0f) {
+            player_.vy = 8.5f;
         }
         audio_.PlayJump();
+        SpawnParticleBurst3D({ player_.x, player_.y + 0.5f, -0.25f }, 10, SKYBLUE, 2.0f, 6.0f, 0.16f, 0.25f);
     }
 }
 
@@ -721,8 +722,16 @@ void RailGame::HandleInput() {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP)) {
             TriggerJumpOrGlide();
         }
-        player_.heliGliding = (!player_.grounded && player_.heliFuel > 0.0f &&
-                               (IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) && player_.vy <= 4.0f);
+        bool jumpHeld = IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_W) || IsKeyDown(KEY_UP);
+        if (!player_.grounded && player_.heliFuel > 0.0f) {
+            if (jumpHeld && player_.vy <= 6.5f) {
+                player_.heliGliding = true;
+            } else if (!jumpHeld) {
+                player_.heliGliding = false;
+            }
+        } else {
+            player_.heliGliding = false;
+        }
 
         // Wrench Slide / Crouch
         if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_LEFT_CONTROL)) {
@@ -919,16 +928,16 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
     // Procedural Clank Heli-Pack Deployment & Spin Animation (NO Pop-in!)
     if (player_.heliGliding) {
-        player_.heliDeploy = std::min(1.0f, player_.heliDeploy + dt * 6.5f); // Smooth telescoping mast + unfold in ~0.15s
-        player_.heliRotorAngle += dt * (28.0f + 16.0f * player_.heliDeploy);
-        if (player_.heliDeploy > 0.35f && rng_.Chance(0.45f)) {
-            SpawnParticleBurst3D({ player_.x + rng_.RangeFloat(-0.08f, 0.08f), player_.y + 0.65f, -0.25f },
-                                 2, SKYBLUE, 1.2f, 3.8f, 0.10f, 0.20f);
+        player_.heliDeploy = std::min(1.0f, player_.heliDeploy + dt * 3.6f); // Smooth mechanical unfolding in ~0.28s
+        player_.heliRotorAngle += dt * (22.0f + 32.0f * player_.heliDeploy);
+        if (player_.heliDeploy > 0.25f && rng_.Chance(0.50f)) {
+            SpawnParticleBurst3D({ player_.x + rng_.RangeFloat(-0.10f, 0.10f), player_.y + 0.55f, -0.28f },
+                                 2, SKYBLUE, 1.2f, 4.0f, 0.12f, 0.22f);
         }
     } else {
-        player_.heliDeploy = std::max(0.0f, player_.heliDeploy - dt * 5.2f); // Smooth retract & fold in ~0.19s
+        player_.heliDeploy = std::max(0.0f, player_.heliDeploy - dt * 3.0f); // Smooth mechanical retraction in ~0.33s
         if (player_.heliDeploy > 0.01f) {
-            player_.heliRotorAngle += dt * 26.0f * player_.heliDeploy;
+            player_.heliRotorAngle += dt * 18.0f * player_.heliDeploy;
         }
     }
 

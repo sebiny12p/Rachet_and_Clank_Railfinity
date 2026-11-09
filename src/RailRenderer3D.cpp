@@ -777,39 +777,45 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawSphere(clankLHand, 0.045f, armorDark);
     DrawSphere(clankRHand, 0.045f, armorDark);
 
-    // Procedural Clank Heli-Pack Deployment (Smoothly telescoping shaft & spinning blades)
+    // Procedural Clank Heli-Pack Deployment (Smooth mechanical unfolding & spin-up - NO POP-IN!)
     float deploy = player_.heliDeploy;
-    if (deploy > 0.005f) {
-        // 1. Telescoping mast extends upward from Clank's head hatch (0.0m -> 0.82m)
-        float mastHeight = 0.82f * deploy;
-        Vector3 rotorHub = { clankPos.x, clankHead.y + mastHeight, clankPos.z };
-        DrawCylinderEx(clankHead, rotorHub, 0.048f, 0.042f, 6, chromeSilv);
+    if (deploy > 0.008f) {
+        // 1. Telescoping chrome mast extending from Clank's head hatch (0.06m -> 0.85m)
+        float mastHeight = Lerp(0.06f, 0.85f, deploy);
+        Vector3 mastBase = { clankHead.x, clankHead.y + 0.08f, clankHead.z };
+        Vector3 rotorHub = { clankHead.x, clankHead.y + 0.08f + mastHeight, clankHead.z };
+        DrawCylinderEx(mastBase, rotorHub, 0.048f, 0.042f, 8, chromeSilv);
         DrawSphere(rotorHub, 0.075f * deploy, armorDark);
 
-        // 2. Twin titanium helicopter blades unfolding and extending
-        float bladeSpan = 1.60f * deploy;
+        // 2. Twin titanium blades unfolding from vertical stowage to horizontal flight plane
+        float unfoldFrac = std::clamp((deploy - 0.10f) / 0.60f, 0.0f, 1.0f);
+        float bladeSpan  = Lerp(0.25f, 1.65f, unfoldFrac);
+        // Blades start folded pointing down along the mast (bladeTipY < 0), then swing out flat
+        float bladeTipY  = -0.38f * (1.0f - unfoldFrac);
         float angle = player_.heliRotorAngle;
+
         for (int b = 0; b < 2; ++b) {
             float a = angle + b * 1.570796f;
-            Vector3 pA = { rotorHub.x + std::cos(a) * bladeSpan, rotorHub.y, rotorHub.z + std::sin(a) * bladeSpan };
-            Vector3 pB = { rotorHub.x - std::cos(a) * bladeSpan, rotorHub.y, rotorHub.z - std::sin(a) * bladeSpan };
+            Vector3 pA = { rotorHub.x + std::cos(a) * bladeSpan, rotorHub.y + bladeTipY, rotorHub.z + std::sin(a) * bladeSpan };
+            Vector3 pB = { rotorHub.x - std::cos(a) * bladeSpan, rotorHub.y + bladeTipY, rotorHub.z - std::sin(a) * bladeSpan };
             DrawCylinderEx(pA, pB, 0.055f * deploy, 0.055f * deploy, 4, (b == 0) ? SKYBLUE : WHITE);
             DrawSphere(pA, 0.04f * deploy, SKYBLUE);
             DrawSphere(pB, 0.04f * deploy, SKYBLUE);
         }
 
-        // 3. Hypersonic aerodynamic disc halo (scales & fades smoothly)
-        if (deploy > 0.18f) {
-            float discFrac = (deploy - 0.18f) / 0.82f;
+        // 3. Hypersonic aerodynamic energy disc halo (fades in as RPM accelerates)
+        if (deploy > 0.35f) {
+            float discFrac = (deploy - 0.35f) / 0.65f;
             DrawCircle3D(rotorHub, bladeSpan, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(SKYBLUE, discFrac * 0.70f));
-            DrawCircle3D(rotorHub, bladeSpan * 0.55f, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, discFrac * 0.35f));
+            DrawCircle3D(rotorHub, bladeSpan * 0.55f, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, discFrac * 0.40f));
         }
 
-        // 4. Smooth thruster exhaust cone under Clank's backpack
-        float thrustLen = 0.58f * deploy;
-        DrawCylinderEx({ clankPos.x, clankPos.y - 0.24f, clankPos.z },
-                       { clankPos.x, clankPos.y - 0.24f - thrustLen, clankPos.z },
-                       0.14f * deploy, 0.02f, 8, ColorAlpha(SKYBLUE, deploy * 0.85f));
+        // 4. Twin thruster exhaust plumes under Clank's backpack
+        float thrustLen = 0.55f * deploy;
+        Vector3 tL = { clankPos.x - 0.14f, clankPos.y - 0.22f, clankPos.z };
+        Vector3 tR = { clankPos.x + 0.14f, clankPos.y - 0.22f, clankPos.z };
+        DrawCylinderEx(tL, { tL.x, tL.y - thrustLen, tL.z }, 0.065f * deploy, 0.01f, 6, ColorAlpha(SKYBLUE, deploy * 0.90f));
+        DrawCylinderEx(tR, { tR.x, tR.y - thrustLen, tR.z }, 0.065f * deploy, 0.01f, 6, ColorAlpha(SKYBLUE, deploy * 0.90f));
     }
 
     // =========================================================================
@@ -938,6 +944,17 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             rightElbow.z -= jumpFrac * 0.12f;
             rightHand.y  += jumpFrac * 0.20f;
             rightHand.x  -= jumpFrac * 0.14f;
+        } else if (vy < 0.0f) {
+            // Descending arc: arms sweep forward and slightly down to brace for landing
+            float fallFrac = std::clamp(-vy / 24.0f, 0.0f, 1.0f);
+            leftElbow.y  -= fallFrac * 0.12f;
+            leftElbow.z  += fallFrac * 0.14f;
+            leftHand.y   -= fallFrac * 0.16f;
+            leftHand.z   += fallFrac * 0.22f;
+            rightElbow.y -= fallFrac * 0.12f;
+            rightElbow.z += fallFrac * 0.14f;
+            rightHand.y  -= fallFrac * 0.16f;
+            rightHand.z  += fallFrac * 0.22f;
         }
     }
 
@@ -1356,8 +1373,7 @@ void RailGame::RenderMainMenu2D() {
     Rectangle btnLab    = { 50.0f, 455.0f, 400.0f, 66.0f };
     Rectangle btnSkills = { VIRTUAL_WIDTH - 380.0f, 215.0f, 330.0f, 66.0f };
 
-    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Infinite procedural 3-lane action [SPACE]", ORANGE) ||
-        IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Infinite procedural 3-lane action", ORANGE)) {
         StartNewRun(false);
     }
 

@@ -792,23 +792,36 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     float kneeForwardTuck = airborne ? (jumpTuck * 0.32f) : 0.0f;
     Vector3 pelvisPos = { pos.x + leanX * 0.6f, pos.y + 0.72f + crouchDrop, pos.z };
-    Vector3 leftKnee  = { pos.x + 0.23f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f + jumpTuck * 0.55f, pos.z + 0.20f + kneeForwardTuck };
-    Vector3 rightKnee = { pos.x - 0.23f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f + jumpTuck * 0.45f, pos.z - 0.10f + kneeForwardTuck };
-    Vector3 leftHip   = { pelvisPos.x + 0.16f, pelvisPos.y, pelvisPos.z + 0.06f };
-    Vector3 rightHip  = { pelvisPos.x - 0.16f, pelvisPos.y, pelvisPos.z - 0.06f };
+    Vector3 leftKnee  = { pos.x + 0.24f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f + jumpTuck * 0.55f, pos.z + 0.20f + kneeForwardTuck };
+    Vector3 rightKnee = { pos.x - 0.24f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f + jumpTuck * 0.45f, pos.z - 0.10f + kneeForwardTuck };
+    Vector3 leftHip   = { pelvisPos.x + 0.20f, pelvisPos.y, pelvisPos.z + 0.06f };
+    Vector3 rightHip  = { pelvisPos.x - 0.20f, pelvisPos.y, pelvisPos.z - 0.06f };
 
-    DrawCylinderEx({ leftFoot.x, leftFoot.y + 0.10f, leftFoot.z }, leftKnee, 0.11f, 0.13f, 8, pantsBlue);
-    DrawCylinderEx({ rightFoot.x, rightFoot.y + 0.10f, rightFoot.z }, rightKnee, 0.11f, 0.13f, 8, pantsBlue);
-    DrawSphere(leftKnee, 0.13f, armorDark);
-    DrawSphere(rightKnee, 0.13f, armorDark);
-    DrawCylinderEx(leftKnee, leftHip, 0.13f, 0.15f, 8, pantsBlue);
-    DrawCylinderEx(rightKnee, rightHip, 0.13f, 0.15f, 8, pantsBlue);
+    // Thighs: sturdy heroic cargo trousers matching official Insomniac anatomy
+    DrawCylinderEx(leftHip, leftKnee, 0.185f, 0.165f, 8, pantsBlue);
+    DrawCylinderEx(rightHip, rightKnee, 0.185f, 0.165f, 8, pantsBlue);
+    DrawSphere(leftKnee, 0.165f, armorDark);
+    DrawSphere(rightKnee, 0.165f, armorDark);
+    if (armIdx > 0) {
+        DrawSphere({ leftKnee.x, leftKnee.y, leftKnee.z + 0.04f }, 0.135f, armorOrange);
+        DrawSphere({ rightKnee.x, rightKnee.y, rightKnee.z + 0.04f }, 0.135f, armorOrange);
+    }
+    // Calves & Shins: solid trousers tucked cleanly into heavy grind boots
+    DrawCylinderEx(leftKnee, { leftFoot.x, leftFoot.y + 0.10f, leftFoot.z }, 0.165f, 0.175f, 8, pantsBlue);
+    DrawCylinderEx(rightKnee, { rightFoot.x, rightFoot.y + 0.10f, rightFoot.z }, 0.165f, 0.175f, 8, pantsBlue);
 
     // =========================================================================
-    // 2. PELVIS, BELT, TAIL & COMPACT ATHLETIC TORSO
+    // 2. PELVIS, BELT, TAIL & ATHLETIC HEROIC TORSO
     // =========================================================================
-    DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.05f, pelvisPos.z },
-                   { pelvisPos.x, pelvisPos.y + 0.09f, pelvisPos.z }, 0.30f, 0.28f, 8, leatherBrn);
+    // Sturdy hips & cargo trousers waist
+    DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.06f, pelvisPos.z },
+                   { pelvisPos.x, pelvisPos.y + 0.10f, pelvisPos.z }, 0.34f, 0.32f, 8, pantsBlue);
+    // Utility belt with buckle & hip pouches
+    DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
+                   { pelvisPos.x, pelvisPos.y + 0.14f, pelvisPos.z }, 0.35f, 0.34f, 8, leatherBrn);
+    DrawCube({ pelvisPos.x, pelvisPos.y + 0.10f, pelvisPos.z + 0.35f }, 0.12f, 0.09f, 0.04f, (armIdx == 4) ? GOLD : chromeSilv);
+    DrawCube({ pelvisPos.x - 0.28f, pelvisPos.y + 0.08f, pelvisPos.z + 0.14f }, 0.08f, 0.11f, 0.12f, leatherBrn);
+    DrawCube({ pelvisPos.x + 0.28f, pelvisPos.y + 0.08f, pelvisPos.z + 0.14f }, 0.08f, 0.11f, 0.12f, leatherBrn);
 
     // Whipping Striped Lombax Tail
     Vector3 t0 = { pelvisPos.x, pelvisPos.y - 0.02f, pelvisPos.z - 0.22f };
@@ -824,33 +837,53 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         t0 = t1;
     }
 
-    // Compact Torso (height 0.44m so shoulders sit cleanly at y = 1.14, well below the head!)
+    // Heroic Athletic Torso (Broad chest 0.40m tapering down to 0.32m waist)
     float recoilLeanZ = -recoilKick * 0.10f;
-    Vector3 shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.44f, pelvisPos.z + recoilLeanZ };
-    DrawCylinderEx(pelvisPos, shoulderCenter, 0.26f, 0.34f, 8, armorOrange);
-    // Leather harness belt across chest
-    DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.10f, pelvisPos.z },
-                   { shoulderCenter.x, shoulderCenter.y - 0.06f, shoulderCenter.z }, 0.28f, 0.33f, 6, leatherBrn);
+    Vector3 shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.46f, pelvisPos.z + recoilLeanZ };
+    DrawCylinderEx(pelvisPos, shoulderCenter, 0.32f, 0.40f, 8, armorOrange);
+
+    // Pectoral / Chest Muscular Volume (Fills out the vest & armor plate naturally!)
+    DrawSphere({ shoulderCenter.x - 0.13f, shoulderCenter.y - 0.08f, shoulderCenter.z + 0.16f }, 0.21f, armorOrange);
+    DrawSphere({ shoulderCenter.x + 0.13f, shoulderCenter.y - 0.08f, shoulderCenter.z + 0.16f }, 0.21f, armorOrange);
+    DrawSphere({ shoulderCenter.x, shoulderCenter.y - 0.06f, shoulderCenter.z - 0.10f }, 0.24f, armorOrange);
+
+    // Chest & Armor Detailing
+    if (armIdx == 0) {
+        // Classic Commando: Iconic diagonal leather chest harness strap with commando buckle
+        DrawCylinderEx({ shoulderCenter.x - 0.20f, shoulderCenter.y + 0.02f, shoulderCenter.z + 0.16f },
+                       { pelvisPos.x + 0.14f, pelvisPos.y + 0.12f, pelvisPos.z + 0.28f }, 0.045f, 0.045f, 6, leatherBrn);
+        DrawSphere({ shoulderCenter.x - 0.05f, shoulderCenter.y - 0.08f, shoulderCenter.z + 0.25f }, 0.048f, chromeBright);
+        // Vest collar trim
+        DrawCylinderEx({ shoulderCenter.x, shoulderCenter.y + 0.02f, shoulderCenter.z },
+                       { shoulderCenter.x, shoulderCenter.y + 0.08f, shoulderCenter.z }, 0.25f, 0.23f, 8, leatherBrn);
+    } else {
+        // Form-fitting Armor Suit Breastplates (Carbonox, Infernox, Marauder, Praetorian)
+        DrawCube({ shoulderCenter.x, pelvisPos.y + 0.24f, shoulderCenter.z + 0.22f }, 0.26f, 0.22f, 0.10f, armorDark);
+        DrawCubeWires({ shoulderCenter.x, pelvisPos.y + 0.24f, shoulderCenter.z + 0.22f }, 0.265f, 0.225f, 0.105f, visorCol);
+        DrawCube({ shoulderCenter.x - 0.14f, shoulderCenter.y - 0.06f, shoulderCenter.z + 0.23f }, 0.18f, 0.14f, 0.09f, armorDark);
+        DrawCube({ shoulderCenter.x + 0.14f, shoulderCenter.y - 0.06f, shoulderCenter.z + 0.23f }, 0.18f, 0.14f, 0.09f, armorDark);
+    }
+
     // Neck
     Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
-    DrawCylinderEx(shoulderCenter, neckTop, 0.18f, 0.16f, 8, furGold);
+    DrawCylinderEx(shoulderCenter, neckTop, 0.20f, 0.18f, 8, furGold);
 
-    // Distinctive Armor Pauldrons on Left and Right Shoulders
+    // Form-Fitting Armor Pauldrons over Shoulders
     for (int side = -1; side <= 1; side += 2) {
         float s = static_cast<float>(side);
-        Vector3 pP = { shoulderCenter.x + s * 0.35f, shoulderCenter.y + 0.04f, shoulderCenter.z };
+        Vector3 pP = { shoulderCenter.x + s * 0.40f, shoulderCenter.y + 0.03f, shoulderCenter.z };
         if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
-            DrawCube(pP, 0.22f, 0.16f, 0.22f, armorOrange);
-            DrawCubeWires(pP, 0.23f, 0.17f, 0.23f, visorCol);
+            DrawCube(pP, 0.24f, 0.18f, 0.24f, armorOrange);
+            DrawCubeWires(pP, 0.245f, 0.185f, 0.245f, visorCol);
         } else if (armIdx == 2) { // Infernox: Molten basalt pauldrons with magma seams
-            DrawSphere(pP, 0.14f, armorOrange);
-            DrawSphereWires(pP, 0.145f, 6, 6, visorCol);
+            DrawSphere(pP, 0.170f, armorOrange);
+            DrawSphereWires(pP, 0.175f, 6, 6, visorCol);
         } else if (armIdx == 3) { // Deadlocked Marauder: Combat spikes on shoulder guards
-            DrawSphere(pP, 0.13f, armorOrange);
-            DrawCylinderEx(pP, { pP.x + s * 0.18f, pP.y + 0.14f, pP.z }, 0.06f, 0.015f, 6, armorDark);
+            DrawSphere(pP, 0.165f, armorOrange);
+            DrawCylinderEx(pP, { pP.x + s * 0.20f, pP.y + 0.15f, pP.z }, 0.065f, 0.015f, 6, armorDark);
         } else if (armIdx == 4) { // Lombax Praetorian: Royal curved gold pauldrons
-            DrawSphere(pP, 0.15f, armorOrange);
-            DrawSphereWires(pP, 0.155f, 6, 6, armorDark);
+            DrawSphere(pP, 0.180f, armorOrange);
+            DrawSphereWires(pP, 0.185f, 6, 6, armorDark);
         }
     }
 
@@ -1272,12 +1305,12 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     }
 
     // =========================================================================
-    // 5. CLEAN, NATURAL ARMS WITH SIDE-MOUNTED GUN AIMING & RECOIL!
+    // 5. BROAD MUSCULAR ARMS WITH HEAVY-DUTY GAUNTLETS & SIDE WEAPON AIMING
     // =========================================================================
-    Vector3 leftShoulder  = { shoulderCenter.x + 0.32f, shoulderCenter.y - 0.04f, shoulderCenter.z };
-    Vector3 rightShoulder = { shoulderCenter.x - 0.32f, shoulderCenter.y - 0.04f, shoulderCenter.z };
-    DrawSphere(leftShoulder,  0.13f, armorOrange);
-    DrawSphere(rightShoulder, 0.13f, armorOrange);
+    Vector3 leftShoulder  = { shoulderCenter.x + 0.38f, shoulderCenter.y - 0.02f, shoulderCenter.z };
+    Vector3 rightShoulder = { shoulderCenter.x - 0.38f, shoulderCenter.y - 0.02f, shoulderCenter.z };
+    DrawSphere(leftShoulder,  0.170f, armorOrange);
+    DrawSphere(rightShoulder, 0.170f, armorOrange);
 
     WeaponId wEnum = static_cast<WeaponId>(weaponId);
     bool wrenchSwinging = (wrenchTimer > 0.0f);
@@ -1290,35 +1323,35 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     // --- Left Arm (+X, screen-left): Clean relaxed skater balance pose ---
     Vector3 leftElbow = {
-        leftShoulder.x + 0.24f,
-        leftShoulder.y - 0.22f + swingL * 0.5f,
+        leftShoulder.x + 0.22f,
+        leftShoulder.y - 0.24f + swingL * 0.5f,
         leftShoulder.z - 0.04f
     };
     Vector3 leftHand = {
-        leftShoulder.x + 0.46f,
-        leftShoulder.y - 0.30f + swingL,
+        leftShoulder.x + 0.44f,
+        leftShoulder.y - 0.32f + swingL,
         leftShoulder.z + 0.14f
     };
 
     // --- Right Arm (-X, screen-right): Skater Balance Pose, Side Gun Aiming, OR Forward Wrench Strike! ---
     Vector3 surfRightElbow = {
-        rightShoulder.x - 0.24f,
-        rightShoulder.y - 0.22f + swingR * 0.5f,
+        rightShoulder.x - 0.22f,
+        rightShoulder.y - 0.24f + swingR * 0.5f,
         rightShoulder.z - 0.04f
     };
     Vector3 surfRightHand = {
         rightShoulder.x - 0.44f,
-        rightShoulder.y - 0.32f + swingR,
+        rightShoulder.y - 0.34f + swingR,
         rightShoulder.z + 0.12f
     };
 
     Vector3 aimRightElbow = {
-        rightShoulder.x - 0.22f,
+        rightShoulder.x - 0.20f,
         rightShoulder.y - 0.14f - recoilKick * 0.04f,
         rightShoulder.z + 0.08f - recoilKick * 0.16f
     };
     Vector3 aimRightHand = {
-        rightShoulder.x - 0.26f,
+        rightShoulder.x - 0.24f,
         rightShoulder.y + 0.02f + recoilKick * 0.12f,
         rightShoulder.z + 0.38f - recoilKick * 0.22f
     };
@@ -1378,14 +1411,14 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         float dirZ =  std::sin(sweepAngle); // Arcs forward (+Z) across the front of Ratchet's body
 
         rightElbow = {
-            shoulderCenter.x + dirX * 0.36f,
+            shoulderCenter.x + dirX * 0.38f,
             shoulderCenter.y - 0.06f,
-            shoulderCenter.z + std::max(0.06f, dirZ * 0.34f)
+            shoulderCenter.z + std::max(0.06f, dirZ * 0.36f)
         };
         rightHand = {
-            shoulderCenter.x + dirX * 0.64f,
+            shoulderCenter.x + dirX * 0.66f,
             shoulderCenter.y - 0.04f,
-            shoulderCenter.z + std::max(0.14f, dirZ * 0.58f)
+            shoulderCenter.z + std::max(0.14f, dirZ * 0.60f)
         };
         // Wrench shaft extends radially along the horizontal swing so it sweeps right-to-left like a bat!
         wrenchForwardDir = Vector3Normalize({ dirX, 0.05f - s * 0.10f, dirZ });
@@ -1393,13 +1426,26 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     }
 
     auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd) {
-        // Golden fur upper arm
-        DrawCylinderEx(sh, elb, 0.105f, 0.090f, 8, furGold);
-        DrawSphere(elb, 0.092f, furGold);
-        // Tapered glove forearm
-        DrawCylinderEx(elb, hnd, 0.092f, 0.110f, 8, leatherBrn);
-        // Compact gloved fist
-        DrawSphere(hnd, 0.115f, gloveBrn);
+        // Muscular golden fur upper arm
+        DrawCylinderEx(sh, elb, 0.145f, 0.132f, 8, furGold);
+        DrawSphere(elb, 0.135f, furGold);
+        // Heavy-duty tapered gauntlet forearm
+        Color foreCol = (armIdx == 0) ? leatherBrn : armorOrange;
+        DrawCylinderEx(elb, hnd, 0.138f, 0.160f, 8, foreCol);
+        // Flared elbow gauntlet cuff ring
+        DrawCylinderEx(elb, Vector3Lerp(elb, hnd, 0.22f), 0.155f, 0.146f, 8, (armIdx == 0) ? gloveBrn : armorDark);
+        // Flared wrist gauntlet cuff ring
+        DrawCylinderEx(Vector3Lerp(elb, hnd, 0.80f), hnd, 0.165f, 0.160f, 8, (armIdx == 0) ? gloveBrn : armorDark);
+        // Heavy-duty gloved fist
+        DrawSphere(hnd, 0.140f, gloveBrn);
+        // Armored bracer plate on outer forearm for armor suits
+        if (armIdx > 0) {
+            float outDir = (sh.x > 0.0f) ? 0.048f : -0.048f;
+            Vector3 bracerPos = Vector3Lerp(elb, hnd, 0.52f);
+            bracerPos.x += outDir;
+            DrawSphere(bracerPos, 0.145f, armorDark);
+            DrawSphere({ bracerPos.x + outDir * 0.35f, bracerPos.y, bracerPos.z }, 0.065f, visorCol);
+        }
     };
 
     DrawCleanArm(leftShoulder,  leftElbow,  leftHand);

@@ -271,40 +271,7 @@ bool RailGame::IsRailGapAt(int lane, float z) const {
 
 bool RailGame::IsRailActiveAt(int lane, float z) const {
     if (lane < 0 || lane >= NUM_LANES) return false;
-
-    // In Menus / Front Page: keep center 3 lanes (1, 2, 3) active
-    if (mode_ != ScreenMode::PLAYING && mode_ != ScreenMode::PAUSED && mode_ != ScreenMode::GAME_OVER) {
-        return (lane >= 1 && lane <= 3);
-    }
-
-    // Dynamic 3-lane active route corridor flowing across 5 world tracks (max 3 at any time):
-    // 180m world blocks:
-    // Block 0: Lanes 1, 2, 3 (Center City Hub)
-    // Block 1: Lanes 0, 1, 2 (Left Sky-Freeway)
-    // Block 2: Lanes 1, 2, 3 (Re-converging Central Hub)
-    // Block 3: Lanes 2, 3, 4 (Right Megacorp Industrial Overpass)
-    float worldDist = distanceMeters_ + z;
-    int block = static_cast<int>(std::floor(std::max(0.0f, worldDist) / 180.0f));
-    int routeMode = block % 4;
-
-    int minLane = 1;
-    int maxLane = 3;
-    if (routeMode == 1) {
-        minLane = 0; maxLane = 2;
-    } else if (routeMode == 3) {
-        minLane = 2; maxLane = 4;
-    }
-
-    if (lane < minLane || lane > maxLane) {
-        return false;
-    }
-
-    // Physical sheared gap in the rail
-    if (IsRailGapAt(lane, z)) {
-        return false;
-    }
-
-    return true;
+    return !IsRailGapAt(lane, z);
 }
 
 GalaxySector RailGame::GetCurrentSector() const {

@@ -288,20 +288,14 @@ void RailGame::RenderSkyline3D() const {
 }
 
 void RailGame::RenderGrindRails3D() const {
-    // 1. Draw 5-Lane Tubular Metallic Grindrails (Active 3-rail window dynamically rendered)
+    // 1. Draw 5-Lane Tubular Metallic Grindrails all the way into the Reactor Ports at Z = 146!
     constexpr float segLen = 3.0f;
     for (int l = 0; l < NUM_LANES; ++l) {
         float lx = GetLaneX(l);
         for (float z = -10.0f; z < 145.0f; z += segLen) {
             float midZ = z + segLen * 0.5f;
-            if (!IsRailActiveAt(l, midZ)) {
-                // If previous segment was active and this one is not, draw an illuminated sheared terminus cap!
-                if (z > 0.0f && IsRailActiveAt(l, midZ - segLen)) {
-                    Vector3 pTerm = ApplyTrackCurve(lx, -0.10f, z);
-                    DrawCube(pTerm, 0.72f, 0.44f, 0.36f, { 255, 120, 20, 240 });
-                    DrawCubeWires(pTerm, 0.76f, 0.48f, 0.40f, YELLOW);
-                }
-                continue; // Rail not present or broken!
+            if (IsRailGapAt(l, midZ)) {
+                continue; // Physical gap in the tubular rail!
             }
             Vector3 pA = ApplyTrackCurve(lx, -0.10f, z);
             Vector3 pB = ApplyTrackCurve(lx, -0.10f, z + segLen + 0.06f);
@@ -321,7 +315,7 @@ void RailGame::RenderGrindRails3D() const {
         }
     }
 
-    // 2. Green-Gray Steel H-Frame Scaffolding Trusses & Black/Yellow Hazard Posts (smoothly scaled at far portal!)
+    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (spanning all 5 lanes across the skyline)
     float trussSpacing = 16.0f;
     float trussOffset = std::fmod(distanceMeters_ * 2.2f, trussSpacing);
     Color trussCol = { 52, 88, 80, 255 };
@@ -332,16 +326,16 @@ void RailGame::RenderGrindRails3D() const {
         if (emerge <= 0.02f) continue;
 
         Vector3 cCenter = ApplyTrackCurve(0.0f, -0.35f, z);
-        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 0.8f) * emerge, -0.35f, z);
-        Vector3 cRight  = ApplyTrackCurve((GetLaneX(2) - 0.8f) * emerge, -0.35f, z);
+        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 1.2f) * emerge, -0.35f, z);
+        Vector3 cRight  = ApplyTrackCurve((GetLaneX(NUM_LANES - 1) - 1.2f) * emerge, -0.35f, z);
 
         DrawCylinderEx(cLeft, cRight, 0.18f * emerge, 0.18f * emerge, 6, trussCol);
         DrawCylinderEx({ cLeft.x * 0.7f, cCenter.y - 2.6f * emerge, z },
                        { cRight.x * 0.7f, cCenter.y - 2.6f * emerge, z }, 0.16f * emerge, 0.16f * emerge, 6, trussCol);
-        DrawCylinderEx({ cLeft.x * 0.65f, cCenter.y, z },
-                       { cLeft.x * 0.65f, cCenter.y - 12.0f * emerge, z }, 0.22f * emerge, 0.22f * emerge, 6, trussCol);
-        DrawCylinderEx({ cRight.x * 0.65f, cCenter.y, z },
-                       { cRight.x * 0.65f, cCenter.y - 12.0f * emerge, z }, 0.22f * emerge, 0.22f * emerge, 6, trussCol);
+        DrawCylinderEx({ cLeft.x * 0.75f, cCenter.y, z },
+                       { cLeft.x * 0.75f, cCenter.y - 12.0f * emerge, z }, 0.22f * emerge, 0.22f * emerge, 6, trussCol);
+        DrawCylinderEx({ cRight.x * 0.75f, cCenter.y, z },
+                       { cRight.x * 0.75f, cCenter.y - 12.0f * emerge, z }, 0.22f * emerge, 0.22f * emerge, 6, trussCol);
 
         // Black & Yellow Striped Warning Track Posts along the outer rail supports!
         for (int s = 0; s < 4; ++s) {

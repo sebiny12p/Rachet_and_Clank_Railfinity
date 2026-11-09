@@ -2219,20 +2219,20 @@ void RailGame::RenderMainMenu2D() {
     }
 
     if (MenuButton(btnVendor, "GADGETRON WEAPON VENDOR", "Unlock & Upgrade 6 Weapons (V1-V5)", SKYBLUE)) {
-        mode_ = ScreenMode::GADGETRON_VENDOR;
+        SetScreenMode(ScreenMode::GADGETRON_VENDOR);
         audio_.PlayUiClick();
     }
 
     if (MenuButton(btnLab, "RARITANIUM MOD LAB", "Upgrade Armor, Magnet & Thrusters", GREEN)) {
-        mode_ = ScreenMode::RARITANIUM_LAB;
+        SetScreenMode(ScreenMode::RARITANIUM_LAB);
         audio_.PlayUiClick();
     }
 
     if (MenuButton(btnWardrobe, "ARMOR & CLANK WARDROBE", "Equip Carbonox, Infernox & 24K Gold Clank", PURPLE)) {
-        mode_ = ScreenMode::ARMOR_WARDROBE;
         wardrobePreviewArmor_ = save_.equippedArmor;
         wardrobePreviewClank_ = save_.equippedClankSkin;
         wardrobeRotAngle_ = 180.0f; // Start facing camera
+        SetScreenMode(ScreenMode::ARMOR_WARDROBE);
         audio_.PlayUiClick();
     }
 
@@ -2241,13 +2241,13 @@ void RailGame::RenderMainMenu2D() {
     char spTxt[64];
     std::snprintf(spTxt, sizeof(spTxt), "Unlocked: %d / %d Skill Points", spDone, static_cast<int>(NUM_SKILL_POINTS));
     if (MenuButton(btnSkills, "SKILL POINTS LOG", spTxt, MAGENTA)) {
-        mode_ = ScreenMode::SKILL_POINTS_VIEW;
+        SetScreenMode(ScreenMode::SKILL_POINTS_VIEW);
         audio_.PlayUiClick();
     }
 
     if (MenuButton(btnSettings, "SYSTEM SETTINGS", "Audio, Visuals & Controller", PURPLE)) {
         settingsPrevMode_ = ScreenMode::MAIN_MENU;
-        mode_ = ScreenMode::SETTINGS_VIEW;
+        SetScreenMode(ScreenMode::SETTINGS_VIEW);
         audio_.PlayUiClick();
     }
 
@@ -2349,7 +2349,7 @@ void RailGame::RenderGadgetronVendor2D() {
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }
@@ -2404,7 +2404,7 @@ void RailGame::RenderRaritaniumLab2D() {
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }
@@ -2624,7 +2624,7 @@ void RailGame::RenderArmorWardrobe2D() {
     DrawRectangleLinesEx(backBtn, 1.5f, bHov ? WHITE : ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 36), static_cast<int>(backBtn.y + 14), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }
@@ -2810,7 +2810,7 @@ void RailGame::RenderSettings2D() {
     DrawText("< BACK", static_cast<int>(backBtn.x + 98), static_cast<int>(backBtn.y + 16), 16, WHITE);
     if (IsButtonClicked(backBtn) || IsKeyPressed(KEY_ESCAPE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
         SaveProgress();
-        mode_ = settingsPrevMode_;
+        SetScreenMode(settingsPrevMode_);
         audio_.PlayUiClick();
     }
 }
@@ -2842,7 +2842,7 @@ void RailGame::RenderSkillPoints2D() {
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }
@@ -2870,17 +2870,17 @@ void RailGame::RenderPauseOverlay2D() {
     DrawText("MAIN MENU [ESC]", static_cast<int>(menuBtn.x + 76), static_cast<int>(menuBtn.y + 17), 17, WHITE);
 
     if (IsButtonClicked(resBtn)) {
-        mode_ = ScreenMode::PLAYING;
+        SetScreenMode(ScreenMode::PLAYING);
         audio_.PlayUiClick();
     }
     if (IsButtonClicked(settingsBtn)) {
         settingsPrevMode_ = ScreenMode::PAUSED;
-        mode_ = ScreenMode::SETTINGS_VIEW;
+        SetScreenMode(ScreenMode::SETTINGS_VIEW);
         audio_.PlayUiClick();
     }
     if (IsButtonClicked(menuBtn)) {
         SaveProgress();
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }
@@ -2922,7 +2922,7 @@ void RailGame::RenderGameOver2D() {
         StartNewRun(isDailyRun_);
     }
     if (IsButtonClicked(menuBtn)) {
-        mode_ = ScreenMode::MAIN_MENU;
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }

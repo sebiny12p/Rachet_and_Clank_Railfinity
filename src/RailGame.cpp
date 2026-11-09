@@ -229,7 +229,7 @@ void RailGame::StartNewRun(bool dailySeed) {
     }
     rng_.Seed(activeSeed_, isDailyRun_ ? 999ULL : 42ULL);
 
-    mode_ = ScreenMode::PLAYING;
+    SetScreenMode(ScreenMode::PLAYING);
     runTime_ = 0.0f;
     distanceMeters_ = 0.0f;
     totalWorldTravel_ = 0.0f;
@@ -379,7 +379,14 @@ bool RailGame::IsRectHovered(Rectangle r) const {
     return false;
 }
 
+void RailGame::SetScreenMode(ScreenMode nextMode) {
+    if (mode_ == nextMode) return;
+    mode_ = nextMode;
+    screenTransitionCooldown_ = 0.25f; // Prevent input bleed across screen transitions
+}
+
 bool RailGame::IsButtonClicked(Rectangle r) const {
+    if (screenTransitionCooldown_ > 0.0f) return false;
     Rectangle padded = { r.x - 10.0f, r.y - 10.0f, r.width + 20.0f, r.height + 20.0f };
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetVirtualMouse(), padded)) {
         return true;
@@ -1094,28 +1101,76 @@ void RailGame::HandleInput() {
         if (splashTimer_ >= 2.4f || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
             IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0 || GetKeyPressed() > 0 ||
             (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
-            mode_ = ScreenMode::TITLE_FRONT_PAGE;
+            SetScreenMode(ScreenMode::TITLE_FRONT_PAGE);
         }
     } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
             GetTouchPointCount() > 0 || GetKeyPressed() > 0 ||
             (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
-            mode_ = ScreenMode::MAIN_MENU;
+            SetScreenMode(ScreenMode::MAIN_MENU);
             audio_.PlayUiClick();
+        }
+    } else if (mode_ == ScreenMode::MAIN_MENU) {
+        if (screenTransitionCooldown_ <= 0.0f) {
+            bool hasGamepad = IsGamepadAvailable(0);
+            // Launch Run: Space, Enter, or Gamepad (A) / Start
+            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+                (hasGamepad && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
+                StartNewRun(false);
+            }
+            // Daily Challenge Seed: X or Gamepad (X)
+            else if (IsKeyPressed(KEY_X) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT))) {
+                StartNewRun(true);
+            }
+            // Gadgetron Vendor: V or Gamepad (Y)
+            else if (IsKeyPressed(KEY_V) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))) {
+                SetScreenMode(ScreenMode::GADGETRON_VENDOR);
+                audio_.PlayUiClick();
+            }
+            // Raritanium Lab: L or Gamepad (LB)
+            else if (IsKeyPressed(KEY_L) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1))) {
+                SetScreenMode(ScreenMode::RARITANIUM_LAB);
+                audio_.PlayUiClick();
+            }
+            // Wardrobe: W or Gamepad (RB)
+            else if (IsKeyPressed(KEY_W) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1))) {
+                wardrobePreviewArmor_ = save_.equippedArmor;
+                wardrobePreviewClank_ = save_.equippedClankSkin;
+                wardrobeRotAngle_ = 180.0f;
+                SetScreenMode(ScreenMode::ARMOR_WARDROBE);
+                audio_.PlayUiClick();
+            }
+            // Skill Points: K
+            else if (IsKeyPressed(KEY_K)) {
+                SetScreenMode(ScreenMode::SKILL_POINTS_VIEW);
+                audio_.PlayUiClick();
+            }
+            // Settings: S or Gamepad Select/Back (MIDDLE_LEFT)
+            else if (IsKeyPressed(KEY_S) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT))) {
+                settingsPrevMode_ = ScreenMode::MAIN_MENU;
+                SetScreenMode(ScreenMode::SETTINGS_VIEW);
+                audio_.PlayUiClick();
+            }
+            // Back to Title: Escape or Gamepad (B)
+            else if (IsKeyPressed(KEY_ESCAPE) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
+                SetScreenMode(ScreenMode::TITLE_FRONT_PAGE);
+                audio_.PlayUiClick();
+            }
         }
     } else if (mode_ == ScreenMode::PAUSED) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_SPACE) ||
             (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))) {
-            mode_ = ScreenMode::PLAYING;
+            SetScreenMode(ScreenMode::PLAYING);
             audio_.PlayUiClick();
         } else if (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
-            mode_ = ScreenMode::MAIN_MENU;
+            SaveProgress();
+            SetScreenMode(ScreenMode::MAIN_MENU);
             audio_.PlayUiClick();
         }
     } else if (mode_ == ScreenMode::SETTINGS_VIEW) {
         if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
             SaveProgress();
-            mode_ = settingsPrevMode_;
+            SetScreenMode(settingsPrevMode_);
             audio_.PlayUiClick();
         }
     } else if (mode_ == ScreenMode::GAME_OVER) {
@@ -1123,12 +1178,12 @@ void RailGame::HandleInput() {
             (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
             StartNewRun(isDailyRun_);
         } else if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
-            mode_ = ScreenMode::MAIN_MENU;
+            SetScreenMode(ScreenMode::MAIN_MENU);
             audio_.PlayUiClick();
         }
     } else if (mode_ != ScreenMode::MAIN_MENU && mode_ != ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
-            mode_ = ScreenMode::MAIN_MENU;
+            SetScreenMode(ScreenMode::MAIN_MENU);
             audio_.PlayUiClick();
         }
     }
@@ -1844,6 +1899,9 @@ void RailGame::UpdateParticlesFixed(float dt) {
 void RailGame::RunFrame() {
     float frameDt = std::min(GetFrameTime(), 0.1f);
     accumulator_ += frameDt;
+    if (screenTransitionCooldown_ > 0.0f) {
+        screenTransitionCooldown_ = std::max(0.0f, screenTransitionCooldown_ - frameDt);
+    }
 
     HandleInput();
 

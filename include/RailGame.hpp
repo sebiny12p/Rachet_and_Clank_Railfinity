@@ -93,6 +93,7 @@ private:
     void RenderGameOver2D();
     void RenderBrandingFooter2D() const;
     void RenderSkillToast2D() const;
+    void SetScreenMode(ScreenMode nextMode);
 
 private:
     RenderTexture2D renderTarget_{};
@@ -102,6 +103,7 @@ private:
     PCG32 rng_{};
 
     ScreenMode mode_ = ScreenMode::SPLASH_INTRO;
+    float screenTransitionCooldown_ = 0.0f;
     float splashTimer_ = 0.0f;
     Texture2D splashLogo_{};
     bool isDailyRun_ = false;

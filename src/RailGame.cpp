@@ -113,13 +113,18 @@ void RailGame::LoadSave() {
     if (in.is_open()) {
         SaveData loaded{};
         in.read(reinterpret_cast<char*>(&loaded), sizeof(SaveData));
-        if (in && loaded.magic == 0x5241494E) {
+        std::streamsize bytesRead = in.gcount();
+        if (bytesRead >= static_cast<std::streamsize>(sizeof(uint32_t)) && loaded.magic == 0x5241494E) {
             save_ = loaded;
             save_.unlockedWeapons[0] = true; // OmniWrench is always unlocked!
             save_.equippedWeapon = std::clamp(save_.equippedWeapon, 0, static_cast<int>(NUM_WEAPONS) - 1);
             if (!save_.unlockedWeapons[save_.equippedWeapon]) {
                 save_.equippedWeapon = 0;
             }
+            save_.equippedArmor = std::clamp(save_.equippedArmor, 0, static_cast<int>(NUM_ARMOR_SUITS) - 1);
+            save_.equippedClankSkin = std::clamp(save_.equippedClankSkin, 0, static_cast<int>(NUM_CLANK_SKINS) - 1);
+            save_.unlockedArmors[0] = true;
+            save_.unlockedClankSkins[0] = true;
             return;
         }
     }
@@ -206,6 +211,9 @@ void RailGame::StartNewRun(bool dailySeed) {
     player_.y = 0.0f;
     player_.isHopping = false;
     player_.maxNanotechHp = 4.0f + static_cast<float>(save_.armorLevel);
+    if (save_.equippedArmor == 1) {
+        player_.maxNanotechHp += 1.0f; // Carbonox Armor Perk: +1 Extra Nanotech HP pip!
+    }
     player_.nanotechHp = player_.maxNanotechHp;
     player_.maxHeliFuel = 1.2f + save_.bootThrusterLevel * 0.25f;
     player_.heliFuel = player_.maxHeliFuel;
@@ -471,6 +479,9 @@ void RailGame::TriggerFireWeapon() {
 
 void RailGame::AdvanceMultiplier() {
     float step = 0.22f + save_.multiplierModLevel * 0.04f;
+    if (save_.equippedArmor == 4) {
+        step *= 1.50f; // Lombax Praetorian Perk: +50% faster Bolt Multiplier escalation!
+    }
     player_.multiplierProgress += step;
     if (player_.multiplierProgress >= 1.0f) {
         player_.multiplierProgress = 0.0f;
@@ -941,6 +952,28 @@ void RailGame::UpdateFixed(float dt) {
         if (toast_.timer <= 0.0f) toast_.active = false;
     }
 
+    if (mode_ == ScreenMode::ARMOR_WARDROBE) {
+        // Drag to rotate 3D character in showcase
+        Vector2 m = GetVirtualMouse();
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && m.x < 560.0f && m.y > 115.0f && m.y < 650.0f) {
+            if (!isDraggingWardrobe_) {
+                isDraggingWardrobe_ = true;
+                lastMousePos_ = m;
+            } else {
+                float dx = m.x - lastMousePos_.x;
+                wardrobeRotAngle_ -= dx * 0.65f;
+                lastMousePos_ = m;
+            }
+        } else {
+            isDraggingWardrobe_ = false;
+            // Idle auto-rotation
+            wardrobeRotAngle_ += dt * 24.0f;
+        }
+
+        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A))  wardrobeRotAngle_ -= 80.0f * dt;
+        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) wardrobeRotAngle_ += 80.0f * dt;
+    }
+
     // Scroll background skyline buildings
     float scrollSpd = (mode_ == ScreenMode::PLAYING) ? grindSpeed_ : 14.0f;
     for (auto& b : buildings_) {
@@ -1100,11 +1133,27 @@ void RailGame::UpdatePlayingFixed(float dt) {
         }
     } else {
         player_.jumpTime = 0.0f;
-        // Continuous Grind Boot sparks!
+        // Continuous Grind Boot sparks (tailored to equipped Armor suit!)
         if (rng_.Chance(0.65f)) {
             Color sparkCol = (player_.hyperBoostTimer > 0.0f) ? GREEN : ORANGE;
+            Color sparkAlt = YELLOW;
+            if (player_.hyperBoostTimer <= 0.0f) {
+                if (save_.equippedArmor == 1) { // Carbonox: Cyan Electric Arcs
+                    sparkCol = Color{ 40, 220, 255, 255 };
+                    sparkAlt = SKYBLUE;
+                } else if (save_.equippedArmor == 2) { // Infernox: Volcanic Magma Embers
+                    sparkCol = Color{ 255, 75, 20, 255 };
+                    sparkAlt = RED;
+                } else if (save_.equippedArmor == 3) { // Deadlocked Marauder: Combat Crimson Sparks
+                    sparkCol = Color{ 255, 30, 40, 255 };
+                    sparkAlt = ORANGE;
+                } else if (save_.equippedArmor == 4) { // Lombax Praetorian: Royal Violet & Gold
+                    sparkCol = Color{ 210, 110, 255, 255 };
+                    sparkAlt = GOLD;
+                }
+            }
             SpawnParticleBurst3D({ player_.x - 0.18f, 0.08f, -0.2f }, 1, sparkCol, 2.0f, 6.0f, 0.16f, 0.22f);
-            SpawnParticleBurst3D({ player_.x + 0.18f, 0.08f, +0.2f }, 1, YELLOW, 2.0f, 6.0f, 0.16f, 0.22f);
+            SpawnParticleBurst3D({ player_.x + 0.18f, 0.08f, +0.2f }, 1, sparkAlt, 2.0f, 6.0f, 0.16f, 0.22f);
         }
     }
 
@@ -1490,9 +1539,11 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
             // Only pull/collect rail bolts if Ratchet is on the SAME rail (and matching jump height)!
             // Upgrading Box Breaker Magnet in the Raritanium Lab slightly widens pickup reach on your rail.
-            float maxDx = 1.25f + save_.magnetLevel * 0.35f;
-            float maxDy = 1.35f + save_.magnetLevel * 0.25f;
-            float maxDz = 2.0f  + save_.magnetLevel * 1.1f;
+            // Infernox Armor grants an additional +0.65m volcanic magnetic pull!
+            float infBonus = (save_.equippedArmor == 2) ? 0.65f : 0.0f;
+            float maxDx = 1.25f + save_.magnetLevel * 0.35f + infBonus;
+            float maxDy = 1.35f + save_.magnetLevel * 0.25f + infBonus;
+            float maxDz = 2.0f  + save_.magnetLevel * 1.1f  + infBonus * 1.5f;
 
             if (std::abs(b.pos.x - playerCenter.x) < maxDx &&
                 std::abs(b.pos.y - playerCenter.y) < maxDy &&

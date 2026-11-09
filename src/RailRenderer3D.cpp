@@ -102,6 +102,8 @@ void RailGame::RenderFrame() {
         RenderGadgetronVendor2D();
     } else if (mode_ == ScreenMode::RARITANIUM_LAB) {
         RenderRaritaniumLab2D();
+    } else if (mode_ == ScreenMode::ARMOR_WARDROBE) {
+        RenderArmorWardrobe2D();
     } else if (mode_ == ScreenMode::SKILL_POINTS_VIEW) {
         RenderSkillPoints2D();
     } else if (mode_ == ScreenMode::PAUSED) {
@@ -131,6 +133,14 @@ void RailGame::RenderWorld3D() {
         cam.position = { std::sin(globalTime_ * 0.5f) * 1.4f, 3.05f, -6.2f };
         cam.target = { GetTrackCurveX(28.0f) * 0.35f, 2.1f, 28.0f };
         cam.fovy = 50.0f;
+    } else if (mode_ == ScreenMode::ARMOR_WARDROBE) {
+        // Orbit camera around Ratchet positioned in left half of 1280x720 canvas
+        float rad = wardrobeRotAngle_ * DEG2RAD;
+        float dist = 4.2f;
+        Vector3 focusPoint = { -0.70f, 1.15f, 0.0f };
+        cam.position = { focusPoint.x + std::sin(rad) * dist, 1.75f, focusPoint.z - std::cos(rad) * dist };
+        cam.target   = focusPoint;
+        cam.fovy     = 36.0f;
     } else if (cameraShake_ > 0.0f) {
         float mag = cameraShake_ * cameraShake_ * 0.65f;
         cam.position.x += std::sin(globalTime_ * 73.0f) * mag;
@@ -142,7 +152,25 @@ void RailGame::RenderWorld3D() {
     RenderSkyline3D();
     RenderGrindRails3D();
 
-    if (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER) {
+    if (mode_ == ScreenMode::ARMOR_WARDROBE) {
+        Vector3 pedCenter = { -0.70f, -0.05f, 0.0f };
+        // Presentation platform
+        DrawCylinderEx({ pedCenter.x, -0.45f, pedCenter.z }, pedCenter, 1.85f, 1.70f, 24, { 18, 24, 38, 255 });
+        DrawCylinderWiresEx({ pedCenter.x, -0.45f, pedCenter.z }, pedCenter, 1.87f, 1.72f, 24, { 45, 160, 240, 220 });
+
+        // Concentric holographic floor rings
+        constexpr int P_SEGS = 24;
+        for (int i = 0; i < P_SEGS; ++i) {
+            float a1 = (i * (360.0f / P_SEGS) + globalTime_ * 40.0f) * DEG2RAD;
+            float a2 = ((i + 1) * (360.0f / P_SEGS) + globalTime_ * 40.0f) * DEG2RAD;
+            Vector3 p1 = { pedCenter.x + std::cos(a1) * 1.55f, 0.01f, pedCenter.z + std::sin(a1) * 1.55f };
+            Vector3 p2 = { pedCenter.x + std::cos(a2) * 1.55f, 0.01f, pedCenter.z + std::sin(a2) * 1.55f };
+            DrawLine3D(p1, p2, (i % 2 == 0) ? SKYBLUE : GOLD);
+        }
+
+        // Render Ratchet & Clank preview on the pedestal
+        RenderLombaxHero3D(pedCenter, std::sin(globalTime_ * 2.2f) * 4.0f, false, false, 0.0f, save_.equippedWeapon);
+    } else if (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER) {
         RenderHazards3D();
         RenderBolts3D();
         RenderProjectiles3D();
@@ -689,16 +717,29 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     float crouchDrop = (sliding ? -0.45f : 0.0f) - squash * 0.20f + grindBob;
     float leanX = tiltDeg * 0.014f;
 
-    // Authentic Ratchet & Clank Palette
+    // Authentic Ratchet & Clank Palette driven by equipped / previewed Armor & Skin
+    int armIdx = (mode_ == ScreenMode::ARMOR_WARDROBE) ? wardrobePreviewArmor_ : save_.equippedArmor;
+    int clkIdx = (mode_ == ScreenMode::ARMOR_WARDROBE) ? wardrobePreviewClank_ : save_.equippedClankSkin;
+    armIdx = std::clamp(armIdx, 0, static_cast<int>(NUM_ARMOR_SUITS) - 1);
+    clkIdx = std::clamp(clkIdx, 0, static_cast<int>(NUM_CLANK_SKINS) - 1);
+
+    const auto& armDef = ARMOR_CATALOG[armIdx];
+    const auto& clkDef = CLANK_SKIN_CATALOG[clkIdx];
+
     Color furGold     = { 245, 186, 52, 255 };
     Color furInner    = { 215, 138, 68, 255 };
     Color furStripe   = { 128, 52, 16, 255 };
-    Color armorOrange = { 216, 96, 26, 255 };
-    Color armorDark   = { 52, 60, 72, 255 };
-    Color pantsBlue   = { 58, 76, 102, 255 };
-    Color leatherBrn  = { 92, 50, 22, 255 };
-    Color gloveBrn    = { 72, 38, 16, 255 };
-    Color chromeSilv  = { 196, 208, 224, 255 };
+    Color armorOrange = armDef.primaryColor;
+    Color armorDark   = armDef.accentColor;
+    Color pantsBlue   = armDef.pantsColor;
+    Color visorCol    = armDef.visorColor;
+    Color leatherBrn  = (armIdx == 0) ? Color{ 92, 50, 22, 255 } : armDef.accentColor;
+    Color gloveBrn    = (armIdx == 0) ? Color{ 72, 38, 16, 255 } : armDef.accentColor;
+
+    Color chromeSilv  = clkDef.chassisColor;
+    Color chromeBright= clkDef.brightColor;
+    Color clankEyeGreen = clkDef.eyeColor;
+    Color clankBeaconCol = clkDef.beaconColor;
 
     // =========================================================================
     // 1. LEGS & MAGNETIC GRIND BOOTS (Dynamic Jump & Glide Animation)
@@ -781,11 +822,29 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
     DrawCylinderEx(shoulderCenter, neckTop, 0.18f, 0.16f, 8, furGold);
 
+    // Distinctive Armor Pauldrons on Left and Right Shoulders
+    for (int side = -1; side <= 1; side += 2) {
+        float s = static_cast<float>(side);
+        Vector3 pP = { shoulderCenter.x + s * 0.35f, shoulderCenter.y + 0.04f, shoulderCenter.z };
+        if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
+            DrawCube(pP, 0.22f, 0.16f, 0.22f, armorOrange);
+            DrawCubeWires(pP, 0.23f, 0.17f, 0.23f, visorCol);
+        } else if (armIdx == 2) { // Infernox: Molten basalt pauldrons with magma seams
+            DrawSphere(pP, 0.14f, armorOrange);
+            DrawSphereWires(pP, 0.145f, 6, 6, visorCol);
+        } else if (armIdx == 3) { // Deadlocked Marauder: Combat spikes on shoulder guards
+            DrawSphere(pP, 0.13f, armorOrange);
+            DrawCylinderEx(pP, { pP.x + s * 0.18f, pP.y + 0.14f, pP.z }, 0.06f, 0.015f, 6, armorDark);
+        } else if (armIdx == 4) { // Lombax Praetorian: Royal curved gold pauldrons
+            DrawSphere(pP, 0.15f, armorOrange);
+            DrawSphereWires(pP, 0.155f, 6, 6, armorDark);
+        }
+    }
+
     // =========================================================================
     // 3. AUTHENTIC CLANK CHARACTER MODEL (MATCHING IN-GAME REFERENCE EXACTLY!)
     // =========================================================================
     Vector3 clankPos = { shoulderCenter.x - 0.02f, shoulderCenter.y - 0.14f, shoulderCenter.z - 0.28f };
-    Color chromeBright = { 230, 238, 248, 255 };
 
     // --- A. Iconic Beveled Silver Backpack Housing (Matching Image 2) ---
     // Main tapered backpack block
@@ -894,8 +953,7 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     float eyeFocus = (player_.heliDeploy > 0.25f) ? (0.22f * player_.heliDeploy) : 0.0f;
     float baseEyeRadius = 0.076f * eyeExcitement;
 
-    // Glowing Neon-Lime / Emerald Green Camera Lenses (Matching reference images!)
-    Color clankEyeGreen  = { 48, 235, 110, 255 };
+    // Glowing Camera Lenses (Driven by Clank Skin!)
     Color clankEyeBright = { 205, 255, 220, 255 };
     if (player_.hyperBoostTimer > 0.0f) {
         clankEyeGreen = { 90, 255, 180, 255 };
@@ -942,6 +1000,16 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawClankEye(eyeL);
     DrawClankEye(eyeR);
 
+    // Secret Agent Clank Bowtie
+    if (clkIdx == 2) {
+        Vector3 bowCenter = { clankHead.x, clankHead.y - 0.12f, clankHead.z - 0.13f };
+        DrawSphere(bowCenter, 0.024f, { 220, 30, 40, 255 });
+        DrawCylinderEx({ bowCenter.x - 0.045f, bowCenter.y + 0.015f, bowCenter.z },
+                       { bowCenter.x, bowCenter.y, bowCenter.z }, 0.026f, 0.010f, 4, { 200, 25, 35, 255 });
+        DrawCylinderEx({ bowCenter.x + 0.045f, bowCenter.y + 0.015f, bowCenter.z },
+                       { bowCenter.x, bowCenter.y, bowCenter.z }, 0.026f, 0.010f, 4, { 200, 25, 35, 255 });
+    }
+
     // Subtle dark mouth / smile grille
     float smileCurve = (airborne ? 0.010f : 0.003f);
     DrawCylinderEx({ clankHead.x - 0.052f, clankHead.y - 0.075f + smileCurve, clankHead.z - 0.145f },
@@ -965,7 +1033,7 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
                        0.016f * antVisible, 0.012f * antVisible, 6, chromeSilv);
         // Red glowing beacon bulb at antenna tip (Image 1 & 2)
         float redRadius = 0.046f * antVisible;
-        Color redCol  = ColorAlpha({ 255, 30, 30, 255 }, antVisible);
+        Color redCol  = ColorAlpha(clankBeaconCol, antVisible);
         Color redCore = ColorAlpha(WHITE, antVisible * 0.90f);
         DrawSphere(stemTip, redRadius, redCol);
         DrawSphere(stemTip, redRadius * 0.45f, redCore);
@@ -1040,13 +1108,27 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // Golden fur head & snout
     DrawSphere(headPos, 0.34f, furGold);
     DrawCylinderEx(headPos, { headPos.x, headPos.y - 0.05f, headPos.z + 0.30f }, 0.22f, 0.14f, 8, furGold);
-    // Brown Leather Pilot Helmet Cap covering crown & back of skull
-    DrawSphere({ headPos.x, headPos.y + 0.04f, headPos.z - 0.03f }, 0.355f, leatherBrn);
-    // Pilot Goggles on Forehead
-    DrawCylinderEx({ headPos.x - 0.13f, headPos.y + 0.15f, headPos.z + 0.22f },
-                   { headPos.x - 0.13f, headPos.y + 0.15f, headPos.z + 0.32f }, 0.10f, 0.10f, 8, SKYBLUE);
-    DrawCylinderEx({ headPos.x + 0.13f, headPos.y + 0.15f, headPos.z + 0.22f },
-                   { headPos.x + 0.13f, headPos.y + 0.15f, headPos.z + 0.32f }, 0.10f, 0.10f, 8, SKYBLUE);
+    // Brown Leather Pilot Helmet Cap or Advanced Composite Armor Crown
+    DrawSphere({ headPos.x, headPos.y + 0.04f, headPos.z - 0.03f }, 0.355f, (armIdx == 0) ? leatherBrn : armorOrange);
+
+    // Pilot Goggles (Classic) or Advanced Cybernetic Visor (Armor Suits)
+    if (armIdx == 0) {
+        DrawCylinderEx({ headPos.x - 0.13f, headPos.y + 0.15f, headPos.z + 0.22f },
+                       { headPos.x - 0.13f, headPos.y + 0.15f, headPos.z + 0.32f }, 0.10f, 0.10f, 8, SKYBLUE);
+        DrawCylinderEx({ headPos.x + 0.13f, headPos.y + 0.15f, headPos.z + 0.22f },
+                       { headPos.x + 0.13f, headPos.y + 0.15f, headPos.z + 0.32f }, 0.10f, 0.10f, 8, SKYBLUE);
+    } else {
+        Vector3 vL = { headPos.x - 0.16f, headPos.y + 0.12f, headPos.z + 0.24f };
+        Vector3 vR = { headPos.x + 0.16f, headPos.y + 0.12f, headPos.z + 0.24f };
+        DrawCylinderEx(vL, vR, 0.055f, 0.055f, 8, visorCol);
+        DrawSphere(vL, 0.065f, armorDark);
+        DrawSphere(vR, 0.065f, armorDark);
+        // Forehead crest gem on Praetorian
+        if (armIdx == 4) {
+            DrawSphere({ headPos.x, headPos.y + 0.24f, headPos.z + 0.20f }, 0.075f, armorDark);
+            DrawSphere({ headPos.x, headPos.y + 0.24f, headPos.z + 0.23f }, 0.045f, visorCol);
+        }
+    }
 
     // True Pointed Fan-Shaped Lombax Ears (Broad vertical attachment at skull -> tapering to a sharp pointed tip!)
     // Built from 4 stacked horizontal spars that converge to a single outer tip so the ear is THIN front-to-back
@@ -1630,11 +1712,12 @@ void RailGame::RenderMainMenu2D() {
         return IsButtonClicked(r);
     };
 
-    Rectangle btnPlay   = { 50.0f, 215.0f, 400.0f, 66.0f };
-    Rectangle btnDaily  = { 50.0f, 295.0f, 400.0f, 66.0f };
-    Rectangle btnVendor = { 50.0f, 375.0f, 400.0f, 66.0f };
-    Rectangle btnLab    = { 50.0f, 455.0f, 400.0f, 66.0f };
-    Rectangle btnSkills = { VIRTUAL_WIDTH - 380.0f, 215.0f, 330.0f, 66.0f };
+    Rectangle btnPlay     = { 50.0f, 195.0f, 400.0f, 56.0f };
+    Rectangle btnDaily    = { 50.0f, 260.0f, 400.0f, 56.0f };
+    Rectangle btnVendor   = { 50.0f, 325.0f, 400.0f, 56.0f };
+    Rectangle btnLab      = { 50.0f, 390.0f, 400.0f, 56.0f };
+    Rectangle btnWardrobe = { 50.0f, 455.0f, 400.0f, 56.0f };
+    Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 195.0f, 330.0f, 56.0f };
 
     if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Dynamic 5-rail transit network (Max 3 active)", ORANGE)) {
         StartNewRun(false);
@@ -1652,6 +1735,14 @@ void RailGame::RenderMainMenu2D() {
 
     if (MenuButton(btnLab, "RARITANIUM MOD LAB", "Upgrade Armor, Magnet & Thrusters", GREEN)) {
         mode_ = ScreenMode::RARITANIUM_LAB;
+        audio_.PlayUiClick();
+    }
+
+    if (MenuButton(btnWardrobe, "ARMOR & CLANK WARDROBE", "Equip Carbonox, Infernox & 24K Gold Clank", PURPLE)) {
+        mode_ = ScreenMode::ARMOR_WARDROBE;
+        wardrobePreviewArmor_ = save_.equippedArmor;
+        wardrobePreviewClank_ = save_.equippedClankSkin;
+        wardrobeRotAngle_ = 180.0f; // Start facing camera
         audio_.PlayUiClick();
     }
 
@@ -1816,6 +1907,228 @@ void RailGame::RenderRaritaniumLab2D() {
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
+    if (IsButtonClicked(backBtn)) {
+        mode_ = ScreenMode::MAIN_MENU;
+        audio_.PlayUiClick();
+    }
+
+    RenderBrandingFooter2D();
+}
+
+void RailGame::RenderArmorWardrobe2D() {
+    // Top Header Banner
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, 115, { 10, 14, 26, 235 });
+    DrawLine(0, 115, VIRTUAL_WIDTH, 115, PURPLE);
+
+    const char* pre = "BOLTAX ADVANCED DEFENSE SYSTEMS & WARDROBE LAB";
+    int pw = MeasureText(pre, 15);
+    DrawText(pre, (VIRTUAL_WIDTH - pw) / 2, 16, 15, SKYBLUE);
+
+    const char* title = "ARMOR SUITS & CLANK OUTFITS";
+    int tw = MeasureText(title, 42);
+    DrawText(title, (VIRTUAL_WIDTH - tw) / 2, 36, 42, GOLD);
+
+    char curBuf[96];
+    std::snprintf(curBuf, sizeof(curBuf), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
+    int cw = MeasureText(curBuf, 18);
+    DrawText(curBuf, (VIRTUAL_WIDTH - cw) / 2, 85, 18, (save_.raritanium > 0) ? SKYBLUE : LIGHTGRAY);
+
+    // -------------------------------------------------------------
+    // LEFT SIDE: 3D CHARACTER SHOWCASE PLAQUE
+    // -------------------------------------------------------------
+    Rectangle plaque = { 50.0f, 510.0f, 490.0f, 138.0f };
+    DrawRectangleRec(plaque, { 12, 18, 30, 220 });
+    DrawRectangleLinesEx(plaque, 2.0f, PURPLE);
+
+    const char* prevName = (wardrobeTab_ == 0)
+        ? ARMOR_CATALOG[wardrobePreviewArmor_].name
+        : CLANK_SKIN_CATALOG[wardrobePreviewClank_].name;
+    const char* prevOrigin = (wardrobeTab_ == 0)
+        ? ARMOR_CATALOG[wardrobePreviewArmor_].origin
+        : CLANK_SKIN_CATALOG[wardrobePreviewClank_].origin;
+    const char* prevPerk = (wardrobeTab_ == 0)
+        ? ARMOR_CATALOG[wardrobePreviewArmor_].perkDesc
+        : CLANK_SKIN_CATALOG[wardrobePreviewClank_].perkDesc;
+
+    DrawText("3D LIVE PREVIEW:", static_cast<int>(plaque.x + 16), static_cast<int>(plaque.y + 12), 14, SKYBLUE);
+    DrawText(prevName, static_cast<int>(plaque.x + 16), static_cast<int>(plaque.y + 32), 22, GOLD);
+    DrawText(prevOrigin, static_cast<int>(plaque.x + 16), static_cast<int>(plaque.y + 60), 14, LIGHTGRAY);
+    DrawText(prevPerk, static_cast<int>(plaque.x + 16), static_cast<int>(plaque.y + 82), 13, GREEN);
+
+    DrawText("< DRAG MOUSE / SWIPE OR [A / D] TO ROTATE 3D CHARACTER >",
+             static_cast<int>(plaque.x + 16), static_cast<int>(plaque.y + 112), 12, { 180, 205, 235, 200 });
+
+    // -------------------------------------------------------------
+    // RIGHT SIDE: TABS & CATALOG
+    // -------------------------------------------------------------
+    Rectangle tabLombax = { 580.0f, 130.0f, 320.0f, 44.0f };
+    Rectangle tabClank  = { 910.0f, 130.0f, 320.0f, 44.0f };
+
+    bool hovL = IsRectHovered(tabLombax);
+    bool hovC = IsRectHovered(tabClank);
+
+    // Tab Lombax
+    Color tabLCol = (wardrobeTab_ == 0) ? Color{ 48, 32, 85, 240 } : (hovL ? Color{ 26, 36, 56, 220 } : Color{ 14, 20, 32, 210 });
+    DrawRectangleRec(tabLombax, tabLCol);
+    DrawRectangleLinesEx(tabLombax, (wardrobeTab_ == 0) ? 2.5f : 1.0f, (wardrobeTab_ == 0) ? GOLD : GRAY);
+    DrawText("LOMBAX ARMOR SUITS (5)", static_cast<int>(tabLombax.x + 40), static_cast<int>(tabLombax.y + 12), 17, (wardrobeTab_ == 0) ? GOLD : WHITE);
+    if (IsButtonClicked(tabLombax)) {
+        wardrobeTab_ = 0;
+        audio_.PlayUiClick();
+    }
+
+    // Tab Clank
+    Color tabCCol = (wardrobeTab_ == 1) ? Color{ 48, 32, 85, 240 } : (hovC ? Color{ 26, 36, 56, 220 } : Color{ 14, 20, 32, 210 });
+    DrawRectangleRec(tabClank, tabCCol);
+    DrawRectangleLinesEx(tabClank, (wardrobeTab_ == 1) ? 2.5f : 1.0f, (wardrobeTab_ == 1) ? GOLD : GRAY);
+    DrawText("CLANK OUTFITS (4)", static_cast<int>(tabClank.x + 65), static_cast<int>(tabClank.y + 12), 17, (wardrobeTab_ == 1) ? GOLD : WHITE);
+    if (IsButtonClicked(tabClank)) {
+        wardrobeTab_ = 1;
+        audio_.PlayUiClick();
+    }
+
+    // Content Cards
+    float startY = 186.0f;
+    float cardH  = 86.0f;
+    float gapY   = 8.0f;
+
+    if (wardrobeTab_ == 0) {
+        for (int i = 0; i < static_cast<int>(NUM_ARMOR_SUITS); ++i) {
+            const auto& a = ARMOR_CATALOG[i];
+            Rectangle cardRec = { 580.0f, startY + i * (cardH + gapY), 650.0f, cardH };
+            bool isPrev = (wardrobePreviewArmor_ == i);
+            bool isEquipped = (save_.equippedArmor == i);
+            bool isUnlocked = save_.unlockedArmors[i];
+            bool hov = IsRectHovered(cardRec);
+
+            DrawRectangleRec(cardRec, isPrev ? Color{ 28, 42, 68, 240 } : (hov ? Color{ 20, 30, 48, 220 } : Color{ 12, 18, 30, 200 }));
+            DrawRectangleLinesEx(cardRec, isPrev ? 2.0f : 1.0f, isEquipped ? GREEN : (isPrev ? GOLD : GRAY));
+
+            // Color Swatch Indicator Bar
+            DrawRectangle(static_cast<int>(cardRec.x), static_cast<int>(cardRec.y), 8, static_cast<int>(cardRec.height), a.visorColor);
+
+            // Title & Lore
+            DrawText(a.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 10), 19, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
+            DrawText(a.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 34), 13, SKYBLUE);
+            DrawText(a.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 58), 12, LIGHTGRAY);
+
+            // Action / Status Button on Right
+            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 20.0f, 154.0f, 46.0f };
+            if (isEquipped) {
+                DrawRectangleRec(btnAction, { 22, 65, 34, 220 });
+                DrawRectangleLinesEx(btnAction, 1.5f, GREEN);
+                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 14), 16, GREEN);
+            } else if (isUnlocked) {
+                bool bHov = IsRectHovered(btnAction);
+                DrawRectangleRec(btnAction, bHov ? Color{ 40, 85, 130, 240 } : Color{ 22, 50, 80, 220 });
+                DrawRectangleLinesEx(btnAction, 1.5f, bHov ? WHITE : SKYBLUE);
+                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 14), 16, WHITE);
+                if (IsButtonClicked(btnAction)) {
+                    save_.equippedArmor = i;
+                    wardrobePreviewArmor_ = i;
+                    audio_.PlayUiClick();
+                    SaveProgress();
+                }
+            } else {
+                bool canAfford = (save_.bolts >= a.boltCost && save_.raritanium >= a.raritaniumCost);
+                bool bHov = IsRectHovered(btnAction);
+                DrawRectangleRec(btnAction, canAfford ? (bHov ? Color{ 140, 75, 20, 240 } : Color{ 90, 48, 14, 220 }) : Color{ 36, 36, 42, 200 });
+                DrawRectangleLinesEx(btnAction, 1.5f, canAfford ? ORANGE : DARKGRAY);
+
+                char costBuf[48];
+                std::snprintf(costBuf, sizeof(costBuf), "%d B / %d R", a.boltCost, a.raritaniumCost);
+                int bw = MeasureText(costBuf, 13);
+                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 6), 14, canAfford ? GOLD : GRAY);
+                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 25), 13, canAfford ? WHITE : LIGHTGRAY);
+
+                if (canAfford && IsButtonClicked(btnAction)) {
+                    save_.bolts -= a.boltCost;
+                    save_.raritanium -= a.raritaniumCost;
+                    save_.unlockedArmors[i] = true;
+                    save_.equippedArmor = i;
+                    wardrobePreviewArmor_ = i;
+                    audio_.PlayLevelUp();
+                    SaveProgress();
+                }
+            }
+
+            if (IsButtonClicked(cardRec) && !IsRectHovered(btnAction)) {
+                wardrobePreviewArmor_ = i;
+                audio_.PlayUiClick();
+            }
+        }
+    } else {
+        // Clank Outfits Tab
+        for (int i = 0; i < static_cast<int>(NUM_CLANK_SKINS); ++i) {
+            const auto& c = CLANK_SKIN_CATALOG[i];
+            Rectangle cardRec = { 580.0f, startY + i * (cardH + 18.0f), 650.0f, cardH + 8.0f };
+            bool isPrev = (wardrobePreviewClank_ == i);
+            bool isEquipped = (save_.equippedClankSkin == i);
+            bool isUnlocked = save_.unlockedClankSkins[i];
+            bool hov = IsRectHovered(cardRec);
+
+            DrawRectangleRec(cardRec, isPrev ? Color{ 28, 42, 68, 240 } : (hov ? Color{ 20, 30, 48, 220 } : Color{ 12, 18, 30, 200 }));
+            DrawRectangleLinesEx(cardRec, isPrev ? 2.0f : 1.0f, isEquipped ? GREEN : (isPrev ? GOLD : GRAY));
+
+            // Eye Glow Color Bar
+            DrawRectangle(static_cast<int>(cardRec.x), static_cast<int>(cardRec.y), 8, static_cast<int>(cardRec.height), c.eyeColor);
+
+            DrawText(c.name, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 12), 19, isEquipped ? GREEN : (isPrev ? GOLD : WHITE));
+            DrawText(c.origin, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 36), 13, SKYBLUE);
+            DrawText(c.perkDesc, static_cast<int>(cardRec.x + 20), static_cast<int>(cardRec.y + 60), 12, LIGHTGRAY);
+
+            Rectangle btnAction = { cardRec.x + cardRec.width - 170.0f, cardRec.y + 24.0f, 154.0f, 46.0f };
+            if (isEquipped) {
+                DrawRectangleRec(btnAction, { 22, 65, 34, 220 });
+                DrawRectangleLinesEx(btnAction, 1.5f, GREEN);
+                DrawText("EQUIPPED", static_cast<int>(btnAction.x + 36), static_cast<int>(btnAction.y + 14), 16, GREEN);
+            } else if (isUnlocked) {
+                bool bHov = IsRectHovered(btnAction);
+                DrawRectangleRec(btnAction, bHov ? Color{ 40, 85, 130, 240 } : Color{ 22, 50, 80, 220 });
+                DrawRectangleLinesEx(btnAction, 1.5f, bHov ? WHITE : SKYBLUE);
+                DrawText("EQUIP", static_cast<int>(btnAction.x + 50), static_cast<int>(btnAction.y + 14), 16, WHITE);
+                if (IsButtonClicked(btnAction)) {
+                    save_.equippedClankSkin = i;
+                    wardrobePreviewClank_ = i;
+                    audio_.PlayUiClick();
+                    SaveProgress();
+                }
+            } else {
+                bool canAfford = (save_.bolts >= c.boltCost && save_.raritanium >= c.raritaniumCost);
+                bool bHov = IsRectHovered(btnAction);
+                DrawRectangleRec(btnAction, canAfford ? (bHov ? Color{ 140, 75, 20, 240 } : Color{ 90, 48, 14, 220 }) : Color{ 36, 36, 42, 200 });
+                DrawRectangleLinesEx(btnAction, 1.5f, canAfford ? ORANGE : DARKGRAY);
+
+                char costBuf[48];
+                std::snprintf(costBuf, sizeof(costBuf), "%d B / %d R", c.boltCost, c.raritaniumCost);
+                int bw = MeasureText(costBuf, 13);
+                DrawText("UNLOCK", static_cast<int>(btnAction.x + 48), static_cast<int>(btnAction.y + 6), 14, canAfford ? GOLD : GRAY);
+                DrawText(costBuf, static_cast<int>(btnAction.x + (btnAction.width - bw) / 2), static_cast<int>(btnAction.y + 25), 13, canAfford ? WHITE : LIGHTGRAY);
+
+                if (canAfford && IsButtonClicked(btnAction)) {
+                    save_.bolts -= c.boltCost;
+                    save_.raritanium -= c.raritaniumCost;
+                    save_.unlockedClankSkins[i] = true;
+                    save_.equippedClankSkin = i;
+                    wardrobePreviewClank_ = i;
+                    audio_.PlayLevelUp();
+                    SaveProgress();
+                }
+            }
+
+            if (IsButtonClicked(cardRec) && !IsRectHovered(btnAction)) {
+                wardrobePreviewClank_ = i;
+                audio_.PlayUiClick();
+            }
+        }
+    }
+
+    // Back to Menu Button
+    Rectangle backBtn = { 50.0f, 655.0f, 220.0f, 44.0f };
+    bool bHov = IsRectHovered(backBtn);
+    DrawRectangleRec(backBtn, bHov ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
+    DrawRectangleLinesEx(backBtn, 1.5f, bHov ? WHITE : ORANGE);
+    DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 36), static_cast<int>(backBtn.y + 14), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
         mode_ = ScreenMode::MAIN_MENU;
         audio_.PlayUiClick();

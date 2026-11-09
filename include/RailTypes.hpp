@@ -20,12 +20,15 @@ constexpr size_t MAX_PARTICLES_3D = 512;
 constexpr size_t MAX_SKY_BUILDINGS = 48;
 constexpr size_t NUM_WEAPONS = 6;
 constexpr size_t NUM_SKILL_POINTS = 10;
+constexpr size_t NUM_ARMOR_SUITS = 5;
+constexpr size_t NUM_CLANK_SKINS = 4;
 
 enum class ScreenMode {
     TITLE_FRONT_PAGE, // Rift Apart Front Page: "Press Any Key / Tap to Start"
     MAIN_MENU,
     GADGETRON_VENDOR,
     RARITANIUM_LAB,
+    ARMOR_WARDROBE,   // 3D Interactive Lombax & Clank Armor Wardrobe
     SKILL_POINTS_VIEW,
     PLAYING,
     PAUSED,
@@ -82,6 +85,126 @@ struct SkillPointDef {
     int boltReward;
 };
 
+struct ArmorSuitDef {
+    const char* name;
+    const char* origin;
+    const char* perkDesc;
+    int boltCost;
+    int raritaniumCost;
+    Color primaryColor;     // Main armor plate
+    Color accentColor;      // Trim / Pauldron
+    Color visorColor;       // Glowing visor / energy seams
+    Color pantsColor;       // Fabric pants
+};
+
+struct ClankSkinDef {
+    const char* name;
+    const char* origin;
+    const char* perkDesc;
+    int boltCost;
+    int raritaniumCost;
+    Color chassisColor;     // Main body chrome
+    Color brightColor;      // Highlight bevels & collar
+    Color eyeColor;         // Camera lens glow
+    Color beaconColor;      // Antenna beacon
+};
+
+inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
+    {
+        "CLASSIC COMMANDO",
+        "SOLANA & BOGON AVIATOR (DEFAULT)",
+        "Ratchet's iconic pilot vest & leather harness. Balanced, agile, and timeless.",
+        0, 0,
+        Color{ 216, 96, 26, 255 },  // Orange vest
+        Color{ 52, 60, 72, 255 },   // Dark armor brackets
+        Color{ 245, 186, 52, 255 }, // Classic fur gold
+        Color{ 58, 76, 102, 255 }   // Blue denim pants
+    },
+    {
+        "CARBONOX ARMOR",
+        "GOING COMMANDO / UP YOUR ARSENAL",
+        "Forged from nanotech-bonded graphite alloy. +1 Max Nanotech HP & Cyan Arc Sparks.",
+        2500, 10,
+        Color{ 36, 42, 54, 255 },   // Matte graphite
+        Color{ 22, 26, 36, 255 },   // Deep obsidian trim
+        Color{ 40, 220, 255, 255 }, // Electric cyan visor & chest arc
+        Color{ 24, 30, 42, 255 }    // Reinforced carbon weave pants
+    },
+    {
+        "INFERNOX ARMOR",
+        "MEGACORP THERMAL WEAPONS LAB",
+        "Active volcanic core plates. Radiates fiery magma embers & magnetizes crates.",
+        4500, 15,
+        Color{ 185, 48, 16, 255 },  // Scorched molten crimson
+        Color{ 42, 22, 18, 255 },   // Basalt trim
+        Color{ 255, 150, 24, 255 }, // Molten lava glow seams & visor
+        Color{ 35, 22, 20, 255 }    // Ashen thermal weave
+    },
+    {
+        "DEADLOCKED MARAUDER",
+        "DREADZONE COMBAT ARENA",
+        "Heavy spiked gladiator battlegear. 1.25x Wrench Melee Damage & Shockwaves.",
+        6500, 25,
+        Color{ 175, 28, 36, 255 },  // Blood red combat plates
+        Color{ 24, 24, 28, 255 },   // Dreadzone gunmetal
+        Color{ 255, 42, 42, 255 },  // Crimson combat slit visor
+        Color{ 32, 32, 38, 255 }    // Industrial kevlar
+    },
+    {
+        "LOMBAX PRAETORIAN",
+        "ANCIENT DIMENSIONAL ARCHIVE",
+        "Ceremonial pearl-gold royal vestments. 1.5x Bolt Multiplier Escalation.",
+        9000, 35,
+        Color{ 240, 196, 75, 255 }, // 24K Royal Gold
+        Color{ 75, 36, 105, 255 },  // Imperial Amethyst Purple
+        Color{ 210, 110, 255, 255 },// Neon violet psionic visor
+        Color{ 230, 235, 248, 255 } // Royal pearl silk trousers
+    }
+}};
+
+inline const std::array<ClankSkinDef, NUM_CLANK_SKINS> CLANK_SKIN_CATALOG = {{
+    {
+        "TITANIUM CHASSIS",
+        "STANDARD ISSUE (DEFAULT)",
+        "Insomniac titanium-alloy finish with emerald camera lenses and red beacon.",
+        0, 0,
+        Color{ 196, 208, 224, 255 }, // Chrome silver
+        Color{ 230, 238, 248, 255 }, // Polished highlight
+        Color{ 48, 235, 110, 255 },  // Emerald green eyes
+        Color{ 255, 30, 30, 255 }    // Red antenna beacon
+    },
+    {
+        "24-KARAT GOLDEN CLANK",
+        "GOLD WEAPON FOUNDRY",
+        "Electroplated solid 24K gold with brilliant sapphire-blue optics.",
+        3500, 12,
+        Color{ 235, 185, 48, 255 },  // Pure gold chassis
+        Color{ 255, 225, 110, 255 }, // Mirror gold bevels
+        Color{ 40, 180, 255, 255 },  // Radiant sapphire eyes
+        Color{ 255, 215, 60, 255 }   // Golden antenna beacon
+    },
+    {
+        "SECRET AGENT CLANK",
+        "HOLOMEDIA ENTERTAINMENT",
+        "Matte stealth-tuxedo black with formal red bowtie and golden spectacles.",
+        5000, 18,
+        Color{ 32, 34, 40, 255 },    // Tuxedo obsidian
+        Color{ 75, 80, 92, 255 },    // Satin lapel grey
+        Color{ 255, 220, 80, 255 },  // Golden spectacles
+        Color{ 240, 40, 50, 255 }    // Dapper red beacon
+    },
+    {
+        "DREAD PIRATE CLANK",
+        "SPACE PIRATE FLOTILLA",
+        "Weathered oxidized bronze with brass rivets and glowing ruby optics.",
+        6500, 22,
+        Color{ 160, 105, 64, 255 },  // Weathered bronze
+        Color{ 210, 150, 95, 255 },  // Polished brass trim
+        Color{ 255, 45, 45, 255 },   // Menacing ruby eyes
+        Color{ 255, 160, 20, 255 }   // Amber lantern beacon
+    }
+}};
+
 struct SaveData {
     uint32_t magic = 0x5241494E; // 'RAIN' v2 (6 weapons starting with OmniWrench)
     int bolts = 500;
@@ -102,6 +225,12 @@ struct SaveData {
     int magnetLevel = 0;       // Bolt & Raritanium attractor radius (0..5)
     int bootThrusterLevel = 0; // Longer Clank Heli-Pack glide & Hyper-Boost duration (0..5)
     int multiplierModLevel = 0;// Faster Bolt Multiplier escalation (0..5)
+
+    // Wardrobe & Cosmetics
+    int equippedArmor = 0;     // 0 = Classic Commando, 1 = Carbonox, 2 = Infernox, 3 = Marauder, 4 = Praetorian
+    int equippedClankSkin = 0; // 0 = Standard Titanium, 1 = 24K Gold, 2 = Secret Agent, 3 = Dread Pirate
+    std::array<bool, NUM_ARMOR_SUITS> unlockedArmors = { true, false, false, false, false };
+    std::array<bool, NUM_CLANK_SKINS> unlockedClankSkins = { true, false, false, false };
 
     std::array<bool, NUM_SKILL_POINTS> skillPoints = { false };
 };

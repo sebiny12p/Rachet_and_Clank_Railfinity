@@ -84,6 +84,7 @@ private:
     void RenderMainMenu2D();
     void RenderGadgetronVendor2D();
     void RenderRaritaniumLab2D();
+    void RenderArmorWardrobe2D();
     void RenderSkillPoints2D();
     void RenderPauseOverlay2D();
     void RenderGameOver2D();
@@ -128,6 +129,14 @@ private:
     float pointerDownTime_ = 0.0f;
     bool touchHoldingJump_ = false;
     bool gestureConsumed_ = false;
+
+    // 3D Armor Wardrobe & Cosmetics Preview State
+    float wardrobeRotAngle_ = 0.0f;
+    int wardrobeTab_ = 0;              // 0 = Lombax Suits, 1 = Clank Skins
+    int wardrobePreviewArmor_ = 0;
+    int wardrobePreviewClank_ = 0;
+    bool isDraggingWardrobe_ = false;
+    Vector2 lastMousePos_{};
 
     PlayerLombax player_{};
     BossDropship boss_{};

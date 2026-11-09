@@ -32,6 +32,7 @@ enum class ScreenMode {
     ARMOR_WARDROBE,   // 3D Interactive Lombax & Clank Armor Wardrobe
     SKILL_POINTS_VIEW,
     SETTINGS_VIEW,
+    STATS_VIEW,       // Galactic Career Dossier & Lifetime Telemetry
     PLAYING,
     PAUSED,
     GAME_OVER
@@ -301,6 +302,15 @@ struct SaveData {
     int touchOpacity = 2; // 0 = 40%, 1 = 70%, 2 = 100%
     bool leftHandedControls = false;
     int swipeSensitivity = 1; // 0 = Low (36px), 1 = Med (26px), 2 = High (18px)
+    int musicTrackChoice = 0; // 0 = Dynamic Shuffle, 1 = Veldin, 2 = Kerwan, 3 = Skytrain, 4 = Cyberflight
+
+    // Lifetime Career Telemetry
+    int totalRunsStarted = 0;
+    int totalDistanceGrinded = 0;
+    int totalBoltsEarnedLifetime = 100;
+    int totalRaritaniumEarnedLifetime = 0;
+    int totalSwingshotGrapples = 0;
+    int totalOverdriveBoosts = 0;
 };
 
 struct PlayerLombax {

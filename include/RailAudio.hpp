@@ -26,6 +26,12 @@ public:
     void PlayUiClick() const;
     void UpdateMusic(int musicMode); // 0 = Title Front Page, 1 = Menu/Vendor, 2 = Rail Action
 
+    void SetMusicTrackPreference(int pref); // 0 = Auto Shuffle, 1..4 = Locked Track
+    int GetMusicTrackPreference() const { return trackPreference_; }
+    int CycleNextActionTrack(); // Skips to next track, returns track index
+    const char* GetCurrentActionTrackName() const;
+    const char* GetActionTrackName(int idx) const;
+
     bool IsMuted() const { return muted_; }
     void ToggleMute() { muted_ = !muted_; }
     void SetMasterVolume(float vol) { masterVol_ = vol; ApplyVolumes(); }
@@ -44,11 +50,14 @@ private:
     float sfxVol_ = 0.80f;
     int currentMode_ = -1;
     int currentActionTrackIdx_ = 0;
+    int trackPreference_ = 0; // 0 = Dynamic Shuffle, 1..4 = Explicit Track
 
     bool hasTitleMusic_ = false;
     bool hasMenuMusic_ = false;
     bool hasActionMusic1_ = false;
     bool hasActionMusic2_ = false;
+    bool hasActionMusic3_ = false;
+    bool hasActionMusic4_ = false;
 
     Sound sndRailHop_{};
     Sound sndJump_{};
@@ -70,6 +79,8 @@ private:
     Music bgmMenu_{};
     Music bgmAction1_{};
     Music bgmAction2_{};
+    Music bgmAction3_{};
+    Music bgmAction4_{};
 };
 
 } // namespace Railfinity

@@ -165,6 +165,11 @@ void RailGame::LoadSave() {
             save_.equippedClankSkin = std::clamp(save_.equippedClankSkin, 0, static_cast<int>(NUM_CLANK_SKINS) - 1);
             save_.unlockedArmors[0] = true;
             save_.unlockedClankSkins[0] = true;
+            audio_.SetMasterVolume(save_.masterVolume);
+            audio_.SetMusicVolume(save_.musicVolume);
+            audio_.SetSfxVolume(save_.sfxVolume);
+            audio_.SetMusicTrackPreference(save_.musicTrackChoice);
+            SetTargetFPS(save_.targetFps);
             return;
         }
     }
@@ -230,6 +235,7 @@ void RailGame::StartNewRun(bool dailySeed) {
     rng_.Seed(activeSeed_, isDailyRun_ ? 999ULL : 42ULL);
 
     SetScreenMode(ScreenMode::PLAYING);
+    save_.totalRunsStarted++;
     runTime_ = 0.0f;
     distanceMeters_ = 0.0f;
     totalWorldTravel_ = 0.0f;
@@ -584,6 +590,7 @@ void RailGame::AdvanceMultiplier() {
 void RailGame::TriggerOverdriveBoost() {
     if (!save_.hoverbootsUnlocked) return;
     if (player_.overdriveCooldown > 0.0f) return;
+    save_.totalOverdriveBoosts++;
     player_.overdriveDuration = 3.0f;
     player_.overdriveCooldown = 11.0f;
     player_.invulnTimer = 3.0f;
@@ -598,6 +605,7 @@ void RailGame::TriggerOverdriveBoost() {
 
 void RailGame::TriggerSwingshotGrapple(Vector3 nodePos, int targetLane) {
     if (player_.isSwinging) return;
+    save_.totalSwingshotGrapples++;
     player_.isSwinging = true;
     player_.swingTimer = 0.0f;
     player_.swingStartX = player_.x;
@@ -641,6 +649,7 @@ void RailGame::DamagePlayer(float dmg, bool minorBump) {
         player_.nanotechHp = 0.0f;
         mode_ = ScreenMode::GAME_OVER;
         int distInt = static_cast<int>(distanceMeters_);
+        save_.totalDistanceGrinded += distInt;
         if (isDailyRun_) {
             if (distInt > save_.bestDailyMeters) save_.bestDailyMeters = distInt;
         } else {
@@ -942,6 +951,16 @@ void RailGame::HandleInput() {
     }
 
     if (mode_ == ScreenMode::PLAYING) {
+        // Music Jukebox Skip: N or Gamepad Right Stick Click
+        if (IsKeyPressed(KEY_N) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_THUMB))) {
+            int nextIdx = audio_.CycleNextActionTrack();
+            toast_.title = "NOW PLAYING:";
+            toast_.subtitle = audio_.GetActionTrackName(nextIdx);
+            toast_.timer = 2.8f;
+            toast_.active = true;
+            audio_.PlayUiClick();
+        }
+
         // Collect new touch points & mouse clicks
         struct TouchEvent {
             Vector2 pos;
@@ -1254,6 +1273,11 @@ void RailGame::HandleInput() {
                 SetScreenMode(ScreenMode::SKILL_POINTS_VIEW);
                 audio_.PlayUiClick();
             }
+            // Career Stats: C
+            else if (IsKeyPressed(KEY_C)) {
+                SetScreenMode(ScreenMode::STATS_VIEW);
+                audio_.PlayUiClick();
+            }
             // Settings: S or Gamepad Select/Back (MIDDLE_LEFT)
             else if (IsKeyPressed(KEY_S) || (hasGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT))) {
                 settingsPrevMode_ = ScreenMode::MAIN_MENU;
@@ -1280,6 +1304,11 @@ void RailGame::HandleInput() {
         if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
             SaveProgress();
             SetScreenMode(settingsPrevMode_);
+            audio_.PlayUiClick();
+        }
+    } else if (mode_ == ScreenMode::STATS_VIEW) {
+        if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
+            SetScreenMode(ScreenMode::MAIN_MENU);
             audio_.PlayUiClick();
         }
     } else if (mode_ == ScreenMode::GAME_OVER) {

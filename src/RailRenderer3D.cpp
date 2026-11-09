@@ -123,6 +123,8 @@ void RailGame::RenderFrame() {
         RenderSkillPoints2D();
     } else if (mode_ == ScreenMode::SETTINGS_VIEW) {
         RenderSettings2D();
+    } else if (mode_ == ScreenMode::STATS_VIEW) {
+        RenderCareerStats2D();
     } else if (mode_ == ScreenMode::PAUSED) {
         RenderPauseOverlay2D();
     } else if (mode_ == ScreenMode::GAME_OVER) {
@@ -2471,13 +2473,14 @@ void RailGame::RenderMainMenu2D() {
         return IsButtonClicked(r);
     };
 
-    Rectangle btnPlay     = { 50.0f, 195.0f, 400.0f, 56.0f };
-    Rectangle btnDaily    = { 50.0f, 260.0f, 400.0f, 56.0f };
-    Rectangle btnVendor   = { 50.0f, 325.0f, 400.0f, 56.0f };
-    Rectangle btnLab      = { 50.0f, 390.0f, 400.0f, 56.0f };
-    Rectangle btnWardrobe = { 50.0f, 455.0f, 400.0f, 56.0f };
-    Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 195.0f, 330.0f, 56.0f };
-    Rectangle btnSettings = { VIRTUAL_WIDTH - 380.0f, 260.0f, 330.0f, 56.0f };
+    Rectangle btnPlay     = { 50.0f, 185.0f, 400.0f, 52.0f };
+    Rectangle btnDaily    = { 50.0f, 243.0f, 400.0f, 52.0f };
+    Rectangle btnVendor   = { 50.0f, 301.0f, 400.0f, 52.0f };
+    Rectangle btnLab      = { 50.0f, 359.0f, 400.0f, 52.0f };
+    Rectangle btnWardrobe = { 50.0f, 417.0f, 400.0f, 52.0f };
+    Rectangle btnCareer   = { 50.0f, 475.0f, 400.0f, 52.0f };
+    Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 185.0f, 330.0f, 52.0f };
+    Rectangle btnSettings = { VIRTUAL_WIDTH - 380.0f, 243.0f, 330.0f, 52.0f };
 
     if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Dynamic 5-rail transit network (Max 3 active)", ORANGE)) {
         StartNewRun(false);
@@ -2506,6 +2509,14 @@ void RailGame::RenderMainMenu2D() {
         audio_.PlayUiClick();
     }
 
+    char carTxt[80];
+    std::snprintf(carTxt, sizeof(carTxt), "Runs: %d | Grind: %d m | Foes: %d",
+                  save_.totalRunsStarted, save_.totalDistanceGrinded, save_.totalEnemiesDestroyed);
+    if (MenuButton(btnCareer, "CAREER DOSSIER [C]", carTxt, GOLD)) {
+        SetScreenMode(ScreenMode::STATS_VIEW);
+        audio_.PlayUiClick();
+    }
+
     int spDone = 0;
     for (bool b : save_.skillPoints) if (b) spDone++;
     char spTxt[64];
@@ -2522,17 +2533,18 @@ void RailGame::RenderMainMenu2D() {
     }
 
     // Controls Reference Box on Right
-    DrawRectangle(VIRTUAL_WIDTH - 380, 318, 330, 206, { 12, 18, 32, 225 });
-    DrawRectangleLines(VIRTUAL_WIDTH - 380, 318, 330, 206, SKYBLUE);
-    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 328, 17, GOLD);
-    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 350, 13, WHITE);
-    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 370, 13, WHITE);
-    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 390, 13, WHITE);
-    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 410, 13, WHITE);
-    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 430, 13, WHITE);
-    DrawText("> (Y) / L-Shift: Overdrive Boots", VIRTUAL_WIDTH - 362, 450, 13, GOLD);
-    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 470, 13, WHITE);
-    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", VIRTUAL_WIDTH - 362, 492, 12, LIGHTGRAY);
+    DrawRectangle(VIRTUAL_WIDTH - 380, 304, 330, 224, { 12, 18, 32, 225 });
+    DrawRectangleLines(VIRTUAL_WIDTH - 380, 304, 330, 224, SKYBLUE);
+    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 314, 16, GOLD);
+    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 334, 13, WHITE);
+    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 354, 13, WHITE);
+    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 374, 13, WHITE);
+    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 394, 13, WHITE);
+    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 414, 13, WHITE);
+    DrawText("> (Y) / L-Shift: Overdrive Boots", VIRTUAL_WIDTH - 362, 434, 13, GOLD);
+    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 454, 13, WHITE);
+    DrawText("> N: Skip OST Track  |  C: Career Stats", VIRTUAL_WIDTH - 362, 474, 12, SKYBLUE);
+    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", VIRTUAL_WIDTH - 362, 494, 12, LIGHTGRAY);
 
     RenderBrandingFooter2D();
 }
@@ -3022,6 +3034,40 @@ void RailGame::RenderSettings2D() {
     DrawText("DISABLED", static_cast<int>(flashOffBtn.x + 18), static_cast<int>(flashOffBtn.y + 10), 13, !save_.screenFlashes ? GOLD : LIGHTGRAY);
     if (IsButtonClicked(flashOffBtn)) { save_.screenFlashes = false; audio_.PlayUiClick(); }
 
+    // --- GAMEPLAY SOUNDTRACK JUKEBOX SELECTOR ---
+    DrawText("GAMEPLAY SOUNDTRACK JUKEBOX [N]:", 60, 456, 15, WHITE);
+    Rectangle prevTrackBtn = { 60.0f, 478.0f, 42.0f, 38.0f };
+    Rectangle nextTrackBtn = { 538.0f, 478.0f, 42.0f, 38.0f };
+    Rectangle trackCardRec = { 108.0f, 478.0f, 424.0f, 38.0f };
+
+    DrawRectangleRec(prevTrackBtn, IsRectHovered(prevTrackBtn) ? Color{ 40, 65, 100, 255 } : Color{ 20, 28, 44, 220 });
+    DrawRectangleLinesEx(prevTrackBtn, 1.5f, SKYBLUE);
+    DrawText("<", static_cast<int>(prevTrackBtn.x + 15), static_cast<int>(prevTrackBtn.y + 9), 18, WHITE);
+    if (IsButtonClicked(prevTrackBtn)) {
+        save_.musicTrackChoice = (save_.musicTrackChoice + 4) % 5;
+        audio_.SetMusicTrackPreference(save_.musicTrackChoice);
+        audio_.PlayUiClick();
+    }
+
+    DrawRectangleRec(nextTrackBtn, IsRectHovered(nextTrackBtn) ? Color{ 40, 65, 100, 255 } : Color{ 20, 28, 44, 220 });
+    DrawRectangleLinesEx(nextTrackBtn, 1.5f, SKYBLUE);
+    DrawText(">", static_cast<int>(nextTrackBtn.x + 16), static_cast<int>(nextTrackBtn.y + 9), 18, WHITE);
+    if (IsButtonClicked(nextTrackBtn)) {
+        save_.musicTrackChoice = (save_.musicTrackChoice + 1) % 5;
+        audio_.SetMusicTrackPreference(save_.musicTrackChoice);
+        audio_.PlayUiClick();
+    }
+
+    DrawRectangleRec(trackCardRec, { 16, 24, 38, 240 });
+    DrawRectangleLinesEx(trackCardRec, 1.5f, save_.musicTrackChoice == 0 ? GOLD : SKYBLUE);
+    const char* tLabel = (save_.musicTrackChoice == 0)
+        ? "AUTO-SHUFFLE ALL 4 TRACKS [DEFAULT]"
+        : audio_.GetActionTrackName(save_.musicTrackChoice - 1);
+    int tlw = MeasureText(tLabel, 12);
+    DrawText(tLabel, static_cast<int>(trackCardRec.x + (trackCardRec.width - tlw) / 2.0f), static_cast<int>(trackCardRec.y + 12), 12, save_.musicTrackChoice == 0 ? GOLD : WHITE);
+
+    DrawText("* Press [N] during gameplay to skip track instantly", 60, 524, 12, { 140, 180, 220, 200 });
+
     // --- RIGHT COLUMN: VISUALS, GAMEPAD & CONTROLS ---
     DrawText("VISUALS, CONTROLS & GAMEPAD", 650, 92, 18, SKYBLUE);
 
@@ -3087,14 +3133,11 @@ void RailGame::RenderSettings2D() {
     DrawText("LEFT-HANDED (MIRRORED)", static_cast<int>(handLeft.x + 12), static_cast<int>(handLeft.y + 11), 13, save_.leftHandedControls ? GOLD : LIGHTGRAY);
     if (IsButtonClicked(handLeft)) { save_.leftHandedControls = true; audio_.PlayUiClick(); }
 
-    // --- BOTTOM ROW: DATA RESET & BACK ---
-    DrawLine(60, 460, VIRTUAL_WIDTH - 60, 460, { 255, 255, 255, 55 });
-
-    // Clear Save Data Button
-    Rectangle resetBtn = { 60.0f, 480.0f, 320.0f, 48.0f };
+    // Clear Save Data Button (Right Column)
+    Rectangle resetBtn = { 650.0f, 468.0f, 310.0f, 42.0f };
     DrawRectangleRec(resetBtn, showResetConfirm_ ? Color{ 110, 30, 35, 255 } : Color{ 48, 20, 26, 230 });
     DrawRectangleLinesEx(resetBtn, 2.0f, RED);
-    DrawText(showResetConfirm_ ? "CONFIRM RESET PROGRESS?" : "CLEAR SAVE DATA (RESET)", static_cast<int>(resetBtn.x + 22), static_cast<int>(resetBtn.y + 15), 15, WHITE);
+    DrawText(showResetConfirm_ ? "CONFIRM RESET PROGRESS?" : "CLEAR SAVE DATA (RESET)", static_cast<int>(resetBtn.x + 18), static_cast<int>(resetBtn.y + 13), 14, WHITE);
     if (IsButtonClicked(resetBtn)) {
         if (!showResetConfirm_) {
             showResetConfirm_ = true;
@@ -3109,6 +3152,7 @@ void RailGame::RenderSettings2D() {
             fresh.targetFps = save_.targetFps;
             fresh.leftHandedControls = save_.leftHandedControls;
             fresh.swipeSensitivity = save_.swipeSensitivity;
+            fresh.musicTrackChoice = save_.musicTrackChoice;
             save_ = fresh;
             SaveProgress();
             showResetConfirm_ = false;
@@ -3116,16 +3160,19 @@ void RailGame::RenderSettings2D() {
         }
     }
     if (showResetConfirm_) {
-        Rectangle cancelReset = { 390.0f, 480.0f, 130.0f, 48.0f };
+        Rectangle cancelReset = { 975.0f, 468.0f, 110.0f, 42.0f };
         DrawRectangleRec(cancelReset, { 28, 38, 52, 240 });
         DrawRectangleLinesEx(cancelReset, 1.5f, SKYBLUE);
-        DrawText("CANCEL", static_cast<int>(cancelReset.x + 28), static_cast<int>(cancelReset.y + 15), 15, WHITE);
+        DrawText("CANCEL", static_cast<int>(cancelReset.x + 20), static_cast<int>(cancelReset.y + 13), 14, WHITE);
         if (IsButtonClicked(cancelReset)) { showResetConfirm_ = false; audio_.PlayUiClick(); }
     }
 
-    const char* bInfo = "RATCHET & CLANK: RAILFINITY  |  v1.2.0  |  SEBINY LABS ENGINE";
+    // --- BOTTOM ROW: FOOTER INFO & BACK ---
+    DrawLine(60, 545, VIRTUAL_WIDTH - 60, 545, { 255, 255, 255, 45 });
+
+    const char* bInfo = "RATCHET & CLANK: RAILFINITY  |  v1.3.0 EXPANSION  |  SEBINY LABS ENGINE";
     int biw = MeasureText(bInfo, 13);
-    DrawText(bInfo, (VIRTUAL_WIDTH - biw) / 2, 545, 13, { 140, 175, 215, 180 });
+    DrawText(bInfo, (VIRTUAL_WIDTH - biw) / 2, 555, 13, { 140, 175, 215, 180 });
 
     Rectangle backBtn = { 60.0f, 580.0f, 260.0f, 48.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
@@ -3134,6 +3181,101 @@ void RailGame::RenderSettings2D() {
     if (IsButtonClicked(backBtn) || IsKeyPressed(KEY_ESCAPE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
         SaveProgress();
         SetScreenMode(settingsPrevMode_);
+        audio_.PlayUiClick();
+    }
+}
+
+void RailGame::RenderCareerStats2D() {
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 245 });
+
+    const char* sTitle = "GALACTIC CAREER DOSSIER // LIFETIME RATCHET & CLANK TELEMETRY";
+    DrawText(sTitle, 60, 30, 24, GOLD);
+
+    char boltBuf[128];
+    std::snprintf(boltBuf, sizeof(boltBuf), "CURRENT: %d BOLTS  |  %d RARITANIUM", save_.bolts, save_.raritanium);
+    int bbw = MeasureText(boltBuf, 15);
+    DrawText(boltBuf, VIRTUAL_WIDTH - 60 - bbw, 36, 15, SKYBLUE);
+
+    DrawLine(60, 68, VIRTUAL_WIDTH - 60, 68, { 255, 255, 255, 55 });
+
+    auto DrawStatRow = [](float x, float y, float w, const char* label, const std::string& val, Color valCol) {
+        DrawText(label, static_cast<int>(x), static_cast<int>(y), 15, WHITE);
+        int vw = MeasureText(val.c_str(), 15);
+        DrawText(val.c_str(), static_cast<int>(x + w - vw), static_cast<int>(y), 15, valCol);
+        DrawLine(static_cast<int>(x), static_cast<int>(y + 24), static_cast<int>(x + w), static_cast<int>(y + 24), { 255, 255, 255, 20 });
+    };
+
+    // LEFT CARD: FLIGHT & COMBAT RECORDS
+    Rectangle leftCard = { 60.0f, 84.0f, 560.0f, 475.0f };
+    DrawRectangleRec(leftCard, { 14, 20, 36, 230 });
+    DrawRectangleLinesEx(leftCard, 2.0f, ORANGE);
+    DrawRectangle(static_cast<int>(leftCard.x), static_cast<int>(leftCard.y), static_cast<int>(leftCard.width), 34, { 38, 22, 16, 240 });
+    DrawText("FLIGHT, COMBAT & ENDURANCE RECORDS", static_cast<int>(leftCard.x + 18), static_cast<int>(leftCard.y + 9), 15, GOLD);
+
+    float sy = leftCard.y + 48.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Total Grind Distance (Lifetime):", std::to_string(save_.totalDistanceGrinded) + " m", SKYBLUE);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Best Single Run Distance:", std::to_string(save_.bestDistanceMeters) + " m", GOLD);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Best Seeded Daily Challenge:", std::to_string(save_.bestDailyMeters) + " m", GOLD);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Total Runs Launched:", std::to_string(save_.totalRunsStarted), WHITE);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Drones & Thugs Vaporized:", std::to_string(save_.totalEnemiesDestroyed), ORANGE);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Warships & Dread-Frigates Defeated:", std::to_string(save_.totalBossesDefeated), RED);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Crates & Chests Smashed:", std::to_string(save_.totalCratesSmashed), GREEN);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Overdrive Thruster Blasts Fired:", std::to_string(save_.totalOverdriveBoosts), GOLD);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Swingshot Grapples Cleared:", std::to_string(save_.totalSwingshotGrapples), GREEN);
+    sy += 38.0f;
+    DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Equipped Gadgetron Weapon:", GetWeaponCatalog()[save_.equippedWeapon].name, SKYBLUE);
+
+    // RIGHT CARD: ARSENAL & HARDWARE ACCREDITATION
+    Rectangle rightCard = { 660.0f, 84.0f, 560.0f, 475.0f };
+    DrawRectangleRec(rightCard, { 14, 20, 36, 230 });
+    DrawRectangleLinesEx(rightCard, 2.0f, SKYBLUE);
+    DrawRectangle(static_cast<int>(rightCard.x), static_cast<int>(rightCard.y), static_cast<int>(rightCard.width), 34, { 18, 28, 48, 240 });
+    DrawText("ARSENAL & HARDWARE ACCREDITATION", static_cast<int>(rightCard.x + 18), static_cast<int>(rightCard.y + 9), 15, SKYBLUE);
+
+    int wepCount = 0;
+    for (bool b : save_.unlockedWeapons) if (b) wepCount++;
+    int goldCount = 0;
+    for (bool b : save_.goldenWeapons) if (b) goldCount++;
+    int spCount = 0;
+    for (bool b : save_.skillPoints) if (b) spCount++;
+
+    sy = rightCard.y + 48.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "All-Time Titanium Bolts Collected:", std::to_string(save_.totalBoltsEarnedLifetime) + " B", GOLD);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "All-Time Raritanium Ore Mined:", std::to_string(save_.totalRaritaniumEarnedLifetime) + " Rari", SKYBLUE);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Gadgetron Weapons Owned:", std::to_string(wepCount) + " / " + std::to_string(NUM_WEAPONS), WHITE);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "24K Gold Weapons Forged:", std::to_string(goldCount) + " / " + std::to_string(NUM_WEAPONS), GOLD);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Overdrive Hoverboots Status:", save_.hoverbootsUnlocked ? "UNLOCKED & OPERATIONAL" : "LOCKED IN RARITANIUM LAB", save_.hoverbootsUnlocked ? GREEN : RED);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Galactic Skill Points Mastered:", std::to_string(spCount) + " / " + std::to_string(NUM_SKILL_POINTS), MAGENTA);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Active Nanotech Armor Suit:", ARMOR_CATALOG[save_.equippedArmor].name, PURPLE);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Equipped Clank Robotic Skin:", CLANK_SKIN_CATALOG[save_.equippedClankSkin].name, SKYBLUE);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Current Audio Soundtrack Selection:", audio_.GetCurrentActionTrackName(), ORANGE);
+    sy += 38.0f;
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Engine Runtime Platform:", "PC / ANDROID OPENGL HYBRID", LIGHTGRAY);
+
+    // Bottom Navigation Bar
+    DrawLine(60, 580, VIRTUAL_WIDTH - 60, 580, { 255, 255, 255, 45 });
+    Rectangle statsBackBtn = { 60.0f, 600.0f, 260.0f, 48.0f };
+    DrawRectangleRec(statsBackBtn, IsRectHovered(statsBackBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
+    DrawRectangleLinesEx(statsBackBtn, 2.0f, ORANGE);
+    DrawText("< BACK TO MENU [ESC]", static_cast<int>(statsBackBtn.x + 36), static_cast<int>(statsBackBtn.y + 16), 16, WHITE);
+    if (IsButtonClicked(statsBackBtn) || IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
+        SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
     }
 }

@@ -92,6 +92,7 @@ private:
     void RenderArmorWardrobe2D();
     void RenderSkillPoints2D();
     void RenderSettings2D();
+    void RenderCareerStats2D();
     void RenderPauseOverlay2D();
     void RenderGameOver2D();
     void RenderBrandingFooter2D() const;

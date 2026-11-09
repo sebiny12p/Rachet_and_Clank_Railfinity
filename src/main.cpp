@@ -10,6 +10,9 @@ int main() {
     SetTargetFPS(120);
 
     Image appIcon = LoadImage("assets/icon.png");
+    if (appIcon.data == nullptr) {
+        appIcon = LoadImage("build/assets/icon.png");
+    }
     if (appIcon.data != nullptr) {
         SetWindowIcon(appIcon);
         UnloadImage(appIcon);

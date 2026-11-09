@@ -983,9 +983,9 @@ void RailGame::HandleInput() {
             }
         }
 
-        // 1. On-Screen Touch Pause Button (Top-Right)
-        Rectangle pauseBtn = { VIRTUAL_WIDTH - 76.0f, 20.0f, 54.0f, 54.0f };
-        Rectangle pauseHitbox = { pauseBtn.x - 14.0f, pauseBtn.y - 14.0f, pauseBtn.width + 28.0f, pauseBtn.height + 28.0f };
+        // 1. On-Screen Touch Pause Button (Top-Right, aligned with HUD pause button)
+        Rectangle pauseBtn = { VIRTUAL_WIDTH - 386.0f, 20.0f, 54.0f, 54.0f };
+        Rectangle pauseHitbox = { pauseBtn.x - 16.0f, pauseBtn.y - 16.0f, pauseBtn.width + 32.0f, pauseBtn.height + 32.0f };
 
         bool pauseTriggered = (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P));
         for (const auto& np : newPresses) {

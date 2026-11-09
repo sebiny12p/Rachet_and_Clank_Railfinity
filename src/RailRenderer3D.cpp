@@ -1691,6 +1691,15 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         }
     }
 
+    // Orthogonal coordinate frame relative to aiming direction
+    Vector3 gunDir = Vector3Normalize({
+        (1.0f - aimBlend) * (-0.12f),
+        recoilKick * 0.22f - (1.0f - aimBlend) * 0.12f,
+        1.0f
+    });
+    Vector3 gunUp = Vector3Normalize({ 0.0f, 1.0f, -gunDir.y });
+    Vector3 gunRight = Vector3Normalize(Vector3CrossProduct(gunDir, gunUp));
+
     auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd, int side) {
         float s = static_cast<float>(side);
         // Upper arm (Sleeve / Armor plate + Fur)
@@ -1736,9 +1745,32 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
         // Hand & Glove
         Color handCol = (armIdx == 0) ? gloveBrn : (armIdx == 4) ? armDef.primaryColor : armorDark;
-        DrawSphere(hnd, 0.085f, handCol);
-        if (armIdx == 4) {
-            DrawSphere({ hnd.x + s * 0.03f, hnd.y, hnd.z + 0.03f }, 0.042f, armorDark); // 24K Gold knuckle crest
+        if (side == 1) {
+            // Left Hand: Relaxed athletic glove
+            DrawSphere(hnd, 0.075f, handCol);
+            DrawSphere({ hnd.x + 0.022f, hnd.y - 0.018f, hnd.z + 0.028f }, 0.034f, handCol);
+        } else {
+            // Right Hand: Articulated Lombax Combat Glove wrapping around weapon handle!
+            DrawSphere(hnd, 0.065f, handCol);
+            // Thumb gripping inward
+            Vector3 thumbTip = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, 0.028f), Vector3Scale(gunRight, 0.042f)));
+            DrawCylinderEx(hnd, thumbTip, 0.028f, 0.022f, 6, handCol);
+            // Curled fingers wrapping the front of the grip
+            for (int f = 0; f < 3; ++f) {
+                float fY = -0.012f - f * 0.024f;
+                Vector3 knuckle = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, fY), Vector3Scale(gunRight, -0.030f)));
+                Vector3 fTip    = Vector3Add(knuckle, Vector3Add(Vector3Scale(gunDir, 0.048f), Vector3Scale(gunRight, 0.038f)));
+                DrawCylinderEx(knuckle, fTip, 0.022f, 0.018f, 6, handCol);
+                DrawSphere(fTip, 0.018f, handCol);
+            }
+            // Trigger finger
+            Vector3 trigA = Vector3Add(hnd, Vector3Add(Vector3Scale(gunUp, 0.022f), Vector3Scale(gunRight, -0.028f)));
+            Vector3 trigB = Vector3Add(trigA, Vector3Scale(gunDir, 0.062f));
+            DrawCylinderEx(trigA, trigB, 0.020f, 0.016f, 6, handCol);
+
+            if (armIdx == 4) {
+                DrawSphere({ hnd.x - 0.025f, hnd.y, hnd.z + 0.025f }, 0.035f, armorDark);
+            }
         }
     };
     DrawCleanArm(leftShoulder,  leftElbow,  leftHand,  1);
@@ -1770,17 +1802,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         armorDark = GOLDEN_WEAPON_CATALOG[weaponId].goldPrimary;
         armorOrange = GOLDEN_WEAPON_CATALOG[weaponId].goldTrim;
     }
-    Vector3 gunDir = Vector3Normalize({
-        (1.0f - aimBlend) * (-0.12f),
-        recoilKick * 0.22f - (1.0f - aimBlend) * 0.12f,
-        1.0f
-    });
-    // Orthogonal coordinate frame relative to aiming direction
-    Vector3 gunUp = Vector3Normalize({ 0.0f, 1.0f, -gunDir.y });
-    Vector3 gunRight = Vector3Normalize(Vector3CrossProduct(gunDir, gunUp));
-
-    Vector3 gunBreech = Vector3Subtract(rightHand, Vector3Scale(gunDir, 0.12f));
-    Vector3 gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.78f));
+    // Elevated receiver mount sitting naturally atop Ratchet's articulated combat grip
+    Vector3 gunBreech = Vector3Add(Vector3Subtract(rightHand, Vector3Scale(gunDir, 0.08f)),
+                                  Vector3Scale(gunUp, 0.072f));
+    Vector3 gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 0.82f));
 
     if (wEnum == WeaponId::OMNIWRENCH_8000 || wrenchSwinging) {
         // --- 1. OMNIWRENCH 8000 (Machined Fluted Shaft, Ergonomic Grip, Heavy Jaws & Slash Arc) ---
@@ -1854,10 +1879,15 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         }
     } else if (wEnum == WeaponId::COMBUSTER) {
         // --- 2. COMBUSTER (Iconic Gadgetron Orange Blaster Pistol with Plasma Chamber & Vented Barrel) ---
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.72f));
-        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.18f), Vector3Scale(gunDir, -0.06f)));
-        // Ergonomic pistol grip
-        DrawCylinderEx(rightHand, gripBot, 0.042f, 0.036f, 6, armorDark);
+        gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 0.76f));
+        Vector3 gripTop = Vector3Subtract(gunBreech, Vector3Scale(gunUp, 0.035f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.16f), Vector3Scale(gunDir, -0.04f)));
+        // Seamless ergonomic pistol grip connecting receiver through Ratchet's hand
+        DrawCylinderEx(gripTop, gripBot, 0.040f, 0.034f, 6, armorDark);
+        // Gadgetron trigger guard loop
+        Vector3 guardF = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunDir, 0.058f), Vector3Scale(gunUp, 0.024f)));
+        DrawCylinderEx(Vector3Add(gripTop, Vector3Scale(gunDir, 0.025f)), guardF, 0.011f, 0.011f, 4, armorDark);
+        DrawCylinderEx(guardF, Vector3Subtract(rightHand, Vector3Scale(gunUp, 0.035f)), 0.011f, 0.011f, 4, armorDark);
 
         // Gadgetron orange receiver chassis
         DrawCylinderEx(gunBreech, Vector3Lerp(gunBreech, gunMuzzle, 0.65f), 0.095f, 0.080f, 8, { 235, 105, 20, 255 });
@@ -1884,9 +1914,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(Vector3Add(gunMuzzle, Vector3Scale(gunDir, 0.02f)), 0.020f, WHITE);
     } else if (wEnum == WeaponId::SHOCK_BLASTER) {
         // --- 3. SHOCK BLASTER (Dual-Barrel Scattergun with High-Voltage Cyan Arc Coils) ---
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.96f));
-        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.20f), Vector3Scale(gunDir, -0.08f)));
-        DrawCylinderEx(rightHand, gripBot, 0.048f, 0.042f, 6, armorDark);
+        gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 0.96f));
+        Vector3 gripTop = Vector3Subtract(gunBreech, Vector3Scale(gunUp, 0.040f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.16f), Vector3Scale(gunDir, -0.05f)));
+        DrawCylinderEx(gripTop, gripBot, 0.044f, 0.038f, 6, armorDark);
 
         // Heavy receiver housing in dark obsidian steel
         Vector3 midBreech = Vector3Lerp(gunBreech, gunMuzzle, 0.35f);
@@ -1922,9 +1953,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(barrelRightB, 0.010f, WHITE);
     } else if (wEnum == WeaponId::BUZZ_BLADES) {
         // --- 4. BUZZ BLADES (Tactical Disc Slinger with High-Speed Spinning Plasma Saw Blade) ---
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 0.82f));
-        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.18f), Vector3Scale(gunDir, -0.05f)));
-        DrawCylinderEx(rightHand, gripBot, 0.045f, 0.038f, 6, armorDark);
+        gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 0.82f));
+        Vector3 gripTop = Vector3Subtract(gunBreech, Vector3Scale(gunUp, 0.040f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.16f), Vector3Scale(gunDir, -0.04f)));
+        DrawCylinderEx(gripTop, gripBot, 0.042f, 0.036f, 6, armorDark);
 
         // Tactical Military Green Frame with Titanium Reinforcements
         Vector3 bodyMid = Vector3Lerp(gunBreech, gunMuzzle, 0.60f);
@@ -1961,9 +1993,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(prongRB, 0.020f, GREEN);
     } else if (wEnum == WeaponId::PLASMA_STRIKER) {
         // --- 5. PLASMA STRIKER (Precision Particle Accelerator Sniper with Holographic Scope) ---
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.30f));
-        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.22f), Vector3Scale(gunDir, -0.08f)));
-        DrawCylinderEx(rightHand, gripBot, 0.046f, 0.038f, 6, armorDark);
+        gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 1.30f));
+        Vector3 gripTop = Vector3Subtract(gunBreech, Vector3Scale(gunUp, 0.040f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.16f), Vector3Scale(gunDir, -0.05f)));
+        DrawCylinderEx(gripTop, gripBot, 0.042f, 0.036f, 6, armorDark);
 
         // Extended precision rifle chassis in imperial dark violet & titanium
         Vector3 midRifle = Vector3Lerp(gunBreech, gunMuzzle, 0.35f);
@@ -2006,9 +2039,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(gunMuzzle, 0.014f, WHITE);
     } else if (wEnum == WeaponId::RYNO_INFINITE) {
         // --- 6. RYNO INFINITE (Massive 6-Barrel Gatling Minigun with Central Rocket Silo) ---
-        gunMuzzle = Vector3Add(rightHand, Vector3Scale(gunDir, 1.08f));
-        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.22f), Vector3Scale(gunDir, -0.08f)));
-        DrawCylinderEx(rightHand, gripBot, 0.054f, 0.046f, 6, armorDark);
+        gunMuzzle = Vector3Add(gunBreech, Vector3Scale(gunDir, 1.08f));
+        Vector3 gripTop = Vector3Subtract(gunBreech, Vector3Scale(gunUp, 0.050f));
+        Vector3 gripBot = Vector3Add(rightHand, Vector3Add(Vector3Scale(gunUp, -0.16f), Vector3Scale(gunDir, -0.05f)));
+        DrawCylinderEx(gripTop, gripBot, 0.046f, 0.040f, 6, armorDark);
 
         // Heavy Dreadzone Battle Chassis in Scorched Crimson & 24K Gold Hazard Trim
         Vector3 midRyno = Vector3Lerp(gunBreech, gunMuzzle, 0.45f);
@@ -2482,7 +2516,7 @@ void RailGame::RenderMainMenu2D() {
     Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 185.0f, 330.0f, 52.0f };
     Rectangle btnSettings = { VIRTUAL_WIDTH - 380.0f, 243.0f, 330.0f, 52.0f };
 
-    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Dynamic 5-rail transit network (Max 3 active)", ORANGE)) {
+    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "High-Speed Planetary Grindrails", ORANGE)) {
         StartNewRun(false);
     }
 
@@ -3188,8 +3222,8 @@ void RailGame::RenderSettings2D() {
 void RailGame::RenderCareerStats2D() {
     DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 245 });
 
-    const char* sTitle = "GALACTIC CAREER DOSSIER // LIFETIME RATCHET & CLANK TELEMETRY";
-    DrawText(sTitle, 60, 30, 24, GOLD);
+    const char* sTitle = "GALACTIC CAREER DOSSIER";
+    DrawText(sTitle, 60, 32, 22, GOLD);
 
     char boltBuf[128];
     std::snprintf(boltBuf, sizeof(boltBuf), "CURRENT: %d BOLTS  |  %d RARITANIUM", save_.bolts, save_.raritanium);
@@ -3264,9 +3298,7 @@ void RailGame::RenderCareerStats2D() {
     sy += 38.0f;
     DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Equipped Clank Robotic Skin:", CLANK_SKIN_CATALOG[save_.equippedClankSkin].name, SKYBLUE);
     sy += 38.0f;
-    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Current Audio Soundtrack Selection:", audio_.GetCurrentActionTrackName(), ORANGE);
-    sy += 38.0f;
-    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Engine Runtime Platform:", "PC / ANDROID OPENGL HYBRID", LIGHTGRAY);
+    DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Current Soundtrack:", audio_.GetCurrentActionTrackName(), ORANGE);
 
     // Bottom Navigation Bar
     DrawLine(60, 580, VIRTUAL_WIDTH - 60, 580, { 255, 255, 255, 45 });

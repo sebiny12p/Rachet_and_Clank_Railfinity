@@ -115,50 +115,50 @@ inline const std::array<ArmorSuitDef, NUM_ARMOR_SUITS> ARMOR_CATALOG = {{
         "SOLANA & BOGON AVIATOR (DEFAULT)",
         "Ratchet's iconic pilot vest & leather harness. Balanced, agile, and timeless.",
         0, 0,
-        Color{ 216, 96, 26, 255 },  // Orange vest
-        Color{ 52, 60, 72, 255 },   // Dark armor brackets
-        Color{ 245, 186, 52, 255 }, // Classic fur gold
-        Color{ 58, 76, 102, 255 }   // Blue denim pants
+        Color{ 224, 98, 24, 255 },  // Solana aviator orange vest
+        Color{ 85, 48, 22, 255 },   // Rich leather harness & belt
+        Color{ 45, 225, 255, 255 }, // Glowing cyan chest badge & magnetic soles
+        Color{ 52, 72, 98, 255 }    // Bogon denim trousers
     },
     {
         "CARBONOX ARMOR",
         "GOING COMMANDO / UP YOUR ARSENAL",
         "Forged from nanotech-bonded graphite alloy. +1 Max Nanotech HP & Cyan Arc Sparks.",
         2500, 10,
-        Color{ 36, 42, 54, 255 },   // Matte graphite
-        Color{ 22, 26, 36, 255 },   // Deep obsidian trim
-        Color{ 40, 220, 255, 255 }, // Electric cyan visor & chest arc
-        Color{ 24, 30, 42, 255 }    // Reinforced carbon weave pants
+        Color{ 36, 42, 52, 255 },   // Matte graphite composite
+        Color{ 18, 22, 28, 255 },   // Deep obsidian trim
+        Color{ 0, 235, 255, 255 },  // Electric cyan nanotech power lines
+        Color{ 26, 32, 42, 255 }    // Reinforced carbon weave
     },
     {
         "INFERNOX ARMOR",
         "MEGACORP THERMAL WEAPONS LAB",
         "Active volcanic core plates. Radiates fiery magma embers & magnetizes crates.",
         4500, 15,
-        Color{ 185, 48, 16, 255 },  // Scorched molten crimson
-        Color{ 42, 22, 18, 255 },   // Basalt trim
-        Color{ 255, 150, 24, 255 }, // Molten lava glow seams & visor
-        Color{ 35, 22, 20, 255 }    // Ashen thermal weave
+        Color{ 175, 40, 16, 255 },  // Scorched molten crimson
+        Color{ 38, 24, 22, 255 },   // Basalt heat shield trim
+        Color{ 255, 145, 20, 255 }, // Active volcanic magma core glow
+        Color{ 32, 22, 20, 255 }    // Ashen thermal weave
     },
     {
         "DEADLOCKED MARAUDER",
         "DREADZONE COMBAT ARENA",
         "Heavy spiked gladiator battlegear. 1.25x Wrench Melee Damage & Shockwaves.",
         6500, 25,
-        Color{ 175, 28, 36, 255 },  // Blood red combat plates
-        Color{ 24, 24, 28, 255 },   // Dreadzone gunmetal
-        Color{ 255, 42, 42, 255 },  // Crimson combat slit visor
-        Color{ 32, 32, 38, 255 }    // Industrial kevlar
+        Color{ 170, 26, 32, 255 },  // Dreadzone battle crimson
+        Color{ 40, 42, 48, 255 },   // Industrial gunmetal steel
+        Color{ 255, 36, 36, 255 },  // Combat targeting laser visor
+        Color{ 26, 26, 30, 255 }    // Heavy kevlar combat trousers
     },
     {
         "LOMBAX PRAETORIAN",
         "ANCIENT DIMENSIONAL ARCHIVE",
-        "Ceremonial pearl-gold royal vestments. 1.5x Bolt Multiplier Escalation.",
+        "Ceremonial pearl-gold royal regalia. 1.5x Bolt Multiplier Escalation.",
         9000, 35,
-        Color{ 240, 196, 75, 255 }, // 24K Royal Gold
-        Color{ 75, 36, 105, 255 },  // Imperial Amethyst Purple
-        Color{ 210, 110, 255, 255 },// Neon violet psionic visor
-        Color{ 230, 235, 248, 255 } // Royal pearl silk trousers
+        Color{ 238, 242, 250, 255 },// Polished Royal Pearl & Platinum
+        Color{ 230, 180, 50, 255 }, // Ornate 24K Gold Filigree & Winged Crests
+        Color{ 200, 90, 255, 255 }, // Luminescent Psionic Violet Matrix
+        Color{ 28, 24, 48, 255 }    // Imperial Amethyst Velvet Trousers
     }
 }};
 

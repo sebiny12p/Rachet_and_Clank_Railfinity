@@ -783,13 +783,16 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Vector3 rightFoot = { pos.x - 0.13f, pos.y + 0.12f + jumpTuck * 0.82f - legSway, pos.z - (sliding ? 0.28f : 0.20f) };
 
     auto DrawGrindBoot = [&](Vector3 fPos) {
+        Color bBase = (armIdx == 0) ? chromeSilv : (armIdx == 4) ? armDef.primaryColor : armorDark;
+        Color bCap  = (armIdx == 0) ? armorOrange : (armIdx == 4) ? armorDark : armorOrange;
         DrawCylinderEx({ fPos.x, fPos.y - 0.06f, fPos.z - 0.15f },
-                       { fPos.x, fPos.y - 0.06f, fPos.z + 0.18f }, 0.120f, 0.100f, 8, (armIdx == 0) ? chromeSilv : armorDark);
-        DrawSphere({ fPos.x, fPos.y - 0.04f, fPos.z + 0.16f }, 0.105f, (armIdx == 0) ? chromeSilv : armorOrange);
+                       { fPos.x, fPos.y - 0.06f, fPos.z + 0.18f }, 0.120f, 0.100f, 8, bBase);
+        DrawSphere({ fPos.x, fPos.y - 0.04f, fPos.z + 0.16f }, 0.105f, bCap);
         DrawCylinderEx({ fPos.x, fPos.y - 0.02f, fPos.z - 0.03f },
-                       { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, armorOrange);
+                       { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, (armIdx == 4) ? armorDark : armorOrange);
         // Magnetic rail lock soles glow with each suit's energy signature!
         DrawCube({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.22f, 0.05f, 0.36f, visorCol);
+        DrawCubeWires({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.225f, 0.052f, 0.365f, (armIdx == 4) ? armorDark : WHITE);
     };
     DrawGrindBoot(leftFoot);
     DrawGrindBoot(rightFoot);
@@ -813,6 +816,25 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // =========================================================================
     DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.04f, pelvisPos.z },
                    { pelvisPos.x, pelvisPos.y + 0.07f, pelvisPos.z }, 0.21f, 0.20f, 8, leatherBrn);
+    // Custom Belt Buckle / Power Conduit per Skin
+    Vector3 bucklePos = { pelvisPos.x, pelvisPos.y + 0.015f, pelvisPos.z + 0.21f };
+    if (armIdx == 0) { // Classic: Silver aviator pilot buckle
+        DrawCube(bucklePos, 0.08f, 0.06f, 0.02f, chromeBright);
+        DrawCubeWires(bucklePos, 0.082f, 0.062f, 0.022f, armorDark);
+    } else if (armIdx == 1) { // Carbonox: Nanotech graphite power pack with cyan energy core
+        DrawCube(bucklePos, 0.09f, 0.06f, 0.025f, armorDark);
+        DrawCube({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.06f, 0.02f, 0.015f, visorCol);
+    } else if (armIdx == 2) { // Infernox: Volcanic basalt core with magma ember
+        DrawCube(bucklePos, 0.09f, 0.06f, 0.025f, armorDark);
+        DrawSphere({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.025f, visorCol);
+    } else if (armIdx == 3) { // Marauder: Heavy Dreadzone combat buckle with combat slit
+        DrawCube(bucklePos, 0.10f, 0.07f, 0.03f, armorDark);
+        DrawCube({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.07f, 0.02f, 0.015f, visorCol);
+    } else if (armIdx == 4) { // Lombax Praetorian: Ornate 24K gold royal crest with psionic violet gem
+        DrawSphere(bucklePos, 0.045f, armorDark);
+        DrawSphere({ bucklePos.x, bucklePos.y, bucklePos.z + 0.01f }, 0.026f, visorCol);
+        DrawSphere({ bucklePos.x - 0.005f, bucklePos.y + 0.005f, bucklePos.z + 0.018f }, 0.009f, WHITE);
+    }
 
     // Whipping Striped Lombax Tail
     Vector3 t0 = { pelvisPos.x, pelvisPos.y - 0.02f, pelvisPos.z - 0.16f };
@@ -830,17 +852,58 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     // Slim, Athletic Lombax Torso & Fitted Armor
     shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.44f, pelvisPos.z + recoilLeanZ };
-    DrawCylinderEx(pelvisPos, shoulderCenter, 0.19f, 0.24f, 8, armorOrange);
-    // Form-fitting leather harness / vest across chest
+    DrawCylinderEx(pelvisPos, shoulderCenter, 0.19f, 0.24f, 8, (armIdx == 4) ? pantsBlue : armorOrange);
+
+    // Form-fitting vest / tunic across chest
+    Color vestCol = (armIdx == 0) ? leatherBrn : (armIdx == 4) ? armDef.primaryColor : armorOrange;
     DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
-                   { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, leatherBrn);
+                   { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, vestCol);
+
+    if (armIdx == 4) {
+        // Imperial 24K Gold ceremonial diagonal sash across chest & waist
+        DrawCylinderEx({ shoulderCenter.x - 0.12f, shoulderCenter.y + 0.02f, shoulderCenter.z + 0.11f },
+                       { pelvisPos.x + 0.10f, pelvisPos.y + 0.06f, pelvisPos.z + 0.10f }, 0.032f, 0.032f, 6, armorDark);
+        DrawSphere({ shoulderCenter.x - 0.12f, shoulderCenter.y + 0.02f, shoulderCenter.z + 0.12f }, 0.026f, visorCol);
+    }
+
+    // Custom Chestplate Insignia & Energetic Circuitry per Skin
+    Vector3 chestCenter = { shoulderCenter.x, shoulderCenter.y - 0.06f, shoulderCenter.z + 0.14f };
+    if (armIdx == 0) {
+        // Classic Commando: Iconic Tools of Destruction glowing cyan chest badge
+        DrawCube(chestCenter, 0.11f, 0.06f, 0.025f, armorDark);
+        DrawCube({ chestCenter.x, chestCenter.y, chestCenter.z + 0.012f }, 0.085f, 0.038f, 0.015f, visorCol);
+    } else if (armIdx == 1) {
+        // Carbonox: Glowing cyan nanotech power circuit lines across ribs
+        for (int rib = -1; rib <= 1; ++rib) {
+            float ry = chestCenter.y + rib * 0.05f;
+            DrawCube({ chestCenter.x, ry, chestCenter.z + 0.01f }, 0.18f - std::abs(rib) * 0.03f, 0.018f, 0.015f, visorCol);
+        }
+    } else if (armIdx == 2) {
+        // Infernox: Active Volcanic Magma Core
+        DrawSphere(chestCenter, 0.052f, armorDark);
+        DrawSphere({ chestCenter.x, chestCenter.y, chestCenter.z + 0.01f }, 0.040f, visorCol);
+        DrawSphere({ chestCenter.x, chestCenter.y, chestCenter.z + 0.02f }, 0.020f, GOLD);
+    } else if (armIdx == 3) {
+        // Deadlocked Marauder: Dreadzone combat chestplate with red laser slit
+        DrawCube(chestCenter, 0.14f, 0.08f, 0.035f, armorDark);
+        DrawCube({ chestCenter.x, chestCenter.y, chestCenter.z + 0.015f }, 0.11f, 0.022f, 0.015f, visorCol);
+    } else if (armIdx == 4) {
+        // Lombax Praetorian: Royal pearl breastplate with 24K gold filigree wings & faceted purple matrix
+        DrawCube(chestCenter, 0.22f, 0.14f, 0.032f, armorOrange); // Pearl white plate
+        DrawCubeWires(chestCenter, 0.225f, 0.145f, 0.035f, armorDark); // Gold filigree border
+        DrawCylinderEx({ chestCenter.x - 0.12f, chestCenter.y + 0.04f, chestCenter.z },
+                       { chestCenter.x + 0.12f, chestCenter.y + 0.04f, chestCenter.z }, 0.022f, 0.022f, 6, armorDark);
+        DrawSphere({ chestCenter.x, chestCenter.y - 0.01f, chestCenter.z + 0.020f }, 0.042f, visorCol);
+        DrawSphere({ chestCenter.x - 0.007f, chestCenter.y + 0.007f, chestCenter.z + 0.032f }, 0.014f, WHITE);
+    }
+
     // Neck collar & base
     Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y - 0.02f, shoulderCenter.z + 0.02f };
     if (!ratchetModelLoaded_) {
         neckTop.y = shoulderCenter.y + 0.14f;
         DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
     } else {
-        // Form-fitting leather vest collar surrounding the base of the neck
+        // Form-fitting collar surrounding the base of the neck
         DrawCylinderEx(shoulderCenter, { shoulderCenter.x, shoulderCenter.y + 0.04f, shoulderCenter.z + 0.01f }, 0.155f, 0.135f, 8, leatherBrn);
     }
 
@@ -848,18 +911,27 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     for (int side = -1; side <= 1; side += 2) {
         float s = static_cast<float>(side);
         Vector3 pP = { shoulderCenter.x + s * 0.245f, shoulderCenter.y + 0.04f, shoulderCenter.z };
-        if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
+        if (armIdx == 0) {
+            // Classic Commando: Sleek leather shoulder harness buckle
+            DrawSphere(pP, 0.075f, armorOrange);
+            DrawCube({ pP.x + s * 0.02f, pP.y, pP.z }, 0.04f, 0.06f, 0.08f, armorDark);
+        } else if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
             DrawCube(pP, 0.14f, 0.10f, 0.15f, armorOrange);
             DrawCubeWires(pP, 0.145f, 0.105f, 0.155f, visorCol);
         } else if (armIdx == 2) { // Infernox: Molten basalt pauldrons with magma seams
             DrawSphere(pP, 0.095f, armorOrange);
             DrawSphereWires(pP, 0.098f, 6, 6, visorCol);
-        } else if (armIdx == 3) { // Deadlocked Marauder: Combat spikes on shoulder guards
+            DrawSphere({ pP.x + s * 0.03f, pP.y + 0.02f, pP.z }, 0.045f, visorCol);
+        } else if (armIdx == 3) { // Deadlocked Marauder: Dual combat spikes on shoulder guards
             DrawSphere(pP, 0.092f, armorOrange);
-            DrawCylinderEx(pP, { pP.x + s * 0.11f, pP.y + 0.08f, pP.z }, 0.038f, 0.010f, 6, armorDark);
-        } else if (armIdx == 4) { // Lombax Praetorian: Royal curved gold pauldrons
-            DrawSphere(pP, 0.100f, armorOrange);
-            DrawSphereWires(pP, 0.104f, 6, 6, armorDark);
+            DrawCylinderEx(pP, { pP.x + s * 0.12f, pP.y + 0.10f, pP.z + 0.03f }, 0.032f, 0.006f, 6, armorDark);
+            DrawCylinderEx(pP, { pP.x + s * 0.13f, pP.y + 0.02f, pP.z - 0.04f }, 0.028f, 0.006f, 6, armorDark);
+        } else if (armIdx == 4) { // Lombax Praetorian: Regal Winged Royal Gold & Pearl Pauldrons
+            DrawSphere(pP, 0.095f, armorOrange); // Pearl white plate
+            Vector3 wingTip = { pP.x + s * 0.14f, pP.y + 0.12f, pP.z - 0.02f };
+            DrawCylinderEx(pP, wingTip, 0.042f, 0.012f, 6, armorDark); // 24K gold winged crest
+            DrawSphere({ pP.x + s * 0.04f, pP.y + 0.05f, pP.z + 0.03f }, 0.028f, visorCol); // Psionic jewel
+            DrawSphere({ pP.x + s * 0.04f, pP.y + 0.05f, pP.z + 0.038f }, 0.010f, WHITE);
         }
     }
 
@@ -1062,23 +1134,37 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         DrawSphere(stemTip, redRadius * 0.45f, redCore);
     }
 
-    // --- H. Articulated Segmented Robot Arms Wrapping Over Ratchet's Shoulders ---
-    Vector3 clankLShoulder = { clankPos.x + 0.19f, clankPos.y + 0.14f, clankPos.z + 0.02f };
-    Vector3 clankRShoulder = { clankPos.x - 0.19f, clankPos.y + 0.14f, clankPos.z + 0.02f };
-    Vector3 clankLElbow    = { clankPos.x + 0.22f, clankPos.y + 0.08f, clankPos.z + 0.08f };
-    Vector3 clankRElbow    = { clankPos.x - 0.22f, clankPos.y + 0.08f, clankPos.z + 0.08f };
-    Vector3 clankLHand     = { shoulderCenter.x + 0.17f, shoulderCenter.y + 0.03f, shoulderCenter.z + 0.10f };
-    Vector3 clankRHand     = { shoulderCenter.x - 0.17f, shoulderCenter.y + 0.03f, shoulderCenter.z + 0.10f };
+    // --- H. Clank's Canonical Backpack Form: Stowed Arms & Dual Shoulder Harness Straps ---
+    // 1. Clank's arms resting neatly folded along his torso flanks (Canonical backpack mode)
+    for (int side = -1; side <= 1; side += 2) {
+        float s = static_cast<float>(side);
+        Vector3 clankShoulder = { clankPos.x + s * 0.18f, clankPos.y + 0.10f, clankPos.z };
+        Vector3 clankElbow    = { clankPos.x + s * 0.19f, clankPos.y - 0.08f, clankPos.z };
+        Vector3 clankWrist    = { clankPos.x + s * 0.15f, clankPos.y - 0.12f, clankPos.z - 0.03f };
 
-    DrawCylinderEx(clankLShoulder, clankLElbow, 0.038f, 0.032f, 6, chromeSilv);
-    DrawCylinderEx(clankRShoulder, clankRElbow, 0.038f, 0.032f, 6, chromeSilv);
-    DrawSphere(clankLElbow, 0.042f, armorDark);
-    DrawSphere(clankRElbow, 0.042f, armorDark);
-    DrawCylinderEx(clankLElbow, clankLHand, 0.032f, 0.028f, 6, chromeSilv);
-    DrawCylinderEx(clankRElbow, clankRHand, 0.032f, 0.028f, 6, chromeSilv);
-    // Articulated hands resting on Ratchet's front shoulder harness straps
-    DrawSphere(clankLHand, 0.042f, armorDark);
-    DrawSphere(clankRHand, 0.042f, armorDark);
+        DrawSphere(clankShoulder, 0.036f, armorDark);
+        DrawCylinderEx(clankShoulder, clankElbow, 0.032f, 0.028f, 6, chromeSilv);
+        DrawSphere(clankElbow, 0.034f, armorDark);
+        DrawCylinderEx(clankElbow, clankWrist, 0.028f, 0.024f, 6, chromeSilv);
+        DrawSphere(clankWrist, 0.030f, chromeBright); // Folded robot hand tucked against chassis
+    }
+
+    // 2. Heavy-duty backpack harness straps securing Clank to Ratchet's shoulders & chest
+    Color harnessStrapCol = (armIdx == 0) ? Color{ 62, 38, 20, 255 } : (armIdx == 4) ? Color{ 48, 38, 62, 255 } : armorDark;
+    for (int side = -1; side <= 1; side += 2) {
+        float s = static_cast<float>(side);
+        Vector3 strapBack = { clankPos.x + s * 0.13f, clankPos.y + 0.08f, clankPos.z + 0.04f };
+        Vector3 strapTop  = { shoulderCenter.x + s * 0.13f, shoulderCenter.y + 0.05f, shoulderCenter.z };
+        Vector3 strapFront= { chestCenter.x + s * 0.12f, chestCenter.y + 0.02f, chestCenter.z + 0.08f };
+
+        // Rear strap from backpack to shoulder top
+        DrawCylinderEx(strapBack, strapTop, 0.028f, 0.030f, 6, harnessStrapCol);
+        // Front strap from shoulder top to chest harness anchor
+        DrawCylinderEx(strapTop, strapFront, 0.030f, 0.026f, 6, harnessStrapCol);
+        // Polished alloy buckle & clamp on top of each shoulder
+        DrawCube(strapTop, 0.065f, 0.025f, 0.050f, (armIdx == 4) ? armorDark : chromeBright);
+        DrawCubeWires(strapTop, 0.068f, 0.028f, 0.052f, armorDark);
+    }
 
     // --- I. Procedural Clank Heli-Pack Deployment (Smooth mechanical unfolding - NO POP-IN!) ---
     if (deploy > 0.008f) {
@@ -1312,12 +1398,16 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             DrawSphere({ comPos.x + s * 0.016f, comPos.y, comPos.z + 0.012f }, 0.020f, GOLD);
         }
     } else if (armIdx == 4) {
-        // Lombax Praetorian: Royal golden diadem circlet on upper brow with purple psionic gem
+        // Lombax Praetorian: Imperial 24K Gold Lombax diadem with winged crests & purple psionic jewel
         DrawCylinderEx({ headPos.x - 0.16f, headPos.y + 0.155f, headPos.z + 0.16f },
-                       { headPos.x + 0.16f, headPos.y + 0.155f, headPos.z + 0.16f }, 0.018f, 0.018f, 6, GOLD);
-        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.235f }, 0.030f, armorDark);
-        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.245f }, 0.022f, visorCol);
-        DrawSphere({ headPos.x - 0.006f, headPos.y + 0.175f, headPos.z + 0.252f }, 0.008f, WHITE);
+                       { headPos.x + 0.16f, headPos.y + 0.155f, headPos.z + 0.16f }, 0.020f, 0.020f, 6, armorDark);
+        DrawCylinderEx({ headPos.x - 0.15f, headPos.y + 0.155f, headPos.z + 0.16f },
+                       { headPos.x - 0.22f, headPos.y + 0.22f, headPos.z + 0.12f }, 0.018f, 0.006f, 4, armorDark);
+        DrawCylinderEx({ headPos.x + 0.15f, headPos.y + 0.155f, headPos.z + 0.16f },
+                       { headPos.x + 0.22f, headPos.y + 0.22f, headPos.z + 0.12f }, 0.018f, 0.006f, 4, armorDark);
+        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.235f }, 0.032f, armorDark);
+        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.245f }, 0.024f, visorCol);
+        DrawSphere({ headPos.x - 0.006f, headPos.y + 0.175f, headPos.z + 0.252f }, 0.009f, WHITE);
     }
 
     // =========================================================================
@@ -1383,14 +1473,58 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         }
     }
 
-    auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd) {
-        DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, furGold);
-        DrawSphere(elb, 0.068f, furGold);
-        DrawCylinderEx(elb, hnd, 0.068f, 0.082f, 8, leatherBrn);
-        DrawSphere(hnd, 0.085f, gloveBrn);
+    auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd, int side) {
+        float s = static_cast<float>(side);
+        // Upper arm (Sleeve / Armor plate + Fur)
+        Color sleeveCol = (armIdx == 0) ? furGold : (armIdx == 4) ? pantsBlue : armorOrange;
+        DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, sleeveCol);
+        // Sleeve cuff / shoulder bracket
+        DrawCylinderEx(sh, Vector3Lerp(sh, elb, 0.35f), 0.078f, 0.074f, 8, (armIdx == 0) ? armorOrange : armorDark);
+        DrawSphere(elb, 0.068f, (armIdx == 0) ? furGold : (armIdx == 4) ? armorDark : armorDark);
+
+        // Forearm Gauntlet / Bracer
+        Color forearmCol = (armIdx == 0) ? leatherBrn : (armIdx == 4) ? armDef.primaryColor : (armIdx == 1) ? armorOrange : armorDark;
+        DrawCylinderEx(elb, hnd, 0.068f, 0.082f, 8, forearmCol);
+
+        // Custom gauntlet accents per skin
+        Vector3 midArm = Vector3Lerp(elb, hnd, 0.50f);
+        if (armIdx == 0) {
+            // Classic: Aviator bracer leather strap ring with brass buckle
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.38f), Vector3Lerp(elb, hnd, 0.46f), 0.075f, 0.077f, 8, armorDark);
+            DrawSphere({ midArm.x + s * 0.045f, midArm.y, midArm.z }, 0.016f, GOLD);
+        } else if (armIdx == 1) {
+            // Carbonox: Glowing cyan nanotech LED strip along outer arm
+            Vector3 ledP = { midArm.x + s * 0.065f, midArm.y, midArm.z };
+            DrawSphere(ledP, 0.022f, visorCol);
+            DrawSphere(ledP, 0.010f, WHITE);
+        } else if (armIdx == 2) {
+            // Infernox: Glowing molten magma vent along basalt heat bracer
+            Vector3 magP = { midArm.x + s * 0.065f, midArm.y, midArm.z };
+            DrawSphere(magP, 0.026f, visorCol);
+            DrawSphere({ magP.x, magP.y, magP.z + 0.01f }, 0.012f, GOLD);
+        } else if (armIdx == 3) {
+            // Deadlocked Marauder: Spiked gladiator forearm plate
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.25f), Vector3Lerp(elb, hnd, 0.65f), 0.082f, 0.088f, 8, armorOrange);
+            Vector3 spk = { midArm.x + s * 0.075f, midArm.y, midArm.z };
+            DrawCylinderEx(spk, { spk.x + s * 0.045f, spk.y + 0.02f, spk.z }, 0.016f, 0.004f, 4, armorDark);
+        } else if (armIdx == 4) {
+            // Lombax Praetorian: Dual 24K Gold filigree bands & glowing violet psionic matrix gem
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.28f), Vector3Lerp(elb, hnd, 0.40f), 0.078f, 0.080f, 8, armorDark);
+            DrawCylinderEx(Vector3Lerp(elb, hnd, 0.60f), Vector3Lerp(elb, hnd, 0.72f), 0.084f, 0.086f, 8, armorDark);
+            Vector3 gemP = { midArm.x + s * 0.065f, midArm.y, midArm.z };
+            DrawSphere(gemP, 0.024f, visorCol);
+            DrawSphere({ gemP.x + s * 0.005f, gemP.y, gemP.z }, 0.010f, WHITE);
+        }
+
+        // Hand & Glove
+        Color handCol = (armIdx == 0) ? gloveBrn : (armIdx == 4) ? armDef.primaryColor : armorDark;
+        DrawSphere(hnd, 0.085f, handCol);
+        if (armIdx == 4) {
+            DrawSphere({ hnd.x + s * 0.03f, hnd.y, hnd.z + 0.03f }, 0.042f, armorDark); // 24K Gold knuckle crest
+        }
     };
-    DrawCleanArm(leftShoulder,  leftElbow,  leftHand);
-    DrawCleanArm(rightShoulder, rightElbow, rightHand);
+    DrawCleanArm(leftShoulder,  leftElbow,  leftHand,  1);
+    DrawCleanArm(rightShoulder, rightElbow, rightHand, -1);
 
     // Dynamic right-hand positioning for weapon swing/aiming across both 3D mesh and fallback
     bool wrenchSwinging = (wrenchTimer > 0.0f);
@@ -1885,11 +2019,12 @@ void RailGame::RenderMainMenu2D() {
 
 void RailGame::RenderGadgetronVendor2D() {
     DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
-    DrawText("GADGETRON WEAPONS VENDOR // ARSENAL & OMEGA UPGRADES", 60, 26, 26, GOLD);
+    DrawText("GADGETRON WEAPONS VENDOR", 60, 26, 26, GOLD);
 
     char curr[96];
     std::snprintf(curr, sizeof(curr), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
-    DrawText(curr, VIRTUAL_WIDTH - 420, 30, 20, SKYBLUE);
+    int cw = MeasureText(curr, 20);
+    DrawText(curr, VIRTUAL_WIDTH - cw - 60, 30, 20, SKYBLUE);
 
     const auto& cat = GetWeaponCatalog();
     for (int i = 0; i < static_cast<int>(NUM_WEAPONS); ++i) {
@@ -1974,11 +2109,12 @@ void RailGame::RenderGadgetronVendor2D() {
 
 void RailGame::RenderRaritaniumLab2D() {
     DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
-    DrawText("RARITANIUM ENGINEERING LAB // ARMOR & GADGET MODS", 60, 40, 28, SKYBLUE);
+    DrawText("RARITANIUM ENGINEERING LAB", 60, 40, 26, SKYBLUE);
 
     char curr[96];
     std::snprintf(curr, sizeof(curr), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
-    DrawText(curr, VIRTUAL_WIDTH - 420, 46, 20, GOLD);
+    int cw = MeasureText(curr, 20);
+    DrawText(curr, VIRTUAL_WIDTH - cw - 60, 44, 20, GOLD);
 
     auto DrawModCard = [&](int idx, const char* title, const char* desc, int& lvl, int maxLvl, int baseBoltCost) {
         Rectangle r = { 60.0f + (idx % 2) * 585.0f, 110.0f + (idx / 2) * 210.0f, 565.0f, 185.0f };

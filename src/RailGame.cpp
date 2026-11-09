@@ -937,6 +937,10 @@ void RailGame::HandleInput() {
         audio_.ToggleMute();
     }
 
+    if (IsKeyPressed(KEY_F11) || (IsKeyDown(KEY_LEFT_ALT) && IsKeyPressed(KEY_ENTER))) {
+        ToggleFullscreen();
+    }
+
     if (mode_ == ScreenMode::PLAYING) {
         // Collect new touch points & mouse clicks
         struct TouchEvent {

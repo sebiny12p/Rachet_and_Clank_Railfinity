@@ -2522,16 +2522,17 @@ void RailGame::RenderMainMenu2D() {
     }
 
     // Controls Reference Box on Right
-    DrawRectangle(VIRTUAL_WIDTH - 380, 325, 330, 200, { 12, 18, 32, 225 });
-    DrawRectangleLines(VIRTUAL_WIDTH - 380, 325, 330, 200, SKYBLUE);
-    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 337, 17, GOLD);
-    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 362, 13, WHITE);
-    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 384, 13, WHITE);
-    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 406, 13, WHITE);
-    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 428, 13, WHITE);
-    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 450, 13, WHITE);
-    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 472, 13, WHITE);
-    DrawText("> START / ESC: Pause Telemetry", VIRTUAL_WIDTH - 362, 494, 13, LIGHTGRAY);
+    DrawRectangle(VIRTUAL_WIDTH - 380, 318, 330, 206, { 12, 18, 32, 225 });
+    DrawRectangleLines(VIRTUAL_WIDTH - 380, 318, 330, 206, SKYBLUE);
+    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 328, 17, GOLD);
+    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 350, 13, WHITE);
+    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 370, 13, WHITE);
+    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 390, 13, WHITE);
+    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 410, 13, WHITE);
+    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 430, 13, WHITE);
+    DrawText("> (Y) / L-Shift: Overdrive Boots", VIRTUAL_WIDTH - 362, 450, 13, GOLD);
+    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 470, 13, WHITE);
+    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", VIRTUAL_WIDTH - 362, 492, 12, LIGHTGRAY);
 
     RenderBrandingFooter2D();
 }

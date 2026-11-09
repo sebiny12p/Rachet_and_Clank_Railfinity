@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <ctime>
 #include <fstream>
+#include <vector>
 
 namespace Railfinity {
 
@@ -353,19 +354,42 @@ const char* RailGame::GetSectorName(GalaxySector s) const {
 }
 
 Vector2 RailGame::GetVirtualMouse() const {
-    Vector2 m = GetMousePosition();
+    return ToVirtualCoords(GetMousePosition());
+}
+
+Vector2 RailGame::ToVirtualCoords(Vector2 screenPos) const {
     float sw = static_cast<float>(GetScreenWidth());
     float sh = static_cast<float>(GetScreenHeight());
     if (sw <= 0.0f || sh <= 0.0f) return { 0.0f, 0.0f };
-    return { m.x * (VIRTUAL_WIDTH / sw), m.y * (VIRTUAL_HEIGHT / sh) };
+    return { screenPos.x * (VIRTUAL_WIDTH / sw), screenPos.y * (VIRTUAL_HEIGHT / sh) };
 }
 
 bool RailGame::IsRectHovered(Rectangle r) const {
-    return CheckCollisionPointRec(GetVirtualMouse(), r);
+    if (CheckCollisionPointRec(GetVirtualMouse(), r)) return true;
+    int tc = GetTouchPointCount();
+    for (int i = 0; i < tc; ++i) {
+        if (CheckCollisionPointRec(ToVirtualCoords(GetTouchPosition(i)), r)) return true;
+    }
+    return false;
 }
 
 bool RailGame::IsButtonClicked(Rectangle r) const {
-    return IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetVirtualMouse(), r);
+    Rectangle padded = { r.x - 10.0f, r.y - 10.0f, r.width + 20.0f, r.height + 20.0f };
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetVirtualMouse(), padded)) {
+        return true;
+    }
+    int tc = GetTouchPointCount();
+    for (int i = 0; i < tc; ++i) {
+        int tid = GetTouchPointId(i);
+        bool isNew = true;
+        for (int p = 0; p < prevTouchCount_; ++p) {
+            if (prevTouchIds_[p] == tid) { isNew = false; break; }
+        }
+        if (isNew && CheckCollisionPointRec(ToVirtualCoords(GetTouchPosition(i)), padded)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void RailGame::SwitchLane(int delta) {
@@ -805,12 +829,51 @@ void RailGame::TriggerBossDropship() {
 }
 
 void RailGame::HandleInput() {
+    float frameDt = GetFrameTime();
+    if (touchFeedbackJump_ > 0.0f) touchFeedbackJump_ -= frameDt;
+    if (touchFeedbackFire_ > 0.0f) touchFeedbackFire_ -= frameDt;
+    if (touchFeedbackPause_ > 0.0f) touchFeedbackPause_ -= frameDt;
+
     if (IsKeyPressed(KEY_M)) {
         audio_.ToggleMute();
     }
 
     if (mode_ == ScreenMode::PLAYING) {
-        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+        // Collect new touch points & mouse clicks
+        struct TouchEvent {
+            Vector2 pos;
+        };
+        std::vector<TouchEvent> newPresses;
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            newPresses.push_back({ GetVirtualMouse() });
+        }
+
+        int tc = GetTouchPointCount();
+        for (int i = 0; i < tc; ++i) {
+            int tid = GetTouchPointId(i);
+            bool isNew = true;
+            for (int p = 0; p < prevTouchCount_; ++p) {
+                if (prevTouchIds_[p] == tid) { isNew = false; break; }
+            }
+            if (isNew) {
+                newPresses.push_back({ ToVirtualCoords(GetTouchPosition(i)) });
+            }
+        }
+
+        // 1. On-Screen Touch Pause Button (Top-Right)
+        Rectangle pauseBtn = { VIRTUAL_WIDTH - 76.0f, 20.0f, 54.0f, 54.0f };
+        Rectangle pauseHitbox = { pauseBtn.x - 14.0f, pauseBtn.y - 14.0f, pauseBtn.width + 28.0f, pauseBtn.height + 28.0f };
+
+        bool pauseTriggered = (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P));
+        for (const auto& np : newPresses) {
+            if (CheckCollisionPointRec(np.pos, pauseHitbox)) {
+                touchFeedbackPause_ = 0.25f;
+                pauseTriggered = true;
+                break;
+            }
+        }
+        if (pauseTriggered) {
             mode_ = ScreenMode::PAUSED;
             audio_.PlayUiClick();
             return;
@@ -825,7 +888,7 @@ void RailGame::HandleInput() {
             TriggerWrenchSlide();
         }
 
-        // Weapon Switching (1..5 or Q/E or Mouse Wheel)
+        // Weapon Switching (1..6 or Q/E or Mouse Wheel)
         for (int k = 0; k < static_cast<int>(NUM_WEAPONS); ++k) {
             if (IsKeyPressed(KEY_ONE + k) && save_.unlockedWeapons[k]) {
                 save_.equippedWeapon = k;
@@ -838,100 +901,96 @@ void RailGame::HandleInput() {
         if (wheel > 0.1f) CycleEquippedWeapon(-1);
         if (wheel < -0.1f) CycleEquippedWeapon(+1);
 
-        // Shooting (F, J, Enter, or Left Mouse / Touch Tap)
+        // Shooting (F, J, Enter)
         if (IsKeyDown(KEY_F) || IsKeyDown(KEY_J) || IsKeyDown(KEY_ENTER)) {
             TriggerFireWeapon();
         }
 
-        // Mobile & Mouse On-Screen Action Controls + Swipe Gestures
-        Vector2 vm = GetVirtualMouse();
-        Rectangle btnJumpRec = { VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
-        Rectangle btnFireRec = { VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+        // 2. Action Buttons & Quick-Select Weapon Hotbar Hitboxes
+        Rectangle btnJumpRec = { VIRTUAL_WIDTH - 134.0f, VIRTUAL_HEIGHT - 216.0f, 102.0f, 102.0f };
+        Rectangle btnFireRec = { VIRTUAL_WIDTH - 248.0f, VIRTUAL_HEIGHT - 208.0f, 88.0f, 88.0f };
+        float pad = 14.0f;
+        Rectangle jumpHitbox = { btnJumpRec.x - pad, btnJumpRec.y - pad, btnJumpRec.width + pad * 2.0f, btnJumpRec.height + pad * 2.0f };
+        Rectangle fireHitbox = { btnFireRec.x - pad, btnFireRec.y - pad, btnFireRec.width + pad * 2.0f, btnFireRec.height + pad * 2.0f };
 
-        // 1. Check Weapon Hotbar Slots (1..6)
-        bool onHotbar = false;
-        for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
-            Rectangle slotRect = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
-            if (CheckCollisionPointRec(vm, slotRect)) {
-                onHotbar = true;
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && save_.unlockedWeapons[w]) {
+        // Process Action Buttons
+        for (const auto& np : newPresses) {
+            // Weapon Hotbar tap
+            for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
+                Rectangle slotRect = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
+                Rectangle slotHitbox = { slotRect.x - 8.0f, slotRect.y - 8.0f, slotRect.width + 16.0f, slotRect.height + 16.0f };
+                if (CheckCollisionPointRec(np.pos, slotHitbox) && save_.unlockedWeapons[w]) {
                     save_.equippedWeapon = w;
                     audio_.PlayUiClick();
-                    return;
+                    break;
                 }
             }
-        }
 
-        // 2. Check On-Screen Action Buttons
-        bool onJumpBtn = CheckCollisionPointRec(vm, btnJumpRec);
-        bool onFireBtn = CheckCollisionPointRec(vm, btnFireRec);
-
-        if (onJumpBtn) {
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (CheckCollisionPointRec(np.pos, jumpHitbox)) {
+                touchFeedbackJump_ = 0.25f;
                 TriggerJumpOrGlide();
-            }
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
                 touchHoldingJump_ = true;
-            }
-        } else if (onFireBtn) {
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            } else if (CheckCollisionPointRec(np.pos, fireHitbox)) {
+                touchFeedbackFire_ = 0.25f;
                 TriggerFireWeapon();
             }
-        } else if (!onHotbar) {
-            // 3. Screen Gestures & Air-Touch Hold (Mobile-Optimized)
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                pointerDown_ = true;
-                pointerStartPos_ = vm;
-                pointerDownTime_ = globalTime_;
-                gestureConsumed_ = false;
+        }
 
-                // Air Tap & Hold: Touching screen mid-air immediately deploys Clank's Heli-Pack!
-                if (!player_.grounded && player_.heliFuel > 0.0f) {
-                    touchHoldingJump_ = true;
-                }
-            }
+        // Screen Swipes & Continuous Air Hold
+        Vector2 vm = GetVirtualMouse();
+        bool pointerInActionArea = (CheckCollisionPointRec(vm, jumpHitbox) || CheckCollisionPointRec(vm, fireHitbox) || vm.y > VIRTUAL_HEIGHT - 90.0f);
 
-            if (pointerDown_ && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
-                float dist = Vector2Length(delta);
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(vm, jumpHitbox)) {
+            touchHoldingJump_ = true;
+        }
 
-                if (!gestureConsumed_ && dist > 26.0f) {
-                    if (std::abs(delta.x) > std::abs(delta.y)) {
-                        SwitchLane(delta.x < 0.0f ? -1 : +1);
-                        gestureConsumed_ = true;
-                    } else {
-                        if (delta.y < -24.0f) {
-                            // Instant Swipe-Up Jump (Does not wait for finger release!)
-                            TriggerJumpOrGlide();
-                            touchHoldingJump_ = true;
-                            gestureConsumed_ = true;
-                        } else if (delta.y > 28.0f) {
-                            // Instant Swipe-Down Slide
-                            TriggerWrenchSlide();
-                            gestureConsumed_ = true;
-                        }
-                    }
-                } else if (gestureConsumed_ && delta.y < -20.0f) {
-                    // Continuing to hold thumb after swiping up = Glide with Heli-Pack!
-                    touchHoldingJump_ = true;
-                }
-            }
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !pointerInActionArea) {
+            pointerDown_ = true;
+            pointerStartPos_ = vm;
+            pointerDownTime_ = globalTime_;
+            gestureConsumed_ = false;
 
-            if (pointerDown_ && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                if (!gestureConsumed_) {
-                    Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
-                    if (Vector2Length(delta) < 24.0f && (globalTime_ - pointerDownTime_) < 0.35f) {
-                        // Quick Screen Tap = Fire Equipped Weapon!
-                        TriggerFireWeapon();
-                    }
-                }
-                pointerDown_ = false;
-                gestureConsumed_ = false;
-                touchHoldingJump_ = false;
+            if (!player_.grounded && player_.heliFuel > 0.0f) {
+                touchHoldingJump_ = true;
             }
         }
 
-        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        if (pointerDown_ && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
+            float dist = Vector2Length(delta);
+
+            if (!gestureConsumed_ && dist > 26.0f) {
+                if (std::abs(delta.x) > std::abs(delta.y)) {
+                    SwitchLane(delta.x < 0.0f ? -1 : +1);
+                    gestureConsumed_ = true;
+                } else {
+                    if (delta.y < -24.0f) {
+                        TriggerJumpOrGlide();
+                        touchHoldingJump_ = true;
+                        gestureConsumed_ = true;
+                    } else if (delta.y > 28.0f) {
+                        TriggerWrenchSlide();
+                        gestureConsumed_ = true;
+                    }
+                }
+            } else if (gestureConsumed_ && delta.y < -20.0f) {
+                touchHoldingJump_ = true;
+            }
+        }
+
+        if (pointerDown_ && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            if (!gestureConsumed_) {
+                Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
+                if (Vector2Length(delta) < 24.0f && (globalTime_ - pointerDownTime_) < 0.35f) {
+                    TriggerFireWeapon();
+                }
+            }
+            pointerDown_ = false;
+            gestureConsumed_ = false;
+            touchHoldingJump_ = false;
+        }
+
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && tc == 0) {
             touchHoldingJump_ = false;
         }
 
@@ -952,12 +1011,12 @@ void RailGame::HandleInput() {
     } else if (mode_ == ScreenMode::SPLASH_INTRO) {
         splashTimer_ += GetFrameTime();
         if (splashTimer_ >= 2.4f || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetKeyPressed() > 0) {
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0 || GetKeyPressed() > 0) {
             mode_ = ScreenMode::TITLE_FRONT_PAGE;
         }
     } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
-            GetKeyPressed() > 0) {
+            GetTouchPointCount() > 0 || GetKeyPressed() > 0) {
             mode_ = ScreenMode::MAIN_MENU;
             audio_.PlayUiClick();
         }
@@ -978,6 +1037,13 @@ void RailGame::HandleInput() {
             mode_ = ScreenMode::MAIN_MENU;
             audio_.PlayUiClick();
         }
+    }
+
+    // Store active touch IDs for next frame
+    int curTc = GetTouchPointCount();
+    prevTouchCount_ = std::min(curTc, static_cast<int>(prevTouchIds_.size()));
+    for (int i = 0; i < prevTouchCount_; ++i) {
+        prevTouchIds_[i] = GetTouchPointId(i);
     }
 }
 

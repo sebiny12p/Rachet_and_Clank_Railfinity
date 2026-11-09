@@ -63,6 +63,7 @@ private:
     GalaxySector GetCurrentSector() const;
     const char* GetSectorName(GalaxySector s) const;
     Vector2 GetVirtualMouse() const;
+    Vector2 ToVirtualCoords(Vector2 screenPos) const;
     bool IsRectHovered(Rectangle r) const;
     bool IsButtonClicked(Rectangle r) const;
 
@@ -132,6 +133,13 @@ private:
     float pointerDownTime_ = 0.0f;
     bool touchHoldingJump_ = false;
     bool gestureConsumed_ = false;
+
+    // Mobile Multi-Touch & Input Feedback
+    mutable std::array<int, 10> prevTouchIds_{};
+    mutable int prevTouchCount_ = 0;
+    float touchFeedbackJump_ = 0.0f;
+    float touchFeedbackFire_ = 0.0f;
+    float touchFeedbackPause_ = 0.0f;
 
     // 3D Armor Wardrobe & Cosmetics Preview State
     float wardrobeRotAngle_ = 0.0f;

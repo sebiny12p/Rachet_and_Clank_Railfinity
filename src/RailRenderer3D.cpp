@@ -1934,6 +1934,16 @@ void RailGame::RenderHud2D() {
     DrawText(boltBuf, VIRTUAL_WIDTH - 304, 58, 18, GOLD);
     DrawText(rariBuf, VIRTUAL_WIDTH - 304, 82, 16, SKYBLUE);
 
+    // On-Screen Holographic Touch Pause Button (Mobile-Friendly)
+    Rectangle pauseBtn = { VIRTUAL_WIDTH - 386.0f, 20.0f, 54.0f, 54.0f };
+    bool pauseActive = (touchFeedbackPause_ > 0.0f);
+    bool pauseHover = IsRectHovered(pauseBtn) || pauseActive;
+    DrawRectangleRec(pauseBtn, pauseActive ? Color{ 45, 75, 115, 255 } : (pauseHover ? Color{ 24, 38, 62, 230 } : Color{ 12, 18, 32, 200 }));
+    DrawRectangleLinesEx(pauseBtn, pauseActive ? 2.5f : 1.8f, pauseActive ? GOLD : (pauseHover ? WHITE : SKYBLUE));
+    DrawRectangle(static_cast<int>(pauseBtn.x + 17), static_cast<int>(pauseBtn.y + 13), 6, 22, pauseActive ? GOLD : WHITE);
+    DrawRectangle(static_cast<int>(pauseBtn.x + 31), static_cast<int>(pauseBtn.y + 13), 6, 22, pauseActive ? GOLD : WHITE);
+    DrawText("PAUSE", static_cast<int>(pauseBtn.x + 11), static_cast<int>(pauseBtn.y + 38), 9, pauseActive ? GOLD : LIGHTGRAY);
+
     // Boss Health Bar
     if (boss_.active) {
         float bw = 520.0f;
@@ -1994,8 +2004,9 @@ void RailGame::RenderHud2D() {
     Color jumpRingCol = isGlidingNow ? Color{ 60, 255, 95, 255 } : (player_.grounded ? Color{ 80, 180, 255, 220 } : Color{ 255, 200, 50, 255 });
 
     // 1. [JUMP / GLIDE] Holographic Button
-    DrawCircle(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 44.0f, { 14, 22, 38, 200 });
-    DrawCircleLines(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 44.0f, jumpRingCol);
+    bool jumpActive = (touchFeedbackJump_ > 0.0f);
+    DrawCircle(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 44.0f, jumpActive ? Color{ 40, 85, 140, 240 } : Color{ 14, 22, 38, 200 });
+    DrawCircleLines(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), jumpActive ? 47.0f : 44.0f, jumpActive ? WHITE : jumpRingCol);
     if (isGlidingNow) {
         // Glowing Clank Emerald Heli-Ring + Fuel Arc
         DrawCircleLines(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 47.0f, { 60, 255, 95, 255 });
@@ -2010,8 +2021,9 @@ void RailGame::RenderHud2D() {
     DrawText(isGlidingNow ? "GLIDING" : "JUMP", static_cast<int>(btnJumpRec.x + (isGlidingNow ? 14 : 27)), static_cast<int>(btnJumpRec.y + 68), 13, jumpRingCol);
 
     // 2. [FIRE / WRENCH] Holographic Button
-    DrawCircle(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), 38.0f, { 18, 20, 32, 190 });
-    DrawCircleLines(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), 38.0f, { 255, 120, 45, 220 });
+    bool fireActive = (touchFeedbackFire_ > 0.0f);
+    DrawCircle(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), 38.0f, fireActive ? Color{ 110, 55, 20, 240 } : Color{ 18, 20, 32, 190 });
+    DrawCircleLines(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), fireActive ? 42.0f : 38.0f, fireActive ? WHITE : Color{ 255, 120, 45, 220 });
     Vector2 fc = { btnFireRec.x + 41, btnFireRec.y + 36 };
     DrawCircleLines(static_cast<int>(fc.x), static_cast<int>(fc.y), 12.0f, ORANGE);
     DrawLine(static_cast<int>(fc.x - 16), static_cast<int>(fc.y), static_cast<int>(fc.x + 16), static_cast<int>(fc.y), ORANGE);

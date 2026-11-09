@@ -2275,8 +2275,6 @@ void RailGame::RenderGadgetronVendor2D() {
         mode_ = ScreenMode::MAIN_MENU;
         audio_.PlayUiClick();
     }
-
-    RenderBrandingFooter2D();
 }
 
 void RailGame::RenderRaritaniumLab2D() {
@@ -2332,8 +2330,6 @@ void RailGame::RenderRaritaniumLab2D() {
         mode_ = ScreenMode::MAIN_MENU;
         audio_.PlayUiClick();
     }
-
-    RenderBrandingFooter2D();
 }
 
 void RailGame::RenderArmorWardrobe2D() {
@@ -2554,8 +2550,6 @@ void RailGame::RenderArmorWardrobe2D() {
         mode_ = ScreenMode::MAIN_MENU;
         audio_.PlayUiClick();
     }
-
-    RenderBrandingFooter2D();
 }
 
 void RailGame::RenderSkillPoints2D() {
@@ -2588,8 +2582,6 @@ void RailGame::RenderSkillPoints2D() {
         mode_ = ScreenMode::MAIN_MENU;
         audio_.PlayUiClick();
     }
-
-    RenderBrandingFooter2D();
 }
 
 void RailGame::RenderPauseOverlay2D() {

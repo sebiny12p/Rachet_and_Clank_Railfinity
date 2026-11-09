@@ -25,10 +25,20 @@ public:
 
     bool IsMuted() const { return muted_; }
     void ToggleMute() { muted_ = !muted_; }
+    void SetMasterVolume(float vol) { masterVol_ = vol; ApplyVolumes(); }
+    void SetMusicVolume(float vol) { musicVol_ = vol; ApplyVolumes(); }
+    void SetSfxVolume(float vol) { sfxVol_ = vol; ApplyVolumes(); }
+    float GetMasterVolume() const { return masterVol_; }
+    float GetMusicVolume() const { return musicVol_; }
+    float GetSfxVolume() const { return sfxVol_; }
+    void ApplyVolumes();
 
 private:
     bool initialized_ = false;
     bool muted_ = false;
+    float masterVol_ = 1.0f;
+    float musicVol_ = 0.55f;
+    float sfxVol_ = 0.80f;
     int currentMode_ = -1;
     int currentActionTrackIdx_ = 0;
 

@@ -84,7 +84,7 @@ void RailGame::RenderFrame() {
     RenderWorld3D();
 
     // Screen Flash
-    if (screenFlashAlpha_ > 0.0f) {
+    if (screenFlashAlpha_ > 0.0f && save_.screenFlashes) {
         Color fc = screenFlashColor_;
         fc.a = static_cast<unsigned char>(std::clamp(screenFlashAlpha_ * 255.0f, 0.0f, 255.0f));
         DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, fc);
@@ -109,6 +109,8 @@ void RailGame::RenderFrame() {
         RenderArmorWardrobe2D();
     } else if (mode_ == ScreenMode::SKILL_POINTS_VIEW) {
         RenderSkillPoints2D();
+    } else if (mode_ == ScreenMode::SETTINGS_VIEW) {
+        RenderSettings2D();
     } else if (mode_ == ScreenMode::PAUSED) {
         RenderPauseOverlay2D();
     } else if (mode_ == ScreenMode::GAME_OVER) {
@@ -157,7 +159,7 @@ void RailGame::RenderWorld3D() {
         cam.target   = Vector3Add(ratCenter,  Vector3Scale(right, shiftRight));
         cam.fovy     = 37.0f;
     } else if (cameraShake_ > 0.0f) {
-        float mag = cameraShake_ * cameraShake_ * 0.65f;
+        float mag = cameraShake_ * cameraShake_ * 0.65f * save_.screenShakeScale;
         cam.position.x += std::sin(globalTime_ * 73.0f) * mag;
         cam.position.y += std::cos(globalTime_ * 61.0f) * mag;
     }
@@ -1997,11 +1999,19 @@ void RailGame::RenderHud2D() {
     DrawText(weaps[eq].specialPerk, 32, VIRTUAL_HEIGHT - 44, 12, SKYBLUE);
 
     // On-Screen Holographic Touch Controls (Optimized for Mobile & Touch Screen Play)
-    Rectangle btnJumpRec = { VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
-    Rectangle btnFireRec = { VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+    Rectangle btnJumpRec = save_.leftHandedControls
+                         ? Rectangle{ 30.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f }
+                         : Rectangle{ VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+    Rectangle btnFireRec = save_.leftHandedControls
+                         ? Rectangle{ 140.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f }
+                         : Rectangle{ VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
 
     bool isGlidingNow = player_.heliGliding;
     Color jumpRingCol = isGlidingNow ? Color{ 60, 255, 95, 255 } : (player_.grounded ? Color{ 80, 180, 255, 220 } : Color{ 255, 200, 50, 255 });
+
+    bool hasGamepad = IsGamepadAvailable(0);
+    const char* jumpLabel = isGlidingNow ? "GLIDING" : (hasGamepad ? "(A) JUMP" : "JUMP");
+    const char* fireLabel = hasGamepad ? "(X) FIRE" : "FIRE";
 
     // 1. [JUMP / GLIDE] Holographic Button
     bool jumpActive = (touchFeedbackJump_ > 0.0f);
@@ -2018,7 +2028,7 @@ void RailGame::RenderHud2D() {
     Vector2 b1 = { jc.x + std::cos(bladeRot) * 22.0f, jc.y + std::sin(bladeRot) * 22.0f };
     Vector2 b2 = { jc.x - std::cos(bladeRot) * 22.0f, jc.y - std::sin(bladeRot) * 22.0f };
     DrawLineEx(b1, b2, 3.0f, isGlidingNow ? Color{ 60, 255, 95, 255 } : LIGHTGRAY);
-    DrawText(isGlidingNow ? "GLIDING" : "JUMP", static_cast<int>(btnJumpRec.x + (isGlidingNow ? 14 : 27)), static_cast<int>(btnJumpRec.y + 68), 13, jumpRingCol);
+    DrawText(jumpLabel, static_cast<int>(btnJumpRec.x + (isGlidingNow ? 14 : (hasGamepad ? 12 : 27))), static_cast<int>(btnJumpRec.y + 68), 13, jumpRingCol);
 
     // 2. [FIRE / WRENCH] Holographic Button
     bool fireActive = (touchFeedbackFire_ > 0.0f);
@@ -2028,7 +2038,7 @@ void RailGame::RenderHud2D() {
     DrawCircleLines(static_cast<int>(fc.x), static_cast<int>(fc.y), 12.0f, ORANGE);
     DrawLine(static_cast<int>(fc.x - 16), static_cast<int>(fc.y), static_cast<int>(fc.x + 16), static_cast<int>(fc.y), ORANGE);
     DrawLine(static_cast<int>(fc.x), static_cast<int>(fc.y - 16), static_cast<int>(fc.x), static_cast<int>(fc.y + 16), ORANGE);
-    DrawText("FIRE", static_cast<int>(btnFireRec.x + 24), static_cast<int>(btnFireRec.y + 58), 13, GOLD);
+    DrawText(fireLabel, static_cast<int>(btnFireRec.x + (hasGamepad ? 12 : 24)), static_cast<int>(btnFireRec.y + 58), 13, GOLD);
 
     // Emergency Auto-Hover Alert & Track Terminus Warning
     if (player_.emergencyHoverTimer > 0.0f) {
@@ -2197,6 +2207,7 @@ void RailGame::RenderMainMenu2D() {
     Rectangle btnLab      = { 50.0f, 390.0f, 400.0f, 56.0f };
     Rectangle btnWardrobe = { 50.0f, 455.0f, 400.0f, 56.0f };
     Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 195.0f, 330.0f, 56.0f };
+    Rectangle btnSettings = { VIRTUAL_WIDTH - 380.0f, 260.0f, 330.0f, 56.0f };
 
     if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Dynamic 5-rail transit network (Max 3 active)", ORANGE)) {
         StartNewRun(false);
@@ -2234,17 +2245,23 @@ void RailGame::RenderMainMenu2D() {
         audio_.PlayUiClick();
     }
 
+    if (MenuButton(btnSettings, "SYSTEM SETTINGS", "Audio, Visuals & Controller", PURPLE)) {
+        settingsPrevMode_ = ScreenMode::MAIN_MENU;
+        mode_ = ScreenMode::SETTINGS_VIEW;
+        audio_.PlayUiClick();
+    }
+
     // Controls Reference Box on Right
-    DrawRectangle(VIRTUAL_WIDTH - 380, 300, 330, 222, { 12, 18, 32, 225 });
-    DrawRectangleLines(VIRTUAL_WIDTH - 380, 300, 330, 222, SKYBLUE);
-    DrawText("CONTROLS (PC & TOUCH)", VIRTUAL_WIDTH - 362, 314, 18, GOLD);
-    DrawText("> A / D or Swipe L/R: Switch Rail", VIRTUAL_WIDTH - 362, 344, 14, WHITE);
-    DrawText("> SPACE / W or Swipe Up: Jump", VIRTUAL_WIDTH - 362, 368, 14, WHITE);
-    DrawText("> Hold SPACE / Touch: Clank Glide", VIRTUAL_WIDTH - 362, 392, 14, WHITE);
-    DrawText("> S / DOWN or Swipe Down: Slide", VIRTUAL_WIDTH - 362, 416, 14, WHITE);
-    DrawText("> L-CLICK / F / Tap: Fire / Wrench", VIRTUAL_WIDTH - 362, 440, 14, WHITE);
-    DrawText("> 1-6 / Q-E: Switch Weapon", VIRTUAL_WIDTH - 362, 464, 14, WHITE);
-    DrawText("> M: Toggle Audio Mute", VIRTUAL_WIDTH - 362, 488, 14, LIGHTGRAY);
+    DrawRectangle(VIRTUAL_WIDTH - 380, 325, 330, 200, { 12, 18, 32, 225 });
+    DrawRectangleLines(VIRTUAL_WIDTH - 380, 325, 330, 200, SKYBLUE);
+    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 337, 17, GOLD);
+    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 362, 13, WHITE);
+    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 384, 13, WHITE);
+    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 406, 13, WHITE);
+    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 428, 13, WHITE);
+    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 450, 13, WHITE);
+    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 472, 13, WHITE);
+    DrawText("> START / ESC: Pause Telemetry", VIRTUAL_WIDTH - 362, 494, 13, LIGHTGRAY);
 
     RenderBrandingFooter2D();
 }
@@ -2612,6 +2629,192 @@ void RailGame::RenderArmorWardrobe2D() {
     }
 }
 
+void RailGame::RenderSettings2D() {
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 245 });
+
+    const char* sTitle = "SYSTEM SETTINGS // AUDIO, VISUALS & CONTROLS";
+    DrawText(sTitle, 60, 32, 26, WHITE);
+
+    char devBuf[128];
+    std::snprintf(devBuf, sizeof(devBuf), "ACTIVE INPUT: %s", activeInputDevice_.c_str());
+    int dw = MeasureText(devBuf, 16);
+    DrawText(devBuf, VIRTUAL_WIDTH - 60 - dw, 38, 16, GOLD);
+
+    DrawLine(60, 72, VIRTUAL_WIDTH - 60, 72, { 255, 255, 255, 55 });
+
+    // --- LEFT COLUMN: AUDIO CONTROLS ---
+    DrawText("AUDIO BALANCING", 60, 92, 18, SKYBLUE);
+
+    auto DrawSlider = [&](float y, const char* label, float& val, Color barCol) {
+        DrawText(label, 60, static_cast<int>(y), 16, WHITE);
+        Rectangle track = { 60.0f, y + 26.0f, 480.0f, 22.0f };
+        DrawRectangleRec(track, { 18, 24, 38, 255 });
+        DrawRectangleLinesEx(track, 1.5f, { 80, 110, 150, 200 });
+
+        float fillW = std::clamp(val, 0.0f, 1.0f) * track.width;
+        DrawRectangle(static_cast<int>(track.x), static_cast<int>(track.y), static_cast<int>(fillW), static_cast<int>(track.height), barCol);
+
+        char pct[16];
+        std::snprintf(pct, sizeof(pct), "%d%%", static_cast<int>(val * 100.0f));
+        DrawText(pct, static_cast<int>(track.x + track.width + 16.0f), static_cast<int>(track.y + 2.0f), 16, WHITE);
+
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0) {
+            Vector2 p = (GetTouchPointCount() > 0) ? ToVirtualCoords(GetTouchPosition(0)) : GetVirtualMouse();
+            Rectangle hit = { track.x - 10.0f, track.y - 10.0f, track.width + 20.0f, track.height + 20.0f };
+            if (CheckCollisionPointRec(p, hit)) {
+                val = std::clamp((p.x - track.x) / track.width, 0.0f, 1.0f);
+                audio_.SetMasterVolume(save_.masterVolume);
+                audio_.SetMusicVolume(save_.musicVolume);
+                audio_.SetSfxVolume(save_.sfxVolume);
+            }
+        }
+    };
+
+    DrawSlider(124.0f, "MASTER VOLUME", save_.masterVolume, GOLD);
+    DrawSlider(188.0f, "MUSIC VOLUME (BGM)", save_.musicVolume, SKYBLUE);
+    DrawSlider(252.0f, "SOUND EFFECTS (SFX)", save_.sfxVolume, ORANGE);
+
+    // Mute Toggle Button
+    Rectangle muteBtn = { 60.0f, 324.0f, 240.0f, 44.0f };
+    bool isMuted = audio_.IsMuted();
+    DrawRectangleRec(muteBtn, isMuted ? Color{ 75, 25, 30, 255 } : Color{ 22, 45, 38, 255 });
+    DrawRectangleLinesEx(muteBtn, 1.8f, isMuted ? RED : GREEN);
+    DrawText(isMuted ? "MUTED [M]" : "AUDIO ACTIVE [M]", static_cast<int>(muteBtn.x + 38), static_cast<int>(muteBtn.y + 13), 16, WHITE);
+    if (IsButtonClicked(muteBtn)) {
+        audio_.ToggleMute();
+        audio_.ApplyVolumes();
+    }
+
+    // Screen Flashes Toggle
+    DrawText("SCREEN FLASH EFFECTS:", 60, 382, 15, WHITE);
+    Rectangle flashOnBtn = { 60.0f, 404.0f, 115.0f, 36.0f };
+    Rectangle flashOffBtn = { 185.0f, 404.0f, 115.0f, 36.0f };
+    DrawRectangleRec(flashOnBtn, save_.screenFlashes ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+    DrawRectangleLinesEx(flashOnBtn, save_.screenFlashes ? 2.0f : 1.2f, save_.screenFlashes ? GOLD : GRAY);
+    DrawText("ENABLED", static_cast<int>(flashOnBtn.x + 22), static_cast<int>(flashOnBtn.y + 10), 13, save_.screenFlashes ? GOLD : LIGHTGRAY);
+    if (IsButtonClicked(flashOnBtn)) { save_.screenFlashes = true; audio_.PlayUiClick(); }
+
+    DrawRectangleRec(flashOffBtn, !save_.screenFlashes ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+    DrawRectangleLinesEx(flashOffBtn, !save_.screenFlashes ? 2.0f : 1.2f, !save_.screenFlashes ? GOLD : GRAY);
+    DrawText("DISABLED", static_cast<int>(flashOffBtn.x + 18), static_cast<int>(flashOffBtn.y + 10), 13, !save_.screenFlashes ? GOLD : LIGHTGRAY);
+    if (IsButtonClicked(flashOffBtn)) { save_.screenFlashes = false; audio_.PlayUiClick(); }
+
+    // --- RIGHT COLUMN: VISUALS, GAMEPAD & CONTROLS ---
+    DrawText("VISUALS, CONTROLS & GAMEPAD", 650, 92, 18, SKYBLUE);
+
+    // Screen Shake Intensity
+    DrawText("CAMERA SHAKE INTENSITY:", 650, 124, 16, WHITE);
+    const char* shakeLabels[3] = { "OFF (0%)", "NORMAL (50%)", "INTENSE (100%)" };
+    float shakeVals[3] = { 0.0f, 0.5f, 1.0f };
+    for (int i = 0; i < 3; ++i) {
+        Rectangle sb = { 650.0f + i * 168.0f, 150.0f, 156.0f, 38.0f };
+        bool sel = (std::abs(save_.screenShakeScale - shakeVals[i]) < 0.15f);
+        DrawRectangleRec(sb, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+        DrawRectangleLinesEx(sb, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
+        DrawText(shakeLabels[i], static_cast<int>(sb.x + 16), static_cast<int>(sb.y + 11), 14, sel ? GOLD : LIGHTGRAY);
+        if (IsButtonClicked(sb)) {
+            save_.screenShakeScale = shakeVals[i];
+            audio_.PlayUiClick();
+        }
+    }
+
+    // Target FPS
+    DrawText("TARGET PERFORMANCE FPS:", 650, 206, 16, WHITE);
+    int fpsVals[3] = { 60, 120, 30 };
+    const char* fpsLabels[3] = { "60 FPS (BALANCED)", "120 FPS (ULTRA)", "30 FPS (SAVER)" };
+    for (int f = 0; f < 3; ++f) {
+        Rectangle fb = { 650.0f + f * 168.0f, 232.0f, 156.0f, 38.0f };
+        bool sel = (save_.targetFps == fpsVals[f]);
+        DrawRectangleRec(fb, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+        DrawRectangleLinesEx(fb, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
+        DrawText(fpsLabels[f], static_cast<int>(fb.x + 8), static_cast<int>(fb.y + 11), 12, sel ? GOLD : LIGHTGRAY);
+        if (IsButtonClicked(fb)) {
+            save_.targetFps = fpsVals[f];
+            SetTargetFPS(save_.targetFps);
+            audio_.PlayUiClick();
+        }
+    }
+
+    // Swipe Sensitivity
+    DrawText("SWIPE RAIL-SWITCH SENSITIVITY:", 650, 288, 16, WHITE);
+    const char* sensLabels[3] = { "LOW (PRECISE)", "MEDIUM (NORMAL)", "HIGH (FAST)" };
+    for (int s = 0; s < 3; ++s) {
+        Rectangle sensBtn = { 650.0f + s * 168.0f, 314.0f, 156.0f, 38.0f };
+        bool sel = (save_.swipeSensitivity == s);
+        DrawRectangleRec(sensBtn, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+        DrawRectangleLinesEx(sensBtn, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
+        DrawText(sensLabels[s], static_cast<int>(sensBtn.x + 12), static_cast<int>(sensBtn.y + 11), 12, sel ? GOLD : LIGHTGRAY);
+        if (IsButtonClicked(sensBtn)) {
+            save_.swipeSensitivity = s;
+            audio_.PlayUiClick();
+        }
+    }
+
+    // Handedness
+    DrawText("MOBILE ACTION BUTTONS HANDEDNESS:", 650, 370, 16, WHITE);
+    Rectangle handRight = { 650.0f, 396.0f, 210.0f, 38.0f };
+    Rectangle handLeft  = { 872.0f, 396.0f, 210.0f, 38.0f };
+    DrawRectangleRec(handRight, !save_.leftHandedControls ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+    DrawRectangleLinesEx(handRight, !save_.leftHandedControls ? 2.0f : 1.2f, !save_.leftHandedControls ? GOLD : GRAY);
+    DrawText("RIGHT-HANDED (DEFAULT)", static_cast<int>(handRight.x + 12), static_cast<int>(handRight.y + 11), 13, !save_.leftHandedControls ? GOLD : LIGHTGRAY);
+    if (IsButtonClicked(handRight)) { save_.leftHandedControls = false; audio_.PlayUiClick(); }
+
+    DrawRectangleRec(handLeft, save_.leftHandedControls ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
+    DrawRectangleLinesEx(handLeft, save_.leftHandedControls ? 2.0f : 1.2f, save_.leftHandedControls ? GOLD : GRAY);
+    DrawText("LEFT-HANDED (MIRRORED)", static_cast<int>(handLeft.x + 12), static_cast<int>(handLeft.y + 11), 13, save_.leftHandedControls ? GOLD : LIGHTGRAY);
+    if (IsButtonClicked(handLeft)) { save_.leftHandedControls = true; audio_.PlayUiClick(); }
+
+    // --- BOTTOM ROW: DATA RESET & BACK ---
+    DrawLine(60, 460, VIRTUAL_WIDTH - 60, 460, { 255, 255, 255, 55 });
+
+    // Clear Save Data Button
+    Rectangle resetBtn = { 60.0f, 480.0f, 320.0f, 48.0f };
+    DrawRectangleRec(resetBtn, showResetConfirm_ ? Color{ 110, 30, 35, 255 } : Color{ 48, 20, 26, 230 });
+    DrawRectangleLinesEx(resetBtn, 2.0f, RED);
+    DrawText(showResetConfirm_ ? "CONFIRM RESET PROGRESS?" : "CLEAR SAVE DATA (RESET)", static_cast<int>(resetBtn.x + 22), static_cast<int>(resetBtn.y + 15), 15, WHITE);
+    if (IsButtonClicked(resetBtn)) {
+        if (!showResetConfirm_) {
+            showResetConfirm_ = true;
+            audio_.PlayUiClick();
+        } else {
+            SaveData fresh{};
+            fresh.masterVolume = save_.masterVolume;
+            fresh.musicVolume = save_.musicVolume;
+            fresh.sfxVolume = save_.sfxVolume;
+            fresh.screenShakeScale = save_.screenShakeScale;
+            fresh.screenFlashes = save_.screenFlashes;
+            fresh.targetFps = save_.targetFps;
+            fresh.leftHandedControls = save_.leftHandedControls;
+            fresh.swipeSensitivity = save_.swipeSensitivity;
+            save_ = fresh;
+            SaveProgress();
+            showResetConfirm_ = false;
+            audio_.PlayExplosion();
+        }
+    }
+    if (showResetConfirm_) {
+        Rectangle cancelReset = { 390.0f, 480.0f, 130.0f, 48.0f };
+        DrawRectangleRec(cancelReset, { 28, 38, 52, 240 });
+        DrawRectangleLinesEx(cancelReset, 1.5f, SKYBLUE);
+        DrawText("CANCEL", static_cast<int>(cancelReset.x + 28), static_cast<int>(cancelReset.y + 15), 15, WHITE);
+        if (IsButtonClicked(cancelReset)) { showResetConfirm_ = false; audio_.PlayUiClick(); }
+    }
+
+    const char* bInfo = "RATCHET & CLANK: RAILFINITY  |  v1.2.0  |  SEBINY LABS ENGINE";
+    int biw = MeasureText(bInfo, 13);
+    DrawText(bInfo, (VIRTUAL_WIDTH - biw) / 2, 545, 13, { 140, 175, 215, 180 });
+
+    Rectangle backBtn = { 60.0f, 580.0f, 260.0f, 48.0f };
+    DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
+    DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
+    DrawText("< BACK", static_cast<int>(backBtn.x + 98), static_cast<int>(backBtn.y + 16), 16, WHITE);
+    if (IsButtonClicked(backBtn) || IsKeyPressed(KEY_ESCAPE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+        SaveProgress();
+        mode_ = settingsPrevMode_;
+        audio_.PlayUiClick();
+    }
+}
+
 void RailGame::RenderSkillPoints2D() {
     DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
     DrawText("INTERGALACTIC SKILL POINTS // CHALLENGES & REWARDS", 60, 38, 28, GOLD);
@@ -2650,19 +2853,29 @@ void RailGame::RenderPauseOverlay2D() {
     int tw = MeasureText(t, 40);
     DrawText(t, (VIRTUAL_WIDTH - tw) / 2, 220, 40, GOLD);
 
-    Rectangle resBtn = { VIRTUAL_WIDTH / 2.0f - 160.0f, 300.0f, 320.0f, 54.0f };
-    Rectangle menuBtn= { VIRTUAL_WIDTH / 2.0f - 160.0f, 372.0f, 320.0f, 54.0f };
+    Rectangle resBtn      = { VIRTUAL_WIDTH / 2.0f - 160.0f, 285.0f, 320.0f, 52.0f };
+    Rectangle settingsBtn = { VIRTUAL_WIDTH / 2.0f - 160.0f, 350.0f, 320.0f, 52.0f };
+    Rectangle menuBtn     = { VIRTUAL_WIDTH / 2.0f - 160.0f, 415.0f, 320.0f, 52.0f };
 
     DrawRectangleRec(resBtn, IsRectHovered(resBtn) ? Color{ 40, 75, 110, 255 } : Color{ 22, 38, 60, 255 });
     DrawRectangleLinesEx(resBtn, 2.0f, SKYBLUE);
-    DrawText("RESUME GRIND [SPACE]", static_cast<int>(resBtn.x + 52), static_cast<int>(resBtn.y + 18), 18, WHITE);
+    DrawText("RESUME GRIND [SPACE / (A)]", static_cast<int>(resBtn.x + 40), static_cast<int>(resBtn.y + 17), 17, WHITE);
+
+    DrawRectangleRec(settingsBtn, IsRectHovered(settingsBtn) ? Color{ 55, 45, 80, 255 } : Color{ 28, 22, 42, 255 });
+    DrawRectangleLinesEx(settingsBtn, 2.0f, PURPLE);
+    DrawText("SYSTEM SETTINGS", static_cast<int>(settingsBtn.x + 85), static_cast<int>(settingsBtn.y + 17), 17, WHITE);
 
     DrawRectangleRec(menuBtn, IsRectHovered(menuBtn) ? Color{ 85, 40, 40, 255 } : Color{ 45, 24, 30, 255 });
     DrawRectangleLinesEx(menuBtn, 2.0f, ORANGE);
-    DrawText("MAIN MENU [ESC]", static_cast<int>(menuBtn.x + 76), static_cast<int>(menuBtn.y + 18), 18, WHITE);
+    DrawText("MAIN MENU [ESC]", static_cast<int>(menuBtn.x + 76), static_cast<int>(menuBtn.y + 17), 17, WHITE);
 
     if (IsButtonClicked(resBtn)) {
         mode_ = ScreenMode::PLAYING;
+        audio_.PlayUiClick();
+    }
+    if (IsButtonClicked(settingsBtn)) {
+        settingsPrevMode_ = ScreenMode::PAUSED;
+        mode_ = ScreenMode::SETTINGS_VIEW;
         audio_.PlayUiClick();
     }
     if (IsButtonClicked(menuBtn)) {

@@ -31,6 +31,7 @@ enum class ScreenMode {
     RARITANIUM_LAB,
     ARMOR_WARDROBE,   // 3D Interactive Lombax & Clank Armor Wardrobe
     SKILL_POINTS_VIEW,
+    SETTINGS_VIEW,
     PLAYING,
     PAUSED,
     GAME_OVER
@@ -234,6 +235,17 @@ struct SaveData {
     std::array<bool, NUM_CLANK_SKINS> unlockedClankSkins = { true, false, false, false };
 
     std::array<bool, NUM_SKILL_POINTS> skillPoints = { false };
+
+    // User Settings & Accessibility (Persisted)
+    float masterVolume = 1.0f;
+    float musicVolume = 0.55f;
+    float sfxVolume = 0.80f;
+    float screenShakeScale = 1.0f; // 0.0f = Off, 0.5f = 50%, 1.0f = 100%
+    bool screenFlashes = true;
+    int targetFps = 120; // 30, 60, 120
+    int touchOpacity = 2; // 0 = 40%, 1 = 70%, 2 = 100%
+    bool leftHandedControls = false;
+    int swipeSensitivity = 1; // 0 = Low (36px), 1 = Med (26px), 2 = High (18px)
 };
 
 struct PlayerLombax {

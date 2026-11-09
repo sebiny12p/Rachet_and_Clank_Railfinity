@@ -74,6 +74,12 @@ void RailGame::Init() {
 
     audio_.Init();
     LoadSave();
+    audio_.SetMasterVolume(save_.masterVolume);
+    audio_.SetMusicVolume(save_.musicVolume);
+    audio_.SetSfxVolume(save_.sfxVolume);
+    if (save_.targetFps > 0) {
+        SetTargetFPS(save_.targetFps);
+    }
 
     // Configure 3D Over-the-Shoulder Camera (classic Ratchet & Clank low behind-the-back angle)
     camera_.position = { 0.0f, 3.25f, -6.8f };
@@ -906,9 +912,83 @@ void RailGame::HandleInput() {
             TriggerFireWeapon();
         }
 
+        // Gamepad Support (Xbox, PlayStation, Switch Pro, Android BT controllers)
+        bool hasGamepad = IsGamepadAvailable(0);
+        if (hasGamepad) {
+            const char* gpName = GetGamepadName(0);
+            if (gpName && gpName[0] != '\0') activeInputDevice_ = gpName;
+
+            // D-Pad or Left Stick lane switching
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) SwitchLane(-1);
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) SwitchLane(+1);
+
+            float stickX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
+            static bool stickCenteredX = true;
+            if (stickCenteredX) {
+                if (stickX < -0.55f) {
+                    SwitchLane(-1);
+                    stickCenteredX = false;
+                } else if (stickX > 0.55f) {
+                    SwitchLane(+1);
+                    stickCenteredX = false;
+                }
+            } else {
+                if (std::abs(stickX) < 0.25f) stickCenteredX = true;
+            }
+
+            // Slide / Crouch: D-Pad Down, B/Circle button, Left Stick Down flick
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN) ||
+                IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+                TriggerWrenchSlide();
+            }
+            float stickY = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+            static bool stickCenteredY = true;
+            if (stickCenteredY) {
+                if (stickY > 0.65f) {
+                    TriggerWrenchSlide();
+                    stickCenteredY = false;
+                }
+            } else {
+                if (std::abs(stickY) < 0.30f) stickCenteredY = true;
+            }
+
+            // Jump & Glide: A / Cross button
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+                TriggerJumpOrGlide();
+            }
+            if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+                touchHoldingJump_ = true;
+            }
+
+            // Weapon Cycle: LB / RB
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)) {
+                CycleEquippedWeapon(-1);
+            }
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {
+                CycleEquippedWeapon(+1);
+            }
+
+            // Fire Weapon: X / Square or Right Trigger (RT)
+            if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+                IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2) ||
+                GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.25f) {
+                TriggerFireWeapon();
+            }
+
+            // Pause: Start / Options
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
+                mode_ = ScreenMode::PAUSED;
+                audio_.PlayUiClick();
+            }
+        }
+
         // 2. Action Buttons & Quick-Select Weapon Hotbar Hitboxes
-        Rectangle btnJumpRec = { VIRTUAL_WIDTH - 134.0f, VIRTUAL_HEIGHT - 216.0f, 102.0f, 102.0f };
-        Rectangle btnFireRec = { VIRTUAL_WIDTH - 248.0f, VIRTUAL_HEIGHT - 208.0f, 88.0f, 88.0f };
+        Rectangle btnJumpRec = save_.leftHandedControls
+                             ? Rectangle{ 30.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f }
+                             : Rectangle{ VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+        Rectangle btnFireRec = save_.leftHandedControls
+                             ? Rectangle{ 140.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f }
+                             : Rectangle{ VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
         float pad = 14.0f;
         Rectangle jumpHitbox = { btnJumpRec.x - pad, btnJumpRec.y - pad, btnJumpRec.width + pad * 2.0f, btnJumpRec.height + pad * 2.0f };
         Rectangle fireHitbox = { btnFireRec.x - pad, btnFireRec.y - pad, btnFireRec.width + pad * 2.0f, btnFireRec.height + pad * 2.0f };
@@ -959,7 +1039,8 @@ void RailGame::HandleInput() {
             Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
             float dist = Vector2Length(delta);
 
-            if (!gestureConsumed_ && dist > 26.0f) {
+            float swipeThresh = (save_.swipeSensitivity == 0) ? 36.0f : (save_.swipeSensitivity == 1) ? 26.0f : 18.0f;
+            if (!gestureConsumed_ && dist > swipeThresh) {
                 if (std::abs(delta.x) > std::abs(delta.y)) {
                     SwitchLane(delta.x < 0.0f ? -1 : +1);
                     gestureConsumed_ = true;
@@ -1011,29 +1092,42 @@ void RailGame::HandleInput() {
     } else if (mode_ == ScreenMode::SPLASH_INTRO) {
         splashTimer_ += GetFrameTime();
         if (splashTimer_ >= 2.4f || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0 || GetKeyPressed() > 0) {
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetTouchPointCount() > 0 || GetKeyPressed() > 0 ||
+            (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
             mode_ = ScreenMode::TITLE_FRONT_PAGE;
         }
     } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
-            GetTouchPointCount() > 0 || GetKeyPressed() > 0) {
+            GetTouchPointCount() > 0 || GetKeyPressed() > 0 ||
+            (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
             mode_ = ScreenMode::MAIN_MENU;
             audio_.PlayUiClick();
         }
     } else if (mode_ == ScreenMode::PAUSED) {
-        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_SPACE) ||
+            (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))) {
             mode_ = ScreenMode::PLAYING;
+            audio_.PlayUiClick();
+        } else if (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+            mode_ = ScreenMode::MAIN_MENU;
+            audio_.PlayUiClick();
+        }
+    } else if (mode_ == ScreenMode::SETTINGS_VIEW) {
+        if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
+            SaveProgress();
+            mode_ = settingsPrevMode_;
             audio_.PlayUiClick();
         }
     } else if (mode_ == ScreenMode::GAME_OVER) {
-        if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_R)) {
+        if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_R) ||
+            (IsGamepadAvailable(0) && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)))) {
             StartNewRun(isDailyRun_);
-        } else if (IsKeyPressed(KEY_ESCAPE)) {
+        } else if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
             mode_ = ScreenMode::MAIN_MENU;
             audio_.PlayUiClick();
         }
     } else if (mode_ != ScreenMode::MAIN_MENU && mode_ != ScreenMode::TITLE_FRONT_PAGE) {
-        if (IsKeyPressed(KEY_ESCAPE)) {
+        if (IsKeyPressed(KEY_ESCAPE) || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) {
             mode_ = ScreenMode::MAIN_MENU;
             audio_.PlayUiClick();
         }

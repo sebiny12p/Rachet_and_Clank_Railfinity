@@ -151,7 +151,7 @@ void RailAudio::Init() {
             Music m = LoadMusicStream(path.c_str());
             if (m.stream.buffer != nullptr) {
                 m.looping = true;
-                SetMusicVolume(m, 0.55f);
+                ::SetMusicVolume(m, 0.55f);
                 outMusic = m;
                 return true;
             }
@@ -163,6 +163,33 @@ void RailAudio::Init() {
     hasMenuMusic_    = TryLoadTrack("music_menu.mp3",    bgmMenu_);
     hasActionMusic1_ = TryLoadTrack("music_action.mp3",  bgmAction1_);
     hasActionMusic2_ = TryLoadTrack("music_action2.mp3", bgmAction2_);
+
+    ApplyVolumes();
+}
+
+void RailAudio::ApplyVolumes() {
+    if (!initialized_) return;
+    float effectiveMusic = muted_ ? 0.0f : (masterVol_ * musicVol_);
+    float effectiveSfx = muted_ ? 0.0f : (masterVol_ * sfxVol_);
+
+    if (hasTitleMusic_)   ::SetMusicVolume(bgmTitle_, effectiveMusic);
+    if (hasMenuMusic_)    ::SetMusicVolume(bgmMenu_, effectiveMusic);
+    if (hasActionMusic1_) ::SetMusicVolume(bgmAction1_, effectiveMusic);
+    if (hasActionMusic2_) ::SetMusicVolume(bgmAction2_, effectiveMusic);
+
+    SetSoundVolume(sndRailHop_, effectiveSfx * 0.85f);
+    SetSoundVolume(sndJump_, effectiveSfx * 0.85f);
+    SetSoundVolume(sndWrench_, effectiveSfx * 0.95f);
+    SetSoundVolume(sndBolt_, effectiveSfx * 0.80f);
+    SetSoundVolume(sndRaritanium_, effectiveSfx * 0.90f);
+    SetSoundVolume(sndBlaster_, effectiveSfx * 0.85f);
+    SetSoundVolume(sndShotgun_, effectiveSfx * 0.95f);
+    SetSoundVolume(sndRailgun_, effectiveSfx * 0.95f);
+    SetSoundVolume(sndExplosion_, effectiveSfx * 1.0f);
+    SetSoundVolume(sndLevelUp_, effectiveSfx * 0.90f);
+    SetSoundVolume(sndHurt_, effectiveSfx * 0.90f);
+    SetSoundVolume(sndBoost_, effectiveSfx * 0.95f);
+    SetSoundVolume(sndUi_, effectiveSfx * 0.80f);
 }
 
 void RailAudio::Shutdown() {

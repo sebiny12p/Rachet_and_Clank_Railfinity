@@ -88,6 +88,7 @@ private:
     void RenderRaritaniumLab2D();
     void RenderArmorWardrobe2D();
     void RenderSkillPoints2D();
+    void RenderSettings2D();
     void RenderPauseOverlay2D();
     void RenderGameOver2D();
     void RenderBrandingFooter2D() const;
@@ -140,6 +141,11 @@ private:
     float touchFeedbackJump_ = 0.0f;
     float touchFeedbackFire_ = 0.0f;
     float touchFeedbackPause_ = 0.0f;
+
+    // Settings state & confirmation modal
+    bool showResetConfirm_ = false;
+    ScreenMode settingsPrevMode_ = ScreenMode::MAIN_MENU;
+    std::string activeInputDevice_ = "KEYBOARD & MOUSE";
 
     // 3D Armor Wardrobe & Cosmetics Preview State
     float wardrobeRotAngle_ = 0.0f;

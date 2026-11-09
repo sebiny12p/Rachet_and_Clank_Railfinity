@@ -521,6 +521,12 @@ void RailGame::SpawnRailBoltLine(int lane, float startZ, int count, float spacin
     float lx = GetLaneX(std::clamp(lane, 0, NUM_LANES - 1));
     int spawned = 0;
     for (int i = 0; i < count; ++i) {
+        float bz = startZ + i * spacing;
+        // Never spawn bolts past the end of a rail or on an inactive rail!
+        if (!jumpArc && !IsRailActiveAt(lane, bz)) continue;
+        int minL = GetCorridorMinLaneAt(totalWorldTravel_ + bz);
+        if (lane < minL || lane > minL + 2) continue;
+
         for (auto& b : bolts_) {
             if (!b.active) {
                 b.active = true;
@@ -529,7 +535,7 @@ void RailGame::SpawnRailBoltLine(int lane, float startZ, int count, float spacin
                 b.onRail = true;
                 float t = (count > 1) ? static_cast<float>(i) / static_cast<float>(count - 1) : 0.5f;
                 float arcY = jumpArc ? (std::sin(t * 3.14159265f) * 2.45f) : 0.0f;
-                b.pos = { lx, 0.78f + arcY, startZ + i * spacing };
+                b.pos = { lx, 0.78f + arcY, bz };
                 b.vel = { 0.0f, 0.0f, 0.0f };
                 b.value = b.isTitanium ? 25 : 5;
                 b.spin = i * 42.0f;
@@ -647,6 +653,13 @@ void RailGame::SpawnChunkPattern(float startZ) {
 }
 
 void RailGame::SpawnHazard(HazardKind kind, int lane, float z, float lengthZ) {
+    // Strictly prevent obstacles, crates, mines, or enemies from spawning on inactive or ended rails!
+    if (kind != HazardKind::BROKEN_RAIL_GAP && !IsRailActiveAt(lane, z)) return;
+    if (kind == HazardKind::BROKEN_RAIL_GAP) {
+        int minL = GetCorridorMinLaneAt(totalWorldTravel_ + z);
+        if (lane < minL || lane > minL + 2) return;
+    }
+
     for (auto& h : hazards_) {
         if (!h.active) {
             h.active = true;
@@ -1009,15 +1022,37 @@ void RailGame::UpdatePlayingFixed(float dt) {
     // Check if the rail beneath Ratchet has terminated or broken
     if (player_.grounded && !player_.isHopping) {
         if (!IsRailActiveAt(player_.currentLane, 0.0f)) {
-            // Rail ran out! Ratchet falls into the abyss unless he glides or hops!
+            // Rail ran out beneath Ratchet!
+            // Clank immediately activates Emergency Auto-Hover for 0.5 seconds!
             player_.grounded = false;
-            player_.vy = -14.0f;
-            DamagePlayer(1.0f, false);
-            cameraShake_ = 0.55f;
-            screenFlashColor_ = RED;
-            screenFlashAlpha_ = 0.40f;
+            player_.emergencyHoverTimer = 0.5f;
+            player_.heliGliding = true;
+            player_.heliDeploy = 1.0f;
+            player_.vy = 1.8f;
+            player_.y = 0.12f;
+            audio_.PlayJump();
+            SpawnParticleBurst3D({ player_.x, 0.25f, -0.2f }, 16, SKYBLUE, 2.0f, 6.0f, 0.2f, 0.3f);
+        }
+    }
+
+    // Emergency Auto-Hover state tracking
+    if (player_.emergencyHoverTimer > 0.0f) {
+        player_.emergencyHoverTimer -= dt;
+        player_.heliGliding = true;
+        player_.heliDeploy = 1.0f;
+        // Hold altitude stably floating above the abyss
+        if (player_.vy < -1.0f) player_.vy = -1.0f;
+        if (player_.y < 0.05f) player_.y = 0.05f;
+
+        if (player_.emergencyHoverTimer <= 0.0f) {
+            // Emergency hover expired without reaching an active rail -> Ratchet falls to his death!
+            player_.heliGliding = false;
+            player_.heliDeploy = 0.0f;
+            player_.vy = -26.0f; // Rapid plunge into the bottomless abyss
             audio_.PlayExplosion();
-            SpawnParticleBurst3D({ player_.x, 0.2f, 0.0f }, 25, ORANGE, 3.0f, 10.0f, 0.30f, 0.5f);
+            cameraShake_ = 0.45f;
+            screenFlashColor_ = RED;
+            screenFlashAlpha_ = 0.35f;
         }
     }
 
@@ -1035,7 +1070,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
     if (!player_.grounded) {
         player_.jumpTime += dt;
         float grav = player_.heliGliding ? 11.0f : 44.0f;
-        if (player_.heliGliding) {
+        if (player_.heliGliding && player_.emergencyHoverTimer <= 0.0f) {
             player_.heliFuel = std::max(0.0f, player_.heliFuel - dt);
             if (player_.heliFuel <= 0.0f) player_.heliGliding = false;
         }
@@ -1043,15 +1078,25 @@ void RailGame::UpdatePlayingFixed(float dt) {
         player_.y += player_.vy * dt;
 
         if (player_.y <= 0.0f) {
-            player_.y = 0.0f;
-            player_.vy = 0.0f;
-            player_.grounded = true;
-            player_.heliGliding = false;
-            player_.heliFuel = player_.maxHeliFuel;
-            player_.jumpTime = 0.0f;
-            player_.landingSquashTimer = 0.25f;
-            audio_.PlayRailHop();
-            SpawnParticleBurst3D({ player_.x, 0.1f, 0.0f }, 10, GOLD, 2.0f, 7.0f, 0.18f, 0.25f);
+            if (IsRailActiveAt(player_.currentLane, 0.0f)) {
+                // Safe landing on active rail!
+                player_.y = 0.0f;
+                player_.vy = 0.0f;
+                player_.grounded = true;
+                player_.heliGliding = false;
+                player_.emergencyHoverTimer = 0.0f;
+                player_.heliFuel = player_.maxHeliFuel;
+                player_.jumpTime = 0.0f;
+                player_.landingSquashTimer = 0.25f;
+                audio_.PlayRailHop();
+                SpawnParticleBurst3D({ player_.x, 0.1f, 0.0f }, 10, GOLD, 2.0f, 7.0f, 0.18f, 0.25f);
+            } else if (player_.emergencyHoverTimer <= 0.0f) {
+                // Falling past rail level over empty chasm
+                player_.grounded = false;
+                if (player_.y <= -7.0f) {
+                    DamagePlayer(player_.maxNanotechHp, false); // Fell to death in the abyss!
+                }
+            }
         }
     } else {
         player_.jumpTime = 0.0f;
@@ -1121,6 +1166,12 @@ void RailGame::UpdatePlayingFixed(float dt) {
         if (!h.active) continue;
         h.z -= stepDist;
         h.animPhase += 3.5f * dt;
+
+        // Immediately purge any hazard on a terminated or non-existent rail
+        if (h.kind != HazardKind::BROKEN_RAIL_GAP && !IsRailActiveAt(h.lane, h.z)) {
+            h.active = false;
+            continue;
+        }
 
         // Thug Drone shoots enemy plasma back down the lane
         if (h.kind == HazardKind::THUG_DRONE && h.z > 8.0f && h.z < 65.0f) {
@@ -1428,6 +1479,14 @@ void RailGame::UpdatePlayingFixed(float dt) {
         if (b.onRail) {
             // Stationary rail-trail / jump-arc bolt moves strictly with its rail
             b.pos.z -= stepDist;
+
+            // Immediately purge any bolt if its rail terminated or is inactive
+            int bLane = 2 - static_cast<int>(std::round(b.pos.x / LANE_WIDTH));
+            bLane = std::clamp(bLane, 0, NUM_LANES - 1);
+            if (!IsRailActiveAt(bLane, b.pos.z)) {
+                b.active = false;
+                continue;
+            }
 
             // Only pull/collect rail bolts if Ratchet is on the SAME rail (and matching jump height)!
             // Upgrading Box Breaker Magnet in the Raritanium Lab slightly widens pickup reach on your rail.

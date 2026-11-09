@@ -1,5 +1,6 @@
 #include "RailGame.hpp"
 #include "raymath.h"
+#include "rlgl.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -833,9 +834,15 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // Form-fitting leather harness / vest across chest
     DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
                    { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, leatherBrn);
-    // Neck
-    Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.06f, shoulderCenter.z + 0.02f };
-    DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
+    // Neck collar & base
+    Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y - 0.02f, shoulderCenter.z + 0.02f };
+    if (!ratchetModelLoaded_) {
+        neckTop.y = shoulderCenter.y + 0.14f;
+        DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
+    } else {
+        // Form-fitting leather vest collar surrounding the base of the neck
+        DrawCylinderEx(shoulderCenter, { shoulderCenter.x, shoulderCenter.y + 0.04f, shoulderCenter.z + 0.01f }, 0.155f, 0.135f, 8, leatherBrn);
+    }
 
     // Form-Fitting Armor Pauldrons on Left and Right Shoulders
     for (int side = -1; side <= 1; side += 2) {
@@ -1135,14 +1142,31 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         Matrix matTrans = MatrixTranslate(neckTop.x, neckTop.y, neckTop.z);
         Matrix matTransform = MatrixMultiply(MatrixMultiply(matScale, matRot), matTrans);
 
-        for (int i = 0; i < ratchetModel_.meshCount; ++i) {
-            if (ratchetModel_.meshCount > 7) {
-                // If full 19-mesh model was loaded, only draw head/face/ear submeshes:
-                // 0: Head, 1: Ear_Fur, 2: Face_Fur, 3: Eye_Lens, 4: Eyes, 5: Cap_Teeth, 18: Eyebrow_Fur
-                if (i != 0 && i != 1 && i != 2 && i != 3 && i != 4 && i != 5 && i != 18) continue;
+        // Submesh Breakdown:
+        // 0: Head_Tail (Opaque head & ears)
+        // 1: Ear_Fur (Transparent fur cards)
+        // 2: Face_Tail_Fur (Transparent cheek fur cards)
+        // 3: Eyes (Opaque emerald-green eyes, sclera, irises, pupils)
+        // 4: Cap_Teeth (Opaque aviator cap rivets & stitching)
+        // 5: Eyebrow_Fur (Transparent arched eyebrows)
+        
+        // Pass 1: Solid Opaque Meshes with full Depth Write
+        int opaqueSubmeshes[] = { 0, 3, 4 };
+        for (int idx : opaqueSubmeshes) {
+            if (idx < ratchetModel_.meshCount) {
+                DrawMesh(ratchetModel_.meshes[idx], ratchetModel_.materials[ratchetModel_.meshMaterial[idx]], matTransform);
             }
-            DrawMesh(ratchetModel_.meshes[i], ratchetModel_.materials[ratchetModel_.meshMaterial[i]], matTransform);
         }
+
+        // Pass 2: Transparent Fur Cards with Depth Write Disabled (no dark halos, black cutouts, or depth holes!)
+        rlDisableDepthMask();
+        int transparentSubmeshes[] = { 1, 2, 5 };
+        for (int idx : transparentSubmeshes) {
+            if (idx < ratchetModel_.meshCount) {
+                DrawMesh(ratchetModel_.meshes[idx], ratchetModel_.materials[ratchetModel_.meshMaterial[idx]], matTransform);
+            }
+        }
+        rlEnableDepthMask();
     } else {
         Color furCream   = { 246, 230, 198, 255 }; // Light cream muzzle fur
         Color noseBlack  = { 24, 20, 26, 255 };    // Dark leather nose button

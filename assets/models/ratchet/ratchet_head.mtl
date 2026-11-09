@@ -58,7 +58,6 @@ newmtl Material__204
 	map_Ka EyeDiff.png
 	map_Kd EyeDiff.png
 	map_Ke EyeLight.png
-	map_d EyeDiff.png
 	map_bump EyeNorm.png
 	bump EyeNorm.png
 

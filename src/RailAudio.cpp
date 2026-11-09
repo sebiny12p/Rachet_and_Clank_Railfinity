@@ -138,6 +138,30 @@ void RailAudio::Init() {
         return 0.30f * env * std::sin(TWO_PI * 1320.0f * t);
     });
 
+    // 14. Swingshot Energy Grapple Tether
+    sndSwingshot_ = MakeWaveSound(0.38f, [](float t, float p) {
+        float env = std::sin(p * 3.14159f);
+        float freq = 380.0f + 920.0f * (1.0f - p);
+        float buzz = 0.65f * std::sin(TWO_PI * freq * t) + 0.35f * std::sin(TWO_PI * freq * 2.05f * t);
+        return 0.36f * env * buzz;
+    });
+
+    // 15. Radio Comm Hologram Chirp (Retro 8-bit HoloComm)
+    sndRadio_ = MakeWaveSound(0.24f, [](float t, float p) {
+        float env = 1.0f - p;
+        float freq = (p < 0.5f) ? 880.0f : 1760.0f;
+        float squ = std::sin(TWO_PI * freq * t) > 0.0f ? 0.3f : -0.3f;
+        return 0.35f * env * squ;
+    });
+
+    // 16. 24K Golden Weapon Upgrade Triumph Fanfare
+    sndGold_ = MakeWaveSound(0.65f, [](float t, float p) {
+        float env = std::sin(p * 3.14159f);
+        float f = (p < 0.25f) ? 523.25f : (p < 0.50f) ? 659.25f : (p < 0.75f) ? 783.99f : 1046.50f;
+        float har = 0.6f * std::sin(TWO_PI * f * t) + 0.4f * std::sin(TWO_PI * f * 2.0f * t);
+        return 0.42f * env * har;
+    });
+
     // Load Official Ratchet & Clank (2002) Soundtrack MP3 Streams (Kyzil Plateau Veldin + Metropolis Kerwan)
     auto TryLoadTrack = [](const char* fileName, Music& outMusic) -> bool {
         const char* appDir = GetApplicationDirectory();
@@ -189,6 +213,9 @@ void RailAudio::ApplyVolumes() {
     SetSoundVolume(sndLevelUp_, effectiveSfx * 0.90f);
     SetSoundVolume(sndHurt_, effectiveSfx * 0.90f);
     SetSoundVolume(sndBoost_, effectiveSfx * 0.95f);
+    SetSoundVolume(sndSwingshot_, effectiveSfx * 0.90f);
+    SetSoundVolume(sndRadio_, effectiveSfx * 0.90f);
+    SetSoundVolume(sndGold_, effectiveSfx * 1.0f);
     SetSoundVolume(sndUi_, effectiveSfx * 0.80f);
 }
 
@@ -210,6 +237,9 @@ void RailAudio::Shutdown() {
     UnloadSound(sndLevelUp_);
     UnloadSound(sndHurt_);
     UnloadSound(sndBoost_);
+    UnloadSound(sndSwingshot_);
+    UnloadSound(sndRadio_);
+    UnloadSound(sndGold_);
     UnloadSound(sndUi_);
     CloseAudioDevice();
     initialized_ = false;
@@ -280,6 +310,9 @@ void RailAudio::PlayExplosion() const { if (initialized_ && !muted_) PlaySound(s
 void RailAudio::PlayLevelUp() const { if (initialized_ && !muted_) PlaySound(sndLevelUp_); }
 void RailAudio::PlayHurt() const { if (initialized_ && !muted_) PlaySound(sndHurt_); }
 void RailAudio::PlayHyperBoost() const { if (initialized_ && !muted_) PlaySound(sndBoost_); }
+void RailAudio::PlaySwingshot() const { if (initialized_ && !muted_) PlaySound(sndSwingshot_); }
+void RailAudio::PlayRadioChirp() const { if (initialized_ && !muted_) PlaySound(sndRadio_); }
+void RailAudio::PlayGoldenUpgrade() const { if (initialized_ && !muted_) PlaySound(sndGold_); }
 void RailAudio::PlayUiClick() const { if (initialized_ && !muted_) PlaySound(sndUi_); }
 
 } // namespace Railfinity

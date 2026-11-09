@@ -62,10 +62,22 @@ void RailGame::RenderFrame() {
     GalaxySector sec = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER)
                        ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
 
-    // Industrial Ratchet & Clank facility atmosphere
+    // Industrial & Planetary Ratchet & Clank sector atmosphere
     Color skyTop = { 16, 28, 48, 255 };
     Color skyBot = { 54, 72, 68, 255 };
-    if (sec == GalaxySector::MEGACORP_FACILITY) {
+    if (sec == GalaxySector::CORSON_V) {
+        skyTop = { 20, 10, 36, 255 };
+        skyBot = { 78, 22, 92, 255 }; // Cyberpunk neon purple rain haze
+    } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
+        skyTop = { 32, 10, 8, 255 };
+        skyBot = { 96, 28, 14, 255 }; // Volcanic smoldering red/amber
+    } else if (sec == GalaxySector::POKITARU_RESORT) {
+        skyTop = { 35, 115, 215, 255 };
+        skyBot = { 110, 205, 235, 255 }; // Tropical azure & sunlit turquoise
+    } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
+        skyTop = { 50, 32, 20, 255 };
+        skyBot = { 125, 78, 45, 255 }; // Molonoth rust canyon sepia
+    } else if (sec == GalaxySector::MEGACORP_FACILITY) {
         skyTop = { 12, 32, 54, 255 };
         skyBot = { 38, 68, 78, 255 };
     } else if (sec == GalaxySector::ZORDOOM_PRISON) {
@@ -226,9 +238,46 @@ void RailGame::RenderWorld3D() {
 
 void RailGame::RenderSkyline3D() const {
     constexpr float PORTAL_Z = 148.0f;
+    GalaxySector sec = GetCurrentSector();
 
-    // 1. Continuous Industrial Canyon Floor & Unbroken Side Facility Walls (Zero Pop-In!)
-    DrawCube({ 0.0f, -18.0f, 70.0f }, 96.0f, 2.0f, 190.0f, { 46, 56, 52, 255 });
+    // Floor & Wall Colors adapted by Planetary Sector Biome
+    Color floorCol = { 46, 56, 52, 255 };
+    Color wallUpper = { 166, 160, 134, 255 };
+    Color wallLower = { 76, 84, 74, 255 };
+    Color neonLight = { 185, 248, 255, 255 };
+
+    if (sec == GalaxySector::CORSON_V) {
+        floorCol = { 24, 18, 36, 255 };
+        wallUpper = { 45, 34, 60, 255 };
+        wallLower = { 28, 20, 42, 255 };
+        neonLight = { 255, 55, 185, 255 }; // Hot Magenta Neon
+    } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
+        floorCol = { 215, 65, 15, 255 }; // Active Magma Floor
+        wallUpper = { 52, 32, 28, 255 }; // Basalt Volcanic Obsidian Rock
+        wallLower = { 35, 18, 16, 255 };
+        neonLight = { 255, 140, 25, 255 }; // Magma Core Glow
+    } else if (sec == GalaxySector::POKITARU_RESORT) {
+        floorCol = { 22, 140, 195, 255 }; // Tropical Azure Ocean
+        wallUpper = { 215, 198, 162, 255 }; // Sun-bleached Sandstone
+        wallLower = { 150, 135, 105, 255 };
+        neonLight = { 65, 235, 245, 255 }; // Azure Coral Glow
+    } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
+        floorCol = { 130, 62, 34, 255 }; // Molonoth Rusted Junkyard Floor
+        wallUpper = { 145, 78, 45, 255 }; // Rusted Iron Mesas
+        wallLower = { 85, 42, 24, 255 };
+        neonLight = { 255, 185, 55, 255 }; // Sodium Scrapyard Floodlight
+    } else if (sec == GalaxySector::ZORDOOM_PRISON) {
+        wallUpper = { 38, 42, 58, 255 };
+        wallLower = { 22, 24, 35, 255 };
+        neonLight = { 255, 45, 45, 255 }; // Security Red
+    } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
+        wallUpper = { 55, 30, 75, 255 };
+        wallLower = { 32, 18, 48, 255 };
+        neonLight = { 210, 85, 255, 255 }; // Psionic Rift Violet
+    }
+
+    // 1. Continuous Planetary Canyon Floor & Unbroken Side Walls (Zero Pop-In!)
+    DrawCube({ 0.0f, -18.0f, 70.0f }, 96.0f, 2.0f, 190.0f, floorCol);
 
     // Continuous segmented side walls that follow the track curve from Z = -12 all the way into the back wall at Z = 148!
     constexpr float wallStep = 10.0f;
@@ -239,11 +288,8 @@ void RailGame::RenderSkyline3D() const {
 
         for (int side = -1; side <= 1; side += 2) {
             float wx = cx + side * 17.5f;
-            // Continuous Cream/Tan Upper Industrial Concrete Wall
-            DrawCube({ wx, cy + 5.0f, midZ }, 5.0f, 30.0f, wallStep + 0.4f, { 166, 160, 134, 255 });
-            // Continuous Dark Olive/Gray Lower Plinth
-            DrawCube({ wx - side * 1.8f, cy - 6.8f, midZ }, 5.8f, 9.5f, wallStep + 0.4f, { 76, 84, 74, 255 });
-            // Horizontal dark-steel cornice ledge
+            DrawCube({ wx, cy + 5.0f, midZ }, 5.0f, 30.0f, wallStep + 0.4f, wallUpper);
+            DrawCube({ wx - side * 1.8f, cy - 6.8f, midZ }, 5.8f, 9.5f, wallStep + 0.4f, wallLower);
             DrawCube({ wx - side * 2.5f, cy - 1.9f, midZ }, 0.8f, 0.7f, wallStep + 0.4f, { 42, 48, 58, 255 });
         }
     }
@@ -261,17 +307,16 @@ void RailGame::RenderSkyline3D() const {
 
         for (int side = -1; side <= 1; side += 2) {
             float wx = cx + side * 14.6f;
-            // Vertical dark steel buttress column
             DrawCube({ wx, cy + 4.0f, z }, 0.9f * emerge, 26.0f, 1.8f * emerge, { 45, 52, 64, 255 });
         }
 
-        // Bright Glowing Cyan/White Billboard Light Panel on Left Wall (+X)
+        // Glowing Billboard Light Panel on Left Wall (+X)
         Vector3 panelPos = { cx + 14.2f, cy + 2.2f, z + 8.0f };
         float pEmerge = GetPortalEmergenceScale(z + 8.0f);
         if (pEmerge > 0.02f) {
             DrawCube(panelPos, 0.45f, 4.4f * pEmerge, 9.2f * pEmerge, { 35, 52, 68, 255 });
             DrawCube({ panelPos.x - 0.18f, panelPos.y, panelPos.z },
-                     0.20f, 3.8f * pEmerge, 8.5f * pEmerge, { 185, 248, 255, 255 });
+                     0.20f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
         }
     }
 
@@ -650,6 +695,102 @@ void RailGame::RenderHazards3D() const {
                 DrawCubeWires(shPos, 1.98f * s, 2.14f * s, 0.16f * s, SKYBLUE);
                 break;
             }
+            case HazardKind::MAGMA_GEYSER: {
+                // Smoldering basalt geyser vent on rail with erupting volcanic flame column!
+                Vector3 ventBase = { lx, ry - 0.1f * s, h.z };
+                DrawCylinderEx(ventBase, { lx, ry + 0.45f * s, h.z }, 0.95f * s, 0.65f * s, 8, { 42, 28, 26, 255 });
+                DrawCylinderWiresEx(ventBase, { lx, ry + 0.45f * s, h.z }, 0.98f * s, 0.68f * s, 8, ORANGE);
+
+                float eruptH = (1.8f + std::sin(h.animPhase * 5.0f) * 0.7f) * s;
+                Vector3 jetTop = { lx, ry + eruptH, h.z };
+                DrawCylinderEx({ lx, ry + 0.35f * s, h.z }, jetTop, 0.55f * s, 0.22f * s, 8, { 255, 95, 15, 240 });
+                DrawCylinderEx({ lx, ry + 0.35f * s, h.z }, jetTop, 0.32f * s, 0.08f * s, 6, YELLOW);
+                DrawSphere(jetTop, 0.45f * s, (std::fmod(h.animPhase, 0.4f) < 0.2f) ? YELLOW : ORANGE);
+                break;
+            }
+            case HazardKind::HOVER_TAXI: {
+                // Cyberpunk Aerodynamic Neon Yellow/Cyan Flying Hover-Taxi
+                Vector3 taxiPos = { lx, ry + 1.25f * s, h.z };
+                float bob = std::sin(h.animPhase * 3.0f) * 0.12f * s;
+                taxiPos.y += bob;
+
+                DrawCube(taxiPos, 2.35f * s, 0.88f * s, 4.2f * s, { 235, 195, 30, 255 });
+                DrawCubeWires(taxiPos, 2.38f * s, 0.90f * s, 4.24f * s, BLACK);
+                DrawCube({ taxiPos.x, taxiPos.y + 0.58f * s, taxiPos.z - 0.2f * s },
+                         1.85f * s, 0.65f * s, 2.2f * s, { 38, 48, 62, 255 });
+                DrawCube({ taxiPos.x, taxiPos.y + 0.58f * s, taxiPos.z - 1.25f * s },
+                         1.70f * s, 0.45f * s, 0.18f * s, { 65, 225, 255, 220 });
+                DrawSphere({ taxiPos.x - 0.85f * s, taxiPos.y - 0.1f * s, taxiPos.z - 2.1f * s }, 0.24f * s, WHITE);
+                DrawSphere({ taxiPos.x + 0.85f * s, taxiPos.y - 0.1f * s, taxiPos.z - 2.1f * s }, 0.24f * s, WHITE);
+                for (int hx = -1; hx <= 1; hx += 2) {
+                    for (int hz = -1; hz <= 1; hz += 2) {
+                        Vector3 thr = { taxiPos.x + hx * 1.35f * s, taxiPos.y - 0.35f * s, taxiPos.z + hz * 1.3f * s };
+                        DrawCylinderEx({ thr.x, thr.y + 0.1f * s, thr.z }, { thr.x, thr.y - 0.25f * s, thr.z },
+                                       0.35f * s, 0.25f * s, 6, { 52, 60, 74, 255 });
+                        DrawCircle3D({ thr.x, thr.y - 0.26f * s, thr.z }, 0.28f * s, { 0, 1, 0 }, 0.0f, SKYBLUE);
+                    }
+                }
+                break;
+            }
+            case HazardKind::PIRANHA_LEAP: {
+                // Razor-Tooth Cyber-Piranha Leaping over Rails
+                float leapY = (0.4f + std::sin(h.animPhase) * 2.6f) * s;
+                Vector3 fishPos = { lx, ry + leapY, h.z };
+
+                DrawSphere(fishPos, 0.72f * s, { 180, 195, 210, 255 });
+                DrawSphereWires(fishPos, 0.75f * s, 6, 6, { 55, 145, 190, 255 });
+                DrawSphere({ fishPos.x - 0.22f * s, fishPos.y + 0.15f * s, fishPos.z - 0.55f * s }, 0.16f * s, RED);
+                DrawSphere({ fishPos.x + 0.22f * s, fishPos.y + 0.15f * s, fishPos.z - 0.55f * s }, 0.16f * s, RED);
+                DrawCube({ fishPos.x, fishPos.y - 0.18f * s, fishPos.z - 0.65f * s }, 0.38f * s, 0.24f * s, 0.42f * s, { 90, 100, 115, 255 });
+                DrawCube({ fishPos.x, fishPos.y - 0.24f * s, fishPos.z - 0.70f * s }, 0.32f * s, 0.12f * s, 0.22f * s, WHITE);
+                float tailWag = std::sin(h.animPhase * 8.0f) * 0.25f * s;
+                DrawTriangle3D({ fishPos.x + tailWag, fishPos.y, fishPos.z + 0.7f * s },
+                               { fishPos.x + tailWag, fishPos.y + 0.6f * s, fishPos.z + 1.2f * s },
+                               { fishPos.x + tailWag, fishPos.y - 0.6f * s, fishPos.z + 1.2f * s }, { 45, 120, 175, 255 });
+                if (leapY < 0.6f * s) {
+                    DrawCircle3D({ lx, ry + 0.05f * s, h.z }, 1.1f * s, { 0, 1, 0 }, 0.0f, { 120, 225, 255, 200 });
+                }
+                break;
+            }
+            case HazardKind::SWINGING_CRANE_SCRAP: {
+                // Heavy Molonoth Scrap Crane Gantry with Swinging Debris
+                Vector3 gantryTop = { lx, ry + 5.8f * s, h.z };
+                DrawCube(gantryTop, 4.8f * s, 0.65f * s, 0.85f * s, { 145, 75, 38, 255 });
+                DrawCubeWires(gantryTop, 4.85f * s, 0.70f * s, 0.90f * s, GOLD);
+
+                float swingAngle = std::sin(h.animPhase * 2.4f) * 0.75f;
+                float cableLen = 3.6f * s;
+                Vector3 debrisPos = { gantryTop.x + std::sin(swingAngle) * cableLen,
+                                      gantryTop.y - std::cos(swingAngle) * cableLen,
+                                      gantryTop.z };
+                DrawCylinderEx(gantryTop, debrisPos, 0.05f * s, 0.05f * s, 4, DARKGRAY);
+
+                DrawCube(debrisPos, 1.65f * s, 1.45f * s, 1.65f * s, { 120, 58, 32, 255 });
+                DrawCubeWires(debrisPos, 1.70f * s, 1.50f * s, 1.70f * s, RED);
+                DrawSphere(debrisPos, 0.55f * s, { 255, 140, 30, 200 });
+                break;
+            }
+            case HazardKind::SWINGSHOT_NODE: {
+                // Glowing Emerald Versa-Fuse Swingshot Anchor Node (Hovering Overhead!)
+                Vector3 nodePos = { lx, ry + 3.8f * s, h.z };
+                float pulse = 1.0f + std::sin(h.animPhase * 4.0f) * 0.12f;
+
+                DrawSphere(nodePos, 0.55f * s * pulse, GREEN);
+                DrawSphere(nodePos, 0.32f * s, WHITE);
+
+                constexpr int RING_PTS = 8;
+                float r1 = 1.15f * s;
+                float r2 = 1.55f * s;
+                for (int pt = 0; pt < RING_PTS; ++pt) {
+                    float a1 = (pt * (360.0f / RING_PTS)) * DEG2RAD + h.animPhase * 3.0f;
+                    float a2 = ((pt + 1) * (360.0f / RING_PTS)) * DEG2RAD + h.animPhase * 3.0f;
+                    Vector3 p1 = { nodePos.x + std::cos(a1) * r1, nodePos.y + std::sin(a1) * r1, nodePos.z };
+                    Vector3 p2 = { nodePos.x + std::cos(a2) * r1, nodePos.y + std::sin(a2) * r1, nodePos.z };
+                    DrawCylinderEx(p1, p2, 0.07f * s, 0.07f * s, 5, { 60, 255, 120, 230 });
+                }
+                DrawCircle3D(nodePos, r2, { 0, 0, 1 }, 0.0f, { 120, 255, 160, 160 });
+                break;
+            }
         }
     }
 }
@@ -702,20 +843,73 @@ void RailGame::RenderBossDropship3D() const {
     if (!boss_.active) return;
 
     Vector3 hullPos = ApplyTrackCurve(boss_.hoverX, boss_.hoverY, boss_.z);
-    DrawCube(hullPos, 9.5f, 2.2f, 4.2f, { 48, 54, 70, 255 });
-    DrawCubeWires(hullPos, 9.6f, 2.3f, 4.3f, ORANGE);
-    DrawCube({ hullPos.x - 5.2f, hullPos.y + 0.4f, hullPos.z + 0.5f }, 2.0f, 1.1f, 4.8f, { 68, 76, 96, 255 });
-    DrawCube({ hullPos.x + 5.2f, hullPos.y + 0.4f, hullPos.z + 0.5f }, 2.0f, 1.1f, 4.8f, { 68, 76, 96, 255 });
-    DrawCube({ hullPos.x, hullPos.y + 1.35f, hullPos.z - 0.8f }, 3.4f, 0.88f, 2.2f, { 255, 85, 45, 220 });
 
-    for (int l = 0; l < NUM_LANES; ++l) {
-        Vector3 tPos = ApplyTrackCurve(GetLaneX(l), boss_.hoverY - 1.15f, boss_.z - 1.8f);
-        if (boss_.turretHp[l] > 0.0f) {
-            DrawSphere(tPos, 0.95f, RED);
-            DrawSphereWires(tPos, 1.1f, 6, 6, GOLD);
-            DrawCylinderEx(tPos, { tPos.x, tPos.y - 0.2f, tPos.z - 1.3f }, 0.22f, 0.16f, 8, DARKGRAY);
-        } else {
-            DrawSphere(tPos, 0.60f, DARKGRAY);
+    if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
+        // EMPEROR NEFARIOUS IMPERIAL DREAD-FRIGATE (Imperial Purple & 24K Gold Filigree)
+        DrawCube(hullPos, 10.5f, 2.4f, 4.6f, { 78, 24, 112, 255 });
+        DrawCubeWires(hullPos, 10.6f, 2.5f, 4.7f, GOLD);
+
+        // Angled Imperial Prow & Outriggers
+        DrawCube({ hullPos.x - 5.5f, hullPos.y + 0.3f, hullPos.z + 0.6f }, 2.4f, 1.3f, 5.2f, { 98, 32, 142, 255 });
+        DrawCubeWires({ hullPos.x - 5.5f, hullPos.y + 0.3f, hullPos.z + 0.6f }, 2.45f, 1.35f, 5.25f, GOLD);
+        DrawCube({ hullPos.x + 5.5f, hullPos.y + 0.3f, hullPos.z + 0.6f }, 2.4f, 1.3f, 5.2f, { 98, 32, 142, 255 });
+        DrawCubeWires({ hullPos.x + 5.5f, hullPos.y + 0.3f, hullPos.z + 0.6f }, 2.45f, 1.35f, 5.25f, GOLD);
+
+        // Imperial Green Energy Reactor Intake on Top
+        DrawCube({ hullPos.x, hullPos.y + 1.45f, hullPos.z - 0.8f }, 3.6f, 0.95f, 2.4f, { 45, 235, 110, 220 });
+        DrawCubeWires({ hullPos.x, hullPos.y + 1.45f, hullPos.z - 0.8f }, 3.65f, 0.98f, 2.45f, WHITE);
+
+        // Floating Giant Holographic Dr. Nefarious Head Projection over Bridge!
+        Vector3 holoHead = { hullPos.x, hullPos.y + 3.2f, hullPos.z - 0.4f };
+        float hPulse = 1.0f + std::sin(globalTime_ * 8.0f) * 0.08f;
+        DrawSphere(holoHead, 1.15f * hPulse, { 50, 220, 100, 145 });
+        DrawSphereWires(holoHead, 1.20f * hPulse, 8, 8, { 80, 255, 130, 200 });
+        // Glowing red/yellow holographic eyes
+        DrawSphere({ holoHead.x - 0.35f, holoHead.y + 0.15f, holoHead.z - 0.95f }, 0.22f, RED);
+        DrawSphere({ holoHead.x + 0.35f, holoHead.y + 0.15f, holoHead.z - 0.95f }, 0.22f, RED);
+
+        // Sweeping Dual Imperial Death Rays sweeping across the rails!
+        Vector3 leftLance  = { hullPos.x - 4.2f, hullPos.y - 0.6f, hullPos.z - 1.2f };
+        Vector3 rightLance = { hullPos.x + 4.2f, hullPos.y - 0.6f, hullPos.z - 1.2f };
+        Vector3 sweepTarget = ApplyTrackCurve(boss_.laserSweepX, 0.15f, 0.0f);
+
+        DrawCylinderEx(leftLance, sweepTarget, 0.26f, 0.12f, 8, { 215, 45, 255, 225 });
+        DrawCylinderEx(leftLance, sweepTarget, 0.12f, 0.05f, 6, WHITE);
+        DrawCylinderEx(rightLance, sweepTarget, 0.26f, 0.12f, 8, { 215, 45, 255, 225 });
+        DrawCylinderEx(rightLance, sweepTarget, 0.12f, 0.05f, 6, WHITE);
+
+        // Scorching Laser Sweep Reticle on Rail
+        DrawCircle3D(sweepTarget, 1.2f, { 0, 1, 0 }, 0.0f, { 255, 45, 220, 240 });
+        DrawCircle3D(sweepTarget, 0.6f, { 0, 1, 0 }, 0.0f, WHITE);
+
+        // Turrets (Glowing Emerald/Gold Plasma Emitters)
+        for (int l = 0; l < NUM_LANES; ++l) {
+            Vector3 tPos = ApplyTrackCurve(GetLaneX(l), boss_.hoverY - 1.15f, boss_.z - 1.8f);
+            if (boss_.turretHp[l] > 0.0f) {
+                DrawSphere(tPos, 0.98f, { 45, 235, 110, 255 });
+                DrawSphereWires(tPos, 1.15f, 6, 6, GOLD);
+                DrawCylinderEx(tPos, { tPos.x, tPos.y - 0.2f, tPos.z - 1.3f }, 0.24f, 0.18f, 8, { 55, 24, 82, 255 });
+            } else {
+                DrawSphere(tPos, 0.60f, DARKGRAY);
+            }
+        }
+    } else {
+        // PROG TWINS // MEGACORP COMMAND SHIP (Industrial Gunmetal & Hazard Orange)
+        DrawCube(hullPos, 9.5f, 2.2f, 4.2f, { 48, 54, 70, 255 });
+        DrawCubeWires(hullPos, 9.6f, 2.3f, 4.3f, ORANGE);
+        DrawCube({ hullPos.x - 5.2f, hullPos.y + 0.4f, hullPos.z + 0.5f }, 2.0f, 1.1f, 4.8f, { 68, 76, 96, 255 });
+        DrawCube({ hullPos.x + 5.2f, hullPos.y + 0.4f, hullPos.z + 0.5f }, 2.0f, 1.1f, 4.8f, { 68, 76, 96, 255 });
+        DrawCube({ hullPos.x, hullPos.y + 1.35f, hullPos.z - 0.8f }, 3.4f, 0.88f, 2.2f, { 255, 85, 45, 220 });
+
+        for (int l = 0; l < NUM_LANES; ++l) {
+            Vector3 tPos = ApplyTrackCurve(GetLaneX(l), boss_.hoverY - 1.15f, boss_.z - 1.8f);
+            if (boss_.turretHp[l] > 0.0f) {
+                DrawSphere(tPos, 0.95f, RED);
+                DrawSphereWires(tPos, 1.1f, 6, 6, GOLD);
+                DrawCylinderEx(tPos, { tPos.x, tPos.y - 0.2f, tPos.z - 1.3f }, 0.22f, 0.16f, 8, DARKGRAY);
+            } else {
+                DrawSphere(tPos, 0.60f, DARKGRAY);
+            }
         }
     }
 }
@@ -800,6 +994,29 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     };
     DrawGrindBoot(leftFoot);
     DrawGrindBoot(rightFoot);
+
+    // Overdrive Hoverboots Supersonic Rocket Thruster Flames!
+    if (player_.overdriveDuration > 0.0f) {
+        float fLen = 0.95f + std::sin(globalTime_ * 32.0f) * 0.25f;
+        Vector3 lHeel = { leftFoot.x, leftFoot.y - 0.04f, leftFoot.z - 0.18f };
+        Vector3 rHeel = { rightFoot.x, rightFoot.y - 0.04f, rightFoot.z - 0.18f };
+        DrawCylinderEx(lHeel, { lHeel.x, lHeel.y + 0.04f, lHeel.z - fLen }, 0.15f, 0.02f, 6, ORANGE);
+        DrawCylinderEx(lHeel, { lHeel.x, lHeel.y + 0.04f, lHeel.z - fLen * 0.6f }, 0.08f, 0.01f, 4, YELLOW);
+        DrawCylinderEx(rHeel, { rHeel.x, rHeel.y + 0.04f, rHeel.z - fLen }, 0.15f, 0.02f, 6, ORANGE);
+        DrawCylinderEx(rHeel, { rHeel.x, rHeel.y + 0.04f, rHeel.z - fLen * 0.6f }, 0.08f, 0.01f, 4, YELLOW);
+    }
+
+    // Swingshot Versa-Fuse Energy Tether (Cinematic Grapple Arc)
+    if (player_.isSwinging) {
+        Vector3 handPos = { pos.x - 0.35f, pos.y + 1.65f, pos.z + 0.2f };
+        DrawCylinderEx(handPos, player_.swingNodePos, 0.08f, 0.04f, 6, GREEN);
+        DrawCylinderEx(handPos, player_.swingNodePos, 0.035f, 0.015f, 4, WHITE);
+        for (int r = 1; r <= 3; ++r) {
+            float frac = static_cast<float>(r) / 4.0f;
+            Vector3 ringP = Vector3Lerp(handPos, player_.swingNodePos, frac);
+            DrawCircle3D(ringP, 0.22f, { 0, 0, 1 }, 0.0f, { 120, 255, 140, 220 });
+        }
+    }
 
     float kneeForwardTuck = airborne ? (jumpTuck * 0.32f) : 0.0f;
     Vector3 pelvisPos = { pos.x + leanX * 0.6f, pos.y + 0.72f + crouchDrop, pos.z };
@@ -1545,7 +1762,12 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // 6. 6 CUSTOM HIGH-FIDELITY 3D WEAPON MODELS (AUTHENTIC INSOMNIAC GADGETRON ARSENAL)
     // =========================================================================
     WeaponId wEnum = static_cast<WeaponId>(weaponId);
-    Color weapCol = GetWeaponCatalog()[weaponId].projectileColor;
+    bool isGolden = (weaponId >= 0 && weaponId < static_cast<int>(NUM_WEAPONS)) && save_.goldenWeapons[weaponId];
+    Color weapCol = isGolden ? GOLDEN_WEAPON_CATALOG[weaponId].projectileColor : GetWeaponCatalog()[weaponId].projectileColor;
+    if (isGolden) {
+        armorDark = GOLDEN_WEAPON_CATALOG[weaponId].goldPrimary;
+        armorOrange = GOLDEN_WEAPON_CATALOG[weaponId].goldTrim;
+    }
     Vector3 gunDir = Vector3Normalize({
         (1.0f - aimBlend) * (-0.12f),
         recoilKick * 0.22f - (1.0f - aimBlend) * 0.12f,
@@ -1889,6 +2111,21 @@ void RailGame::RenderHud2D() {
             } else if (h.kind == HazardKind::RARITANIUM_CACHE) {
                 tag = "+RARITANIUM";
                 tagCol = SKYBLUE;
+            } else if (h.kind == HazardKind::MAGMA_GEYSER && h.lane == player_.currentLane) {
+                tag = "! MAGMA GEYSER !";
+                tagCol = ORANGE;
+            } else if (h.kind == HazardKind::HOVER_TAXI && h.lane == player_.currentLane) {
+                tag = "! HOVER-TAXI !";
+                tagCol = YELLOW;
+            } else if (h.kind == HazardKind::PIRANHA_LEAP && h.lane == player_.currentLane) {
+                tag = "! CYBER-PIRANHA !";
+                tagCol = SKYBLUE;
+            } else if (h.kind == HazardKind::SWINGING_CRANE_SCRAP && h.lane == player_.currentLane) {
+                tag = "v SLIDE UNDER CRANE v";
+                tagCol = ORANGE;
+            } else if (h.kind == HazardKind::SWINGSHOT_NODE && h.lane == player_.currentLane) {
+                tag = "* SWINGSHOT NODE *";
+                tagCol = GREEN;
             }
 
             if (tag != nullptr) {
@@ -2040,6 +2277,36 @@ void RailGame::RenderHud2D() {
     DrawLine(static_cast<int>(fc.x), static_cast<int>(fc.y - 16), static_cast<int>(fc.x), static_cast<int>(fc.y + 16), ORANGE);
     DrawText(fireLabel, static_cast<int>(btnFireRec.x + (hasGamepad ? 12 : 24)), static_cast<int>(btnFireRec.y + 58), 13, GOLD);
 
+    // 3. [OVERDRIVE HOVERBOOTS BOOST] Holographic Button (If Unlocked!)
+    if (save_.hoverbootsUnlocked) {
+        Rectangle btnBoostRec = save_.leftHandedControls
+                              ? Rectangle{ 236.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f }
+                              : Rectangle{ VIRTUAL_WIDTH - 326.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f };
+        bool boostActive = (player_.overdriveDuration > 0.0f || touchFeedbackBoost_ > 0.0f);
+        bool boostReady = (player_.overdriveCooldown <= 0.0f);
+        Color boostRingCol = boostActive ? GOLD : (boostReady ? ORANGE : DARKGRAY);
+
+        DrawCircle(static_cast<int>(btnBoostRec.x + 37), static_cast<int>(btnBoostRec.y + 37), 34.0f,
+                   boostActive ? Color{ 145, 95, 20, 240 } : Color{ 16, 20, 32, 190 });
+        DrawCircleLines(static_cast<int>(btnBoostRec.x + 37), static_cast<int>(btnBoostRec.y + 37),
+                        boostActive ? 37.0f : 34.0f, boostRingCol);
+
+        // Rocket Flame Icon
+        Vector2 rc = { btnBoostRec.x + 37, btnBoostRec.y + 30 };
+        DrawTriangle({ rc.x, rc.y - 12.0f }, { rc.x - 8.0f, rc.y + 8.0f }, { rc.x + 8.0f, rc.y + 8.0f }, boostReady ? GOLD : GRAY);
+        DrawTriangle({ rc.x, rc.y - 4.0f }, { rc.x - 4.0f, rc.y + 10.0f }, { rc.x + 4.0f, rc.y + 10.0f }, boostReady ? YELLOW : DARKGRAY);
+
+        const char* bLabel = boostActive ? "BOOST!" : (boostReady ? (hasGamepad ? "(Y) BOOST" : "BOOST") : "COOLDOWN");
+        DrawText(bLabel, static_cast<int>(btnBoostRec.x + (boostReady ? (hasGamepad ? 8 : 16) : 6)),
+                 static_cast<int>(btnBoostRec.y + 50), 11, boostRingCol);
+
+        if (!boostReady) {
+            float cdFrac = player_.overdriveCooldown / 11.0f;
+            DrawRectangle(static_cast<int>(btnBoostRec.x + 8), static_cast<int>(btnBoostRec.y + 64),
+                          static_cast<int>(58.0f * (1.0f - cdFrac)), 4, GOLD);
+        }
+    }
+
     // Emergency Auto-Hover Alert & Track Terminus Warning
     if (player_.emergencyHoverTimer > 0.0f) {
         char hoverMsg[64];
@@ -2063,6 +2330,9 @@ void RailGame::RenderHud2D() {
         DrawRectangleLines(VIRTUAL_WIDTH / 2 - sw / 2 - 20, 128, sw + 40, 38, ORANGE);
         DrawText(sName, VIRTUAL_WIDTH / 2 - sw / 2, 137, 20, GOLD);
     }
+
+    // Retro Holographic Radio Comm Chatter Box
+    RenderRadioComm2D();
 }
 
 void RailGame::RenderSplashIntro2D() {
@@ -2285,14 +2555,18 @@ void RailGame::RenderGadgetronVendor2D() {
         DrawRectangleRec(r, equipped ? Color{ 28, 44, 70, 245 } : Color{ 16, 22, 36, 230 });
         DrawRectangleLinesEx(r, equipped ? 2.5f : 1.5f, equipped ? GOLD : cat[i].projectileColor);
 
-        const char* title = (lvl >= 5) ? cat[i].omegaName : cat[i].name;
-        DrawText(title, static_cast<int>(r.x + 18), static_cast<int>(r.y + 8), 19, cat[i].projectileColor);
-        DrawText(cat[i].specialPerk, static_cast<int>(r.x + 18), static_cast<int>(r.y + 31), 14, GOLD);
+        bool isGold = save_.goldenWeapons[i];
+        const char* title = isGold ? GOLDEN_WEAPON_CATALOG[i].name : ((lvl >= 5) ? cat[i].omegaName : cat[i].name);
+        Color wCol = isGold ? GOLD : cat[i].projectileColor;
+        DrawText(title, static_cast<int>(r.x + 18), static_cast<int>(r.y + 8), 19, wCol);
+        DrawText(isGold ? GOLDEN_WEAPON_CATALOG[i].masteryPerk : cat[i].specialPerk,
+                 static_cast<int>(r.x + 18), static_cast<int>(r.y + 31), 14, isGold ? GOLD : GOLD);
         DrawText(cat[i].description, static_cast<int>(r.x + 18), static_cast<int>(r.y + 51), 13, LIGHTGRAY);
 
         char lvlStr[32];
-        std::snprintf(lvlStr, sizeof(lvlStr), "LEVEL V%d", lvl);
-        DrawText(lvlStr, static_cast<int>(r.x + 695), static_cast<int>(r.y + 28), 19, (lvl >= 5) ? GOLD : WHITE);
+        if (isGold) std::snprintf(lvlStr, sizeof(lvlStr), "24K GOLD");
+        else std::snprintf(lvlStr, sizeof(lvlStr), "LEVEL V%d", lvl);
+        DrawText(lvlStr, static_cast<int>(r.x + 695), static_cast<int>(r.y + 28), 19, (isGold || lvl >= 5) ? GOLD : WHITE);
 
         Rectangle eqBtn = { r.x + 810.0f, r.y + 16.0f, 160.0f, 44.0f };
         if (unlocked) {
@@ -2325,21 +2599,42 @@ void RailGame::RenderGadgetronVendor2D() {
 
         if (unlocked) {
             Rectangle upBtn = { r.x + 985.0f, r.y + 16.0f, 155.0f, 44.0f };
-            int rCost = cat[i].upgradeRaritaniumCost * lvl;
-            bool maxed = (lvl >= 5);
-            bool canUp = (!maxed && save_.raritanium >= rCost);
-            DrawRectangleRec(upBtn, maxed ? DARKGRAY : (canUp ? Color{ 30, 75, 105, 255 } : Color{ 35, 35, 45, 255 }));
-            char upStr[48];
-            if (maxed) std::snprintf(upStr, sizeof(upStr), "V5 OMEGA MAX");
-            else std::snprintf(upStr, sizeof(upStr), "+V%d (%d RARI)", lvl + 1, rCost);
-            DrawText(upStr, static_cast<int>(upBtn.x + 14), static_cast<int>(upBtn.y + 14), 15,
-                     maxed ? GOLD : (canUp ? SKYBLUE : GRAY));
-            if (IsButtonClicked(upBtn) && canUp) {
-                save_.raritanium -= rCost;
-                save_.weaponLevels[i]++;
-                SaveProgress();
-                audio_.PlayLevelUp();
-                if (save_.weaponLevels[i] >= 5) AwardSkillPoint(5);
+            if (lvl < 5) {
+                int rCost = cat[i].upgradeRaritaniumCost * lvl;
+                bool canUp = (save_.raritanium >= rCost);
+                DrawRectangleRec(upBtn, canUp ? Color{ 30, 75, 105, 255 } : Color{ 35, 35, 45, 255 });
+                char upStr[48];
+                std::snprintf(upStr, sizeof(upStr), "+V%d (%d RARI)", lvl + 1, rCost);
+                DrawText(upStr, static_cast<int>(upBtn.x + 14), static_cast<int>(upBtn.y + 14), 15,
+                         canUp ? SKYBLUE : GRAY);
+                if (IsButtonClicked(upBtn) && canUp) {
+                    save_.raritanium -= rCost;
+                    save_.weaponLevels[i]++;
+                    SaveProgress();
+                    audio_.PlayLevelUp();
+                    if (save_.weaponLevels[i] >= 5) AwardSkillPoint(5);
+                }
+            } else if (!isGold) {
+                int gRariCost = GOLDEN_WEAPON_CATALOG[i].unlockRaritaniumCost;
+                int gBoltCost = GOLDEN_WEAPON_CATALOG[i].unlockBoltCost;
+                bool canForge = (save_.raritanium >= gRariCost && save_.bolts >= gBoltCost);
+                DrawRectangleRec(upBtn, canForge ? Color{ 140, 95, 20, 255 } : Color{ 45, 35, 30, 255 });
+                DrawRectangleLinesEx(upBtn, 2.0f, canForge ? GOLD : GRAY);
+                DrawText("FORGE 24K GOLD", static_cast<int>(upBtn.x + 10), static_cast<int>(upBtn.y + 8), 13, canForge ? GOLD : GRAY);
+                char gCostStr[48];
+                std::snprintf(gCostStr, sizeof(gCostStr), "%dB, %dR", gBoltCost, gRariCost);
+                DrawText(gCostStr, static_cast<int>(upBtn.x + 18), static_cast<int>(upBtn.y + 24), 13, canForge ? WHITE : GRAY);
+                if (IsButtonClicked(upBtn) && canForge) {
+                    save_.bolts -= gBoltCost;
+                    save_.raritanium -= gRariCost;
+                    save_.goldenWeapons[i] = true;
+                    SaveProgress();
+                    audio_.PlayGoldenUpgrade();
+                }
+            } else {
+                DrawRectangleRec(upBtn, Color{ 48, 38, 18, 255 });
+                DrawRectangleLinesEx(upBtn, 1.5f, GOLD);
+                DrawText("24K MASTERED", static_cast<int>(upBtn.x + 14), static_cast<int>(upBtn.y + 14), 14, GOLD);
             }
         }
     }
@@ -2399,10 +2694,37 @@ void RailGame::RenderRaritaniumLab2D() {
     DrawModCard(2, "CLANK HELI-PACK OVERDRIVE", "Extends mid-air Heli-Pack glide fuel & Hyper-Boost duration.", save_.bootThrusterLevel, 5, 350);
     DrawModCard(3, "MULTIPLIER AMPLIFIER", "Accelerates Bolt Multiplier climb toward 20x.", save_.multiplierModLevel, 5, 400);
 
-    Rectangle backBtn = { 60.0f, 575.0f, 220.0f, 48.0f };
+    // Overdrive Hoverboots Flagship Gadget Matrix Card
+    Rectangle hgRec = { 60.0f, 510.0f, 1150.0f, 85.0f };
+    DrawRectangleRec(hgRec, save_.hoverbootsUnlocked ? Color{ 22, 38, 56, 240 } : Color{ 16, 24, 40, 235 });
+    DrawRectangleLinesEx(hgRec, 2.0f, save_.hoverbootsUnlocked ? GOLD : ORANGE);
+    DrawText("OVERDRIVE HOVERBOOTS (FLAGSHIP GADGET)", static_cast<int>(hgRec.x + 20), static_cast<int>(hgRec.y + 12), 20, GOLD);
+    DrawText("Rocket-propelled boots. Press [SHIFT] / [B] / [BOOST] during runs for 3s supersonic rush obliterating crates & laser gates!",
+             static_cast<int>(hgRec.x + 20), static_cast<int>(hgRec.y + 42), 14, LIGHTGRAY);
+
+    Rectangle hgBtn = { hgRec.x + 865.0f, hgRec.y + 18.0f, 265.0f, 48.0f };
+    if (save_.hoverbootsUnlocked) {
+        DrawRectangleRec(hgBtn, Color{ 35, 75, 45, 255 });
+        DrawRectangleLinesEx(hgBtn, 1.5f, GREEN);
+        DrawText("GADGET ONLINE [ACTIVE]", static_cast<int>(hgBtn.x + 22), static_cast<int>(hgBtn.y + 16), 16, GREEN);
+    } else {
+        bool canBuyHg = (save_.bolts >= 1800 && save_.raritanium >= 10);
+        DrawRectangleRec(hgBtn, canBuyHg ? Color{ 140, 95, 20, 255 } : Color{ 48, 32, 38, 255 });
+        DrawRectangleLinesEx(hgBtn, 2.0f, canBuyHg ? GOLD : GRAY);
+        DrawText("UNLOCK (1800 B, 10 RARI)", static_cast<int>(hgBtn.x + 18), static_cast<int>(hgBtn.y + 16), 15, canBuyHg ? WHITE : GRAY);
+        if (IsButtonClicked(hgBtn) && canBuyHg) {
+            save_.bolts -= 1800;
+            save_.raritanium -= 10;
+            save_.hoverbootsUnlocked = true;
+            SaveProgress();
+            audio_.PlayGoldenUpgrade();
+        }
+    }
+
+    Rectangle backBtn = { 60.0f, 608.0f, 220.0f, 46.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
-    DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
+    DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 15), 16, WHITE);
     if (IsButtonClicked(backBtn)) {
         SetScreenMode(ScreenMode::MAIN_MENU);
         audio_.PlayUiClick();
@@ -2937,6 +3259,69 @@ void RailGame::RenderSkillToast2D() const {
 
     DrawText(toast_.title.c_str(), static_cast<int>(box.x + 18), static_cast<int>(box.y + 12), 18, GOLD);
     DrawText(toast_.subtitle.c_str(), static_cast<int>(box.x + 18), static_cast<int>(box.y + 36), 14, WHITE);
+}
+
+void RailGame::RenderRadioComm2D() const {
+    if (!radioComm_.active || radioComm_.timer <= 0.0f) return;
+
+    float alpha = std::clamp(radioComm_.timer / 0.4f, 0.0f, 1.0f);
+    if (radioComm_.timer > radioComm_.maxTimer - 0.4f) {
+        alpha = std::clamp((radioComm_.maxTimer - radioComm_.timer) / 0.4f, 0.0f, 1.0f);
+    }
+    unsigned char aByte = static_cast<unsigned char>(alpha * 240.0f);
+
+    float boxW = 580.0f;
+    float boxH = 92.0f;
+    float boxX = (VIRTUAL_WIDTH - boxW) * 0.5f;
+    float boxY = 82.0f;
+
+    Color borderCol = (radioComm_.speaker == CommSpeaker::DR_NEFARIOUS) ? Color{ 210, 60, 255, aByte } :
+                      (radioComm_.speaker == CommSpeaker::CLANK) ? Color{ 60, 235, 110, aByte } : Color{ 255, 185, 45, aByte };
+
+    // Holographic Translucent Backplate
+    DrawRectangle(static_cast<int>(boxX), static_cast<int>(boxY), static_cast<int>(boxW), static_cast<int>(boxH), Color{ 10, 16, 28, aByte });
+    DrawRectangleLinesEx({ boxX, boxY, boxW, boxH }, 2.0f, borderCol);
+
+    // Subtle Retro Scanlines across communicator
+    for (int y = static_cast<int>(boxY) + 3; y < static_cast<int>(boxY + boxH) - 2; y += 4) {
+        DrawLine(static_cast<int>(boxX) + 2, y, static_cast<int>(boxX + boxW) - 2, y, Color{ 255, 255, 255, static_cast<unsigned char>(18 * alpha) });
+    }
+
+    // Left Hologram Avatar Frame
+    Rectangle avRec = { boxX + 10.0f, boxY + 10.0f, 72.0f, 72.0f };
+    DrawRectangleRec(avRec, Color{ 16, 24, 42, aByte });
+    DrawRectangleLinesEx(avRec, 1.5f, borderCol);
+
+    // Procedural Avatar Glyphs
+    if (radioComm_.speaker == CommSpeaker::CAPTAIN_QWARK) {
+        Vector2 c = { avRec.x + 36.0f, avRec.y + 36.0f };
+        DrawCircle(static_cast<int>(c.x), static_cast<int>(c.y), 22.0f, Color{ 40, 140, 60, aByte });
+        DrawCircleLines(static_cast<int>(c.x), static_cast<int>(c.y), 22.0f, GOLD);
+        DrawTriangle({ c.x, c.y - 14.0f }, { c.x - 12.0f, c.y + 10.0f }, { c.x + 12.0f, c.y + 10.0f }, GOLD);
+        DrawText("Q", static_cast<int>(c.x - 7), static_cast<int>(c.y - 6), 18, BLACK);
+    } else if (radioComm_.speaker == CommSpeaker::DR_NEFARIOUS) {
+        Vector2 c = { avRec.x + 36.0f, avRec.y + 36.0f };
+        DrawRectangle(static_cast<int>(c.x - 18), static_cast<int>(c.y - 16), 36, 32, Color{ 90, 35, 125, aByte });
+        DrawRectangleLines(static_cast<int>(c.x - 18), static_cast<int>(c.y - 16), 36, 32, borderCol);
+        DrawTriangle({ c.x - 10.0f, c.y - 6.0f }, { c.x - 14.0f, c.y + 2.0f }, { c.x - 6.0f, c.y + 2.0f }, GREEN);
+        DrawTriangle({ c.x + 10.0f, c.y - 6.0f }, { c.x + 6.0f, c.y + 2.0f }, { c.x + 14.0f, c.y + 2.0f }, GREEN);
+        DrawRectangle(static_cast<int>(c.x - 10), static_cast<int>(c.y + 8), 20, 4, borderCol);
+    } else {
+        Vector2 c = { avRec.x + 36.0f, avRec.y + 38.0f };
+        DrawCircle(static_cast<int>(c.x), static_cast<int>(c.y), 20.0f, Color{ 190, 205, 220, aByte });
+        DrawCircleLines(static_cast<int>(c.x), static_cast<int>(c.y), 20.0f, WHITE);
+        DrawCircle(static_cast<int>(c.x - 7), static_cast<int>(c.y - 2), 6.0f, GREEN);
+        DrawCircle(static_cast<int>(c.x + 7), static_cast<int>(c.y - 2), 6.0f, GREEN);
+        DrawLine(static_cast<int>(c.x), static_cast<int>(c.y - 20), static_cast<int>(c.x), static_cast<int>(c.y - 28), DARKGRAY);
+        DrawCircle(static_cast<int>(c.x), static_cast<int>(c.y - 28), 3.0f, RED);
+    }
+
+    char hdr[64];
+    std::snprintf(hdr, sizeof(hdr), "%s // COMM FREQ 142.8", radioComm_.speakerName.c_str());
+    DrawText(hdr, static_cast<int>(boxX + 94), static_cast<int>(boxY + 12), 15, borderCol);
+
+    DrawTextWrapped(radioComm_.text.c_str(), static_cast<int>(boxX + 94), static_cast<int>(boxY + 34),
+                    static_cast<int>(boxW - 106), 14, 18, WHITE);
 }
 
 } // namespace Railfinity

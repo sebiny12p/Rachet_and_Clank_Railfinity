@@ -345,16 +345,20 @@ bool RailGame::IsRailActiveAt(int lane, float z) const {
 }
 
 GalaxySector RailGame::GetCurrentSector() const {
-    int stage = (static_cast<int>(distanceMeters_) / 500) % 4;
+    int stage = (static_cast<int>(distanceMeters_) / 500) % NUM_SECTORS;
     return static_cast<GalaxySector>(stage);
 }
 
 const char* RailGame::GetSectorName(GalaxySector s) const {
     switch (s) {
         case GalaxySector::METROPOLIS_KERWAN: return "SECTOR 01 // METROPOLIS KERWAN (SOLANA GALAXY)";
-        case GalaxySector::MEGACORP_FACILITY: return "SECTOR 02 // MEGACORP WEAPONS PARK (BOGON GALAXY)";
-        case GalaxySector::ZORDOOM_PRISON:    return "SECTOR 03 // ZORDOOM PRISON GRINDWAY (POLARIS)";
-        case GalaxySector::DIMENSIONATOR_RIFT:return "SECTOR 04 // DIMENSIONATOR RIFT ANOMALY";
+        case GalaxySector::CORSON_V:          return "SECTOR 02 // CORSON V: NEFARIOUS CITY (POLARIS)";
+        case GalaxySector::GASPAR_VOLCANIC:   return "SECTOR 03 // PLANET GASPAR: VOLCANIC CORE";
+        case GalaxySector::POKITARU_RESORT:   return "SECTOR 04 // POKITARU: JOWAI RESORT COAST";
+        case GalaxySector::TORREN_IV_SCRAP:   return "SECTOR 05 // TORREN IV: MOLONOTH SCRAP FIELDS";
+        case GalaxySector::MEGACORP_FACILITY: return "SECTOR 06 // MEGACORP WEAPONS PARK (BOGON GALAXY)";
+        case GalaxySector::ZORDOOM_PRISON:    return "SECTOR 07 // ZORDOOM PRISON MAXIMUM SECURITY";
+        case GalaxySector::DIMENSIONATOR_RIFT:return "SECTOR 08 // DIMENSIONATOR RIFT ANOMALY";
     }
     return "UNKNOWN SECTOR";
 }
@@ -470,21 +474,28 @@ void RailGame::TriggerFireWeapon() {
     int wIdx = save_.equippedWeapon;
     const auto& wDef = WEAPON_CATALOG[wIdx];
     int wLvl = save_.weaponLevels[wIdx];
+    bool isGolden = save_.goldenWeapons[wIdx];
     float dmg = wDef.baseDamage * (1.0f + (wLvl - 1) * 0.28f);
+    if (isGolden) dmg *= 1.45f;
 
     player_.weaponCooldown = wDef.fireCooldown * std::max(0.65f, 1.0f - (wLvl - 1) * 0.06f);
+    if (isGolden) player_.weaponCooldown *= 0.85f; // Faster golden cycle
     WeaponId wId = static_cast<WeaponId>(wIdx);
+    Color projColor = isGolden ? GOLDEN_WEAPON_CATALOG[wIdx].projectileColor : wDef.projectileColor;
     Vector3 muzzle = { player_.x - 0.38f, player_.y + 1.18f, 1.35f };
     if (wId != WeaponId::OMNIWRENCH_8000) {
         player_.gunAimTimer = 0.85f;
         player_.gunRecoilTimer = 0.20f;
-        SpawnParticleBurst3D(muzzle, 6, wDef.projectileColor, 3.0f, 9.0f, 0.16f, 0.14f);
+        SpawnParticleBurst3D(muzzle, isGolden ? 12 : 6, projColor, 3.0f, 9.0f, 0.18f, 0.16f);
     }
 
     if (wId == WeaponId::OMNIWRENCH_8000) {
-        // SPECIAL 1: Pure Forward Melee Wrench Strike (smashes close targets + deflects enemy shots back!)
+        // SPECIAL 1: Forward Melee Wrench Strike (smashes close targets + deflects enemy shots back!)
         player_.wrenchSwingTimer = 0.36f;
         audio_.PlayWrenchSmash();
+        if (isGolden) {
+            SpawnParticleBurst3D({ player_.x, player_.y + 0.8f, 1.8f }, 18, GOLD, 3.5f, 11.0f, 0.26f, 0.30f);
+        }
 
         // Deflect any incoming enemy plasma shots in front of Ratchet right back down the rail!
         for (auto& ep : projectiles_) {
@@ -494,22 +505,22 @@ void RailGame::TriggerFireWeapon() {
                 ep.sourceWeapon = WeaponId::OMNIWRENCH_8000;
                 ep.vel = { 0.0f, 0.0f, 95.0f };
                 ep.damage = dmg;
-                ep.color = SKYBLUE;
+                ep.color = isGolden ? GOLD : SKYBLUE;
                 ep.life = 2.0f;
-                SpawnParticleBurst3D(ep.pos, 12, SKYBLUE, 3.0f, 10.0f, 0.22f, 0.30f);
+                SpawnParticleBurst3D(ep.pos, 12, ep.color, 3.0f, 10.0f, 0.22f, 0.30f);
             }
         }
     } else if (wId == WeaponId::COMBUSTER) {
         // SPECIAL 2: Rapid-fire Magma Stream (2.5x bonus shield-melting damage vs Enforcers + multi-stream!)
         audio_.PlayBlasterShot();
-        SpawnProjectile(muzzle, { 0.0f, 0.0f, 98.0f }, player_.currentLane, wId, dmg, 0.55f, wDef.projectileColor, true, 0);
-        if (wLvl >= 3) {
+        SpawnProjectile(muzzle, { 0.0f, 0.0f, 98.0f }, player_.currentLane, wId, dmg, 0.55f, projColor, true, 0);
+        if (wLvl >= 3 || isGolden) {
             SpawnProjectile({ muzzle.x + 0.32f, muzzle.y + 0.06f, muzzle.z - 0.4f }, { 0.0f, 0.0f, 102.0f },
-                            player_.currentLane, wId, dmg * 0.65f, 0.46f, YELLOW, true, 0);
+                            player_.currentLane, wId, dmg * 0.70f, 0.48f, isGolden ? GOLD : YELLOW, true, 0);
         }
-        if (wLvl >= 5) {
+        if (wLvl >= 5 || isGolden) {
             SpawnProjectile({ muzzle.x - 0.32f, muzzle.y - 0.04f, muzzle.z - 0.8f }, { 0.0f, 0.0f, 105.0f },
-                            player_.currentLane, wId, dmg * 0.65f, 0.46f, ORANGE, true, 0);
+                            player_.currentLane, wId, dmg * 0.70f, 0.48f, isGolden ? GOLD : ORANGE, true, 0);
         }
     } else if (wId == WeaponId::SHOCK_BLASTER) {
         // SPECIAL 3: 3-Rail Shockwave Spread + Vaporizes Enemy Plasma Shots in Mid-Air!
@@ -518,31 +529,35 @@ void RailGame::TriggerFireWeapon() {
         for (auto& ep : projectiles_) {
             if (ep.active && !ep.friendly && ep.pos.z > 0.0f && ep.pos.z < 42.0f) {
                 ep.active = false;
-                SpawnParticleBurst3D(ep.pos, 10, SKYBLUE, 2.5f, 9.0f, 0.20f, 0.25f);
+                SpawnParticleBurst3D(ep.pos, 10, isGolden ? GOLD : SKYBLUE, 2.5f, 9.0f, 0.20f, 0.25f);
             }
         }
         for (int lane = 0; lane < NUM_LANES; ++lane) {
             float targetX = GetLaneX(lane);
             float vx = (targetX - muzzle.x) * 3.2f;
-            SpawnProjectile(muzzle, { vx, 0.0f, 84.0f }, lane, wId, dmg, 0.88f, wDef.projectileColor, true, 0);
+            SpawnProjectile(muzzle, { vx, 0.0f, 84.0f }, lane, wId, dmg, 0.88f, projColor, true, 0);
         }
     } else if (wId == WeaponId::BUZZ_BLADES) {
         // SPECIAL 4: Smart Cross-Rail Pinball Ricochet (bounces between targets across all 3 rails!)
         audio_.PlayBlasterShot();
-        int bounces = 3 + wLvl;
-        SpawnProjectile(muzzle, { 0.0f, 0.0f, 92.0f }, player_.currentLane, wId, dmg, 0.68f, wDef.projectileColor, true, bounces);
+        int bounces = (isGolden ? 10 : 3) + wLvl;
+        SpawnProjectile(muzzle, { 0.0f, 0.0f, 92.0f }, player_.currentLane, wId, dmg, 0.68f, projColor, true, bounces);
+        if (isGolden) {
+            SpawnProjectile({ muzzle.x - 0.3f, muzzle.y, muzzle.z }, { -6.0f, 0.0f, 88.0f }, player_.currentLane, wId, dmg * 0.8f, 0.60f, GOLD, true, bounces);
+            SpawnProjectile({ muzzle.x + 0.3f, muzzle.y, muzzle.z }, { 6.0f, 0.0f, 88.0f }, player_.currentLane, wId, dmg * 0.8f, 0.60f, GOLD, true, bounces);
+        }
     } else if (wId == WeaponId::PLASMA_STRIKER) {
         // SPECIAL 5: Infinite Rail-Piercing Hyperbeam + EMP Chain-Lightning to Adjacent Rails!
         audio_.PlayRailgunBeam();
         cameraShake_ = std::max(cameraShake_, 0.35f);
-        SpawnProjectile(muzzle, { 0.0f, 0.0f, 165.0f }, player_.currentLane, wId, dmg, 0.78f, wDef.projectileColor, true, 16);
+        SpawnProjectile(muzzle, { 0.0f, 0.0f, 165.0f }, player_.currentLane, wId, dmg, 0.85f, projColor, true, 20);
     } else if (wId == WeaponId::RYNO_INFINITE) {
         // SPECIAL 6: All-Rail Homing Micro-Missile Swarm + Explosive AoE & +50% Bonus Bolt Jackpot!
         audio_.PlayShotgunBlast();
         cameraShake_ = std::max(cameraShake_, 0.45f);
         for (int lane = 0; lane < NUM_LANES; ++lane) {
             Vector3 mPos = { GetLaneX(lane), muzzle.y + 0.4f, muzzle.z };
-            SpawnProjectile(mPos, { 0.0f, 0.0f, 108.0f }, lane, wId, dmg, 0.92f, wDef.projectileColor, true, 1);
+            SpawnProjectile(mPos, { 0.0f, 0.0f, 108.0f }, lane, wId, dmg, 0.95f, projColor, true, 1);
         }
     }
 }
@@ -564,6 +579,43 @@ void RailGame::AdvanceMultiplier() {
             AwardSkillPoint(2); // MAXIMUM MULTIPLIER
         }
     }
+}
+
+void RailGame::TriggerOverdriveBoost() {
+    if (!save_.hoverbootsUnlocked) return;
+    if (player_.overdriveCooldown > 0.0f) return;
+    player_.overdriveDuration = 3.0f;
+    player_.overdriveCooldown = 11.0f;
+    player_.invulnTimer = 3.0f;
+    player_.hyperBoostTimer = 3.0f;
+    touchFeedbackBoost_ = 0.25f;
+    cameraShake_ = 0.45f;
+    screenFlashColor_ = GOLD;
+    screenFlashAlpha_ = 0.35f;
+    audio_.PlayHyperBoost();
+    SpawnParticleBurst3D({ player_.x, player_.y + 0.2f, 0.0f }, 30, GOLD, 4.0f, 15.0f, 0.35f, 0.45f);
+}
+
+void RailGame::TriggerSwingshotGrapple(Vector3 nodePos, int targetLane) {
+    if (player_.isSwinging) return;
+    player_.isSwinging = true;
+    player_.swingTimer = 0.0f;
+    player_.swingStartX = player_.x;
+    player_.swingTargetLane = targetLane;
+    player_.swingNodePos = nodePos;
+    audio_.PlaySwingshot();
+    cameraShake_ = 0.25f;
+    SpawnParticleBurst3D(nodePos, 20, GREEN, 2.5f, 9.0f, 0.25f, 0.4f);
+}
+
+void RailGame::TriggerRadioTransmission(CommSpeaker speaker, const std::string& name, const std::string& text) {
+    radioComm_.active = true;
+    radioComm_.speaker = speaker;
+    radioComm_.speakerName = name;
+    radioComm_.text = text;
+    radioComm_.timer = 4.8f;
+    radioComm_.maxTimer = 4.8f;
+    audio_.PlayRadioChirp();
 }
 
 void RailGame::DamagePlayer(float dmg, bool minorBump) {
@@ -667,9 +719,13 @@ void RailGame::SpawnChunkPattern(float startZ) {
             } else if (l == secondSafe) {
                 SpawnRailBoltLine(l, startZ + 6.0f, 5, 2.8f, false);
             } else {
-                // Grand Sheared Chasm (18.0m!) requiring Heli-Pack Glide or Lane Hop!
+                // Grand Sheared Chasm (18.0m!) with overhead Swingshot Versa-Fuse Node or Clank Gliding Arc
                 SpawnHazard(HazardKind::BROKEN_RAIL_GAP, l, startZ + 14.0f, 18.0f);
-                SpawnRailBoltLine(l, startZ + 7.0f, 6, 2.8f, true); // High arching bolt arc for Clank gliding
+                if (rng_.Chance(0.65f)) {
+                    SpawnHazard(HazardKind::SWINGSHOT_NODE, l, startZ + 14.0f);
+                } else {
+                    SpawnRailBoltLine(l, startZ + 7.0f, 6, 2.8f, true); // High arching bolt arc for Clank gliding
+                }
             }
         }
     } else if (pattern == 2) {
@@ -728,6 +784,22 @@ void RailGame::SpawnChunkPattern(float startZ) {
         SpawnHazard(HazardKind::BOLT_CRATE, open2, startZ + 36.0f);
     }
 
+    // Dynamic Sector-Specific Environmental Hazards
+    GalaxySector sec = GetCurrentSector();
+    if (sec == GalaxySector::CORSON_V && rng_.Chance(0.42f)) {
+        int tLane = activeLanes[rng_.RangeInt(0, 2)];
+        SpawnHazard(HazardKind::HOVER_TAXI, tLane, startZ + 28.0f);
+    } else if (sec == GalaxySector::GASPAR_VOLCANIC && rng_.Chance(0.48f)) {
+        int gLane = activeLanes[rng_.RangeInt(0, 2)];
+        SpawnHazard(HazardKind::MAGMA_GEYSER, gLane, startZ + 26.0f);
+    } else if (sec == GalaxySector::POKITARU_RESORT && rng_.Chance(0.48f)) {
+        int pLane = activeLanes[rng_.RangeInt(0, 2)];
+        SpawnHazard(HazardKind::PIRANHA_LEAP, pLane, startZ + 24.0f);
+    } else if (sec == GalaxySector::TORREN_IV_SCRAP && rng_.Chance(0.42f)) {
+        int cLane = activeLanes[rng_.RangeInt(0, 2)];
+        SpawnHazard(HazardKind::SWINGING_CRANE_SCRAP, cLane, startZ + 27.0f);
+    }
+
     // Generous open breathing room before the next obstacle chunk (62m early on -> 48m at max speed)!
     float spacing = std::max(48.0f, 62.0f - difficulty * 14.0f);
     nextChunkZ_ = startZ + spacing;
@@ -752,8 +824,11 @@ void RailGame::SpawnHazard(HazardKind kind, int lane, float z, float lengthZ) {
             h.shootTimer = rng_.RangeFloat(1.2f, 2.4f);
 
             if (kind == HazardKind::SHIELDED_ENFORCER) h.maxHp = 55.0f;
+            else if (kind == HazardKind::HOVER_TAXI)  h.maxHp = 35.0f;
             else if (kind == HazardKind::THUG_DRONE)   h.maxHp = 22.0f;
+            else if (kind == HazardKind::PIRANHA_LEAP) h.maxHp = 18.0f;
             else if (kind == HazardKind::RARITANIUM_CACHE) h.maxHp = 18.0f;
+            else if (kind == HazardKind::MAGMA_GEYSER || kind == HazardKind::SWINGING_CRANE_SCRAP) h.maxHp = 999.0f;
             else h.maxHp = 10.0f;
             h.hp = h.maxHp;
             return;
@@ -824,9 +899,17 @@ void RailGame::SpawnParticleBurst3D(Vector3 pos, int count, Color color, float m
 void RailGame::TriggerBossDropship() {
     boss_.active = true;
     boss_.bossTier++;
-    boss_.name = (boss_.bossTier % 2 == 1)
-                 ? "PROG TWINS // INTERGALACTIC COMMAND SHIP"
-                 : "THUGS-4-LESS // GOLIATH DROPSHIP";
+    if (boss_.bossTier % 2 == 1) {
+        boss_.bossType = BossType::PROG_TWINS;
+        boss_.name = "PROG TWINS // COMMAND WARSHIP";
+        TriggerRadioTransmission(CommSpeaker::CAPTAIN_QWARK, "CAPTAIN QWARK",
+                                 "Ratchet! It's the Megacorp Warship! Remember my advice: don't let them shoot you!");
+    } else {
+        boss_.bossType = BossType::EMPEROR_NEFARIOUS_FRIGATE;
+        boss_.name = "EMPEROR NEFARIOUS // DREAD-FRIGATE";
+        TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
+                                 "LOMBAX! Did you think you could escape my Imperial Frigate?! LAWRENCE, DESTROY HIM!");
+    }
     boss_.z = 38.0f;
     boss_.hoverX = 0.0f;
     boss_.hoverY = 4.2f;
@@ -836,6 +919,8 @@ void RailGame::TriggerBossDropship() {
     boss_.telegraphLane = -1;
     boss_.telegraphTimer = 0.0f;
     boss_.attackCooldown = 2.0f;
+    boss_.laserSweepX = 0.0f;
+    boss_.laserSweepTimer = 0.0f;
 
     cameraShake_ = 0.55f;
     audio_.PlayExplosion();
@@ -845,6 +930,7 @@ void RailGame::HandleInput() {
     float frameDt = GetFrameTime();
     if (touchFeedbackJump_ > 0.0f) touchFeedbackJump_ -= frameDt;
     if (touchFeedbackFire_ > 0.0f) touchFeedbackFire_ -= frameDt;
+    if (touchFeedbackBoost_ > 0.0f) touchFeedbackBoost_ -= frameDt;
     if (touchFeedbackPause_ > 0.0f) touchFeedbackPause_ -= frameDt;
 
     if (IsKeyPressed(KEY_M)) {
@@ -982,6 +1068,13 @@ void RailGame::HandleInput() {
                 TriggerFireWeapon();
             }
 
+            // Overdrive Hoverboots: Y / Triangle or Left Trigger (LT)
+            if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP) ||
+                IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_2) ||
+                GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER) > 0.35f) {
+                TriggerOverdriveBoost();
+            }
+
             // Pause: Start / Options
             if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
                 mode_ = ScreenMode::PAUSED;
@@ -996,9 +1089,13 @@ void RailGame::HandleInput() {
         Rectangle btnFireRec = save_.leftHandedControls
                              ? Rectangle{ 140.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f }
                              : Rectangle{ VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+        Rectangle btnBoostRec = save_.leftHandedControls
+                              ? Rectangle{ 236.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f }
+                              : Rectangle{ VIRTUAL_WIDTH - 326.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f };
         float pad = 14.0f;
         Rectangle jumpHitbox = { btnJumpRec.x - pad, btnJumpRec.y - pad, btnJumpRec.width + pad * 2.0f, btnJumpRec.height + pad * 2.0f };
         Rectangle fireHitbox = { btnFireRec.x - pad, btnFireRec.y - pad, btnFireRec.width + pad * 2.0f, btnFireRec.height + pad * 2.0f };
+        Rectangle boostHitbox = { btnBoostRec.x - pad, btnBoostRec.y - pad, btnBoostRec.width + pad * 2.0f, btnBoostRec.height + pad * 2.0f };
 
         // Process Action Buttons
         for (const auto& np : newPresses) {
@@ -1020,12 +1117,15 @@ void RailGame::HandleInput() {
             } else if (CheckCollisionPointRec(np.pos, fireHitbox)) {
                 touchFeedbackFire_ = 0.25f;
                 TriggerFireWeapon();
+            } else if (save_.hoverbootsUnlocked && CheckCollisionPointRec(np.pos, boostHitbox)) {
+                TriggerOverdriveBoost();
             }
         }
 
         // Screen Swipes & Continuous Air Hold
         Vector2 vm = GetVirtualMouse();
-        bool pointerInActionArea = (CheckCollisionPointRec(vm, jumpHitbox) || CheckCollisionPointRec(vm, fireHitbox) || vm.y > VIRTUAL_HEIGHT - 90.0f);
+        bool pointerInActionArea = (CheckCollisionPointRec(vm, jumpHitbox) || CheckCollisionPointRec(vm, fireHitbox) ||
+                                    (save_.hoverbootsUnlocked && CheckCollisionPointRec(vm, boostHitbox)) || vm.y > VIRTUAL_HEIGHT - 90.0f);
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(vm, jumpHitbox)) {
             touchHoldingJump_ = true;
@@ -1095,6 +1195,11 @@ void RailGame::HandleInput() {
             }
         } else {
             player_.heliGliding = false;
+        }
+
+        // Overdrive Hoverboots Boost (Shift / B)
+        if (IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT) || IsKeyPressed(KEY_B)) {
+            TriggerOverdriveBoost();
         }
     } else if (mode_ == ScreenMode::SPLASH_INTRO) {
         splashTimer_ += GetFrameTime();
@@ -1269,8 +1374,90 @@ void RailGame::UpdatePlayingFixed(float dt) {
         sectorBannerTimer_ = 3.5f;
         screenFlashColor_ = SKYBLUE;
         screenFlashAlpha_ = 0.25f;
+
+        switch (curSec) {
+            case GalaxySector::METROPOLIS_KERWAN:
+                TriggerRadioTransmission(CommSpeaker::CAPTAIN_QWARK, "CAPTAIN QWARK",
+                                         "Sector 1 Kerwan! Stand proud, citizens! Qwark is on patrol (from my penthouse)!");
+                break;
+            case GalaxySector::CORSON_V:
+                TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
+                                         "Attention Nefarious City: Joy and Lombaxes remain strictly illegal! CEASE AT ONCE!");
+                break;
+            case GalaxySector::GASPAR_VOLCANIC:
+                TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                         "Geothermal warnings active on Gaspar, Ratchet. Beware the erupting magma geysers!");
+                break;
+            case GalaxySector::POKITARU_RESORT:
+                TriggerRadioTransmission(CommSpeaker::CAPTAIN_QWARK, "CAPTAIN QWARK",
+                                         "Pokitaru Resort! The azure waters, the tropical breeze... the leaping cyber-piranhas!");
+                break;
+            case GalaxySector::TORREN_IV_SCRAP:
+                TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                         "Molonoth scrap canyon ahead. Watch out for magnetic crane gantries swinging debris!");
+                break;
+            case GalaxySector::MEGACORP_FACILITY:
+                TriggerRadioTransmission(CommSpeaker::CAPTAIN_QWARK, "CAPTAIN QWARK",
+                                         "Megacorp Weapons Park! Remember, hero warranty is void if vaporized on the rails!");
+                break;
+            case GalaxySector::ZORDOOM_PRISON:
+                TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
+                                         "Zordoom Maximum Security! No one escapes my penitentiary, especially not Lombaxes!");
+                break;
+            case GalaxySector::DIMENSIONATOR_RIFT:
+                TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                         "Dimensional rift anomaly detected! Space-time is warping across all grind rails!");
+                break;
+        }
     }
     if (sectorBannerTimer_ > 0.0f) sectorBannerTimer_ -= dt;
+
+    if (radioComm_.active) {
+        radioComm_.timer -= dt;
+        if (radioComm_.timer <= 0.0f) radioComm_.active = false;
+    }
+
+    // Overdrive Hoverboots Boost Mechanics
+    if (player_.overdriveDuration > 0.0f) {
+        player_.overdriveDuration = std::max(0.0f, player_.overdriveDuration - dt);
+        player_.invulnTimer = std::max(player_.invulnTimer, 0.2f);
+        player_.hyperBoostTimer = std::max(player_.hyperBoostTimer, 0.2f);
+        if (rng_.Chance(0.85f)) {
+            SpawnParticleBurst3D({ player_.x - 0.25f, player_.y + 0.1f, -0.6f }, 3, ORANGE, 2.0f, 6.0f, 0.22f, 0.25f);
+            SpawnParticleBurst3D({ player_.x + 0.25f, player_.y + 0.1f, -0.6f }, 3, ORANGE, 2.0f, 6.0f, 0.22f, 0.25f);
+            SpawnParticleBurst3D({ player_.x, player_.y + 0.1f, -0.6f }, 2, GOLD, 1.5f, 5.0f, 0.18f, 0.2f);
+        }
+    }
+    if (player_.overdriveCooldown > 0.0f) {
+        player_.overdriveCooldown = std::max(0.0f, player_.overdriveCooldown - dt);
+    }
+
+    // Swingshot Energy Grapple Cinematic Arc
+    if (player_.isSwinging) {
+        player_.swingTimer += dt;
+        float st = std::clamp(player_.swingTimer / 0.72f, 0.0f, 1.0f);
+        float targetX = GetLaneX(player_.swingTargetLane);
+        player_.x = Lerp(player_.swingStartX, targetX, st);
+        player_.y = 0.4f + std::sin(st * 3.14159f) * 3.5f;
+        player_.vy = 0.0f;
+        player_.grounded = false;
+
+        if (rng_.Chance(0.75f)) {
+            SpawnParticleBurst3D(player_.swingNodePos, 3, GREEN, 1.0f, 4.0f, 0.20f, 0.25f);
+        }
+
+        if (st >= 1.0f) {
+            player_.isSwinging = false;
+            player_.currentLane = player_.swingTargetLane;
+            player_.x = targetX;
+            player_.y = 0.0f;
+            player_.grounded = true;
+            player_.landingSquashTimer = 0.25f;
+            cameraShake_ = 0.20f;
+            audio_.PlayRailHop();
+            SpawnParticleBurst3D({ targetX, 0.1f, 0.0f }, 18, GREEN, 2.5f, 7.5f, 0.22f, 0.35f);
+        }
+    }
 
     // Trigger Boss Encounter every 750m
     if (!boss_.active && distanceSinceBoss_ >= 750.0f) {
@@ -1526,10 +1713,37 @@ void RailGame::UpdatePlayingFixed(float dt) {
             }
         }
 
+        // Swingshot Versa-Fuse Grapple detection ahead of player (Z = 2.0m to 12.0m)
+        if (h.kind == HazardKind::SWINGSHOT_NODE && !player_.isSwinging &&
+            h.lane == player_.currentLane && h.z >= 2.0f && h.z <= 12.0f) {
+            h.active = false;
+            TriggerSwingshotGrapple({ GetLaneX(h.lane), 3.8f, h.z }, h.lane);
+            continue;
+        }
+
         // Check Direct Body Collision with Player (around Z = 0)
         float halfLen = h.lengthZ * 0.5f;
         if (h.lane == player_.currentLane && std::abs(player_.x - GetLaneX(h.lane)) < 1.35f &&
             (h.z - halfLen) < 0.9f && (h.z + halfLen) > -0.9f) {
+
+            // Overdrive Hoverboots & Hyper-Boost Plow-Through (obliterates crates, gates & drones!)
+            if (player_.overdriveDuration > 0.0f || player_.hyperBoostTimer > 0.0f) {
+                if (h.kind != HazardKind::HYPER_BOOST_PAD && h.kind != HazardKind::BROKEN_RAIL_GAP && h.kind != HazardKind::SWINGSHOT_NODE) {
+                    h.active = false;
+                    audio_.PlayExplosion();
+                    cameraShake_ = std::max(cameraShake_, 0.35f);
+                    SpawnParticleBurst3D({ GetLaneX(h.lane), 1.2f, h.z }, 24, GOLD, 4.0f, 14.0f, 0.30f, 0.40f);
+                    SpawnBoltShower({ GetLaneX(h.lane), 1.2f, h.z }, 7, h.kind == HazardKind::RARITANIUM_CACHE);
+                    if (h.kind == HazardKind::THUG_DRONE || h.kind == HazardKind::SHIELDED_ENFORCER || h.kind == HazardKind::HOVER_TAXI) {
+                        runKills_++;
+                        save_.totalEnemiesDestroyed++;
+                    } else if (h.kind == HazardKind::BOLT_CRATE || h.kind == HazardKind::RARITANIUM_CACHE || h.kind == HazardKind::NANOTECH_CRATE) {
+                        runCrates_++;
+                        save_.totalCratesSmashed++;
+                    }
+                    continue;
+                }
+            }
 
             if (h.kind == HazardKind::HYPER_BOOST_PAD) {
                 if (player_.y < 1.5f) {
@@ -1542,8 +1756,6 @@ void RailGame::UpdatePlayingFixed(float dt) {
             } else if (h.kind == HazardKind::BOLT_CRATE || h.kind == HazardKind::RARITANIUM_CACHE ||
                        h.kind == HazardKind::NANOTECH_CRATE) {
                 if (player_.y < 2.2f) {
-                    // Hitting directly into an unbroken chest/crate without swinging or shooting it
-                    // deals a little bit of damage (0.5 Nanotech HP) and gives NO rewards!
                     h.active = false;
                     SpawnParticleBurst3D({ GetLaneX(h.lane), 1.0f, h.z }, 16, BROWN, 2.5f, 8.5f, 0.22f, 0.35f);
                     DamagePlayer(0.5f, true);
@@ -1569,7 +1781,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
                     DamagePlayer(1.0f);
                 }
             } else if (h.kind == HazardKind::BROKEN_RAIL_GAP) {
-                if (player_.y < 0.35f && player_.hyperBoostTimer <= 0.0f) {
+                if (player_.y < 0.35f && player_.hyperBoostTimer <= 0.0f && player_.overdriveDuration <= 0.0f && !player_.isSwinging) {
                     DamagePlayer(1.0f);
                     player_.vy = 14.0f;
                     player_.grounded = false;
@@ -1578,6 +1790,31 @@ void RailGame::UpdatePlayingFixed(float dt) {
                 if (player_.y < 2.5f) {
                     h.active = false;
                     DamagePlayer(1.0f);
+                }
+            } else if (h.kind == HazardKind::MAGMA_GEYSER) {
+                if (player_.y < 2.6f) {
+                    DamagePlayer(1.0f);
+                    SpawnParticleBurst3D({ GetLaneX(h.lane), 1.5f, h.z }, 20, ORANGE, 3.5f, 10.0f, 0.30f, 0.40f);
+                }
+            } else if (h.kind == HazardKind::HOVER_TAXI) {
+                if (player_.y < 2.4f) {
+                    h.active = false;
+                    DamagePlayer(1.0f);
+                    SpawnParticleBurst3D({ GetLaneX(h.lane), 1.4f, h.z }, 28, YELLOW, 4.0f, 12.0f, 0.32f, 0.45f);
+                    audio_.PlayExplosion();
+                }
+            } else if (h.kind == HazardKind::PIRANHA_LEAP) {
+                float leapY = 0.5f + std::sin(h.animPhase) * 2.5f;
+                if (std::abs(player_.y - leapY) < 1.3f) {
+                    h.active = false;
+                    DamagePlayer(1.0f);
+                    SpawnParticleBurst3D({ GetLaneX(h.lane), leapY, h.z }, 22, SKYBLUE, 3.0f, 10.0f, 0.28f, 0.40f);
+                    audio_.PlayExplosion();
+                }
+            } else if (h.kind == HazardKind::SWINGING_CRANE_SCRAP) {
+                if (player_.slideTimer <= 0.0f && player_.y < 3.0f) {
+                    DamagePlayer(1.0f);
+                    SpawnParticleBurst3D({ GetLaneX(h.lane), 2.0f, h.z }, 20, BROWN, 3.0f, 9.0f, 0.28f, 0.40f);
                 }
             }
         }
@@ -1622,7 +1859,8 @@ void RailGame::UpdatePlayingFixed(float dt) {
                 bool destructible = (h.kind == HazardKind::BOLT_CRATE || h.kind == HazardKind::RARITANIUM_CACHE ||
                                      h.kind == HazardKind::NANOTECH_CRATE ||
                                      h.kind == HazardKind::TNT_CRATE || h.kind == HazardKind::THUG_DRONE ||
-                                     h.kind == HazardKind::SHIELDED_ENFORCER);
+                                     h.kind == HazardKind::SHIELDED_ENFORCER || h.kind == HazardKind::HOVER_TAXI ||
+                                     h.kind == HazardKind::PIRANHA_LEAP);
                 if (!destructible) continue;
 
                 float hx = GetLaneX(h.lane);
@@ -1671,7 +1909,8 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
                     if (h.hp <= 0.0f) {
                         bool wasTnt = (h.kind == HazardKind::TNT_CRATE);
-                        bool wasEnemy = (h.kind == HazardKind::THUG_DRONE || h.kind == HazardKind::SHIELDED_ENFORCER);
+                        bool wasEnemy = (h.kind == HazardKind::THUG_DRONE || h.kind == HazardKind::SHIELDED_ENFORCER ||
+                                         h.kind == HazardKind::HOVER_TAXI || h.kind == HazardKind::PIRANHA_LEAP);
                         bool wasRari = (h.kind == HazardKind::RARITANIUM_CACHE);
                         bool wasNano = (h.kind == HazardKind::NANOTECH_CRATE);
                         int hLane = h.lane;
@@ -1869,19 +2108,39 @@ void RailGame::UpdateBossFixed(float dt) {
         audio_.PlayExplosion();
         audio_.PlayLevelUp();
         for (int l = 0; l < NUM_LANES; ++l) {
-            SpawnParticleBurst3D({ GetLaneX(l), 3.5f, boss_.z }, 40, ORANGE, 5.0f, 20.0f, 0.45f, 0.8f);
+            SpawnParticleBurst3D({ GetLaneX(l), 3.5f, boss_.z }, 40, (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? PURPLE : ORANGE, 5.0f, 20.0f, 0.45f, 0.8f);
             SpawnBoltShower({ GetLaneX(l), 2.0f, 14.0f }, 12, true);
+        }
+        if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
+            TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
+                                     "CURSE YOU LOMBAAAAX! This is not over! LAWRENCE, BRING ME MY ESCAPE POD!");
+        } else {
+            TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                     "Command Warship neutralized, Ratchet! Excellent shooting.");
         }
         AwardSkillPoint(6); // PROG TWIN TAKEDOWN
         return;
     }
 
+    if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
+        // Sweeping Dual Imperial Laser Beams
+        boss_.laserSweepTimer += dt;
+        boss_.laserSweepX = std::sin(boss_.laserSweepTimer * 1.8f) * 5.2f;
+
+        // Player collision with sweeping laser at ground level (Ratchet must jump over it!)
+        if (player_.y < 0.95f && std::abs(player_.x - boss_.laserSweepX) < 1.4f && player_.invulnTimer <= 0.0f && player_.hyperBoostTimer <= 0.0f) {
+            DamagePlayer(1.0f);
+            SpawnParticleBurst3D({ player_.x, 0.5f, 0.0f }, 16, PURPLE, 3.5f, 12.0f, 0.28f, 0.35f);
+        }
+    }
+
     boss_.attackCooldown -= dt;
     if (boss_.attackCooldown <= 0.0f) {
-        boss_.attackCooldown = 2.1f;
+        boss_.attackCooldown = (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? 1.75f : 2.1f;
         int lane = rng_.RangeInt(0, NUM_LANES - 1);
-        SpawnProjectile({ GetLaneX(lane), 1.3f, boss_.z - 2.0f }, { 0.0f, 0.0f, -32.0f },
-                        lane, WeaponId::RYNO_INFINITE, 1.0f, 0.75f, RED, false, 0);
+        Color projCol = (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? PURPLE : RED;
+        SpawnProjectile({ GetLaneX(lane), 1.3f, boss_.z - 2.0f }, { 0.0f, 0.0f, -34.0f },
+                        lane, WeaponId::RYNO_INFINITE, 1.0f, 0.75f, projCol, false, 0);
         audio_.PlayBlasterShot();
     }
 }

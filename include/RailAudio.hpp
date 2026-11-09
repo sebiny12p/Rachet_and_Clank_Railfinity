@@ -20,6 +20,9 @@ public:
     void PlayLevelUp() const;
     void PlayHurt() const;
     void PlayHyperBoost() const;
+    void PlaySwingshot() const;
+    void PlayRadioChirp() const;
+    void PlayGoldenUpgrade() const;
     void PlayUiClick() const;
     void UpdateMusic(int musicMode); // 0 = Title Front Page, 1 = Menu/Vendor, 2 = Rail Action
 
@@ -59,6 +62,9 @@ private:
     Sound sndLevelUp_{};
     Sound sndHurt_{};
     Sound sndBoost_{};
+    Sound sndSwingshot_{};
+    Sound sndRadio_{};
+    Sound sndGold_{};
     Sound sndUi_{};
     Music bgmTitle_{};
     Music bgmMenu_{};

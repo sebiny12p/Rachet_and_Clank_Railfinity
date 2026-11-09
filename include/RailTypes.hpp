@@ -48,10 +48,15 @@ enum class WeaponId : int {
 
 enum class GalaxySector : int {
     METROPOLIS_KERWAN = 0,
-    MEGACORP_FACILITY = 1,
-    ZORDOOM_PRISON = 2,
-    DIMENSIONATOR_RIFT = 3
+    CORSON_V = 1,
+    GASPAR_VOLCANIC = 2,
+    POKITARU_RESORT = 3,
+    TORREN_IV_SCRAP = 4,
+    MEGACORP_FACILITY = 5,
+    ZORDOOM_PRISON = 6,
+    DIMENSIONATOR_RIFT = 7
 };
+constexpr int NUM_SECTORS = 8;
 
 enum class HazardKind : int {
     BOLT_CRATE = 0,         // Wooden/gold Gadgetron crate filled with Bolts
@@ -64,7 +69,12 @@ enum class HazardKind : int {
     HYPER_BOOST_PAD = 7,    // Neon green chevron boost ramp
     THUG_DRONE = 8,         // Hovering Thugs-4-Less chopper drone
     SHIELDED_ENFORCER = 9,  // Armored Megacorp Enforcer mech
-    NANOTECH_CRATE = 10     // Translucent cyan glass crate that restores +1 Nanotech HP
+    NANOTECH_CRATE = 10,    // Translucent cyan glass crate that restores +1 Nanotech HP
+    MAGMA_GEYSER = 11,      // Gaspar: Erupting volcanic lava geyser between rails
+    HOVER_TAXI = 12,        // Corson V: Cyberpunk neon flying taxi weaving through lanes
+    PIRANHA_LEAP = 13,      // Pokitaru: Leaping razor-tooth cyber-piranha predator
+    SWINGING_CRANE_SCRAP = 14,// Torren IV: Magnetic overhead crane swinging rusty debris
+    SWINGSHOT_NODE = 15     // Green Versa-Fuse Grapple Node for cinematic leaps!
 };
 
 struct WeaponDef {
@@ -78,6 +88,47 @@ struct WeaponDef {
     float fireCooldown;
     float baseDamage;
     Color projectileColor;
+};
+
+struct GoldenWeaponDef {
+    int id;
+    const char* name;
+    const char* masteryPerk;
+    int unlockRaritaniumCost;
+    int unlockBoltCost;
+    Color goldPrimary;
+    Color goldTrim;
+    Color projectileColor;
+};
+
+inline const std::array<GoldenWeaponDef, NUM_WEAPONS> GOLDEN_WEAPON_CATALOG = {{
+    { 0, "24K GOLDEN OMNIWRENCH", "Mastery: Twin 360-degree shockwaves + Triple bolt yield from smashed crates", 12, 2800,
+      Color{ 255, 215, 0, 255 }, Color{ 255, 240, 140, 255 }, Color{ 255, 220, 60, 255 } },
+    { 1, "GOLDEN MAGMA COMBUSTER V8", "Mastery: Twin fiery golden streams leaving an incinerating trail on rails", 15, 3600,
+      Color{ 255, 215, 0, 255 }, Color{ 255, 140, 20, 255 }, Color{ 255, 200, 30, 255 } },
+    { 2, "GOLDEN CONSTRUCTO SHREDDER", "Mastery: 5-Rail wide golden electrostatic arc vaporizing all projectiles", 18, 4500,
+      Color{ 255, 215, 0, 255 }, Color{ 120, 235, 255, 255 }, Color{ 255, 235, 80, 255 } },
+    { 3, "GOLDEN DOOM BLADES V8", "Mastery: Cluster of 3 gilded ricocheting saw discs seeking targets across rails", 20, 5500,
+      Color{ 255, 215, 0, 255 }, Color{ 160, 255, 60, 255 }, Color{ 255, 225, 40, 255 } },
+    { 4, "GOLDEN PLASMA STRIKER", "Mastery: Continuous piercing 24K hyperbeam instantly disintegrating lane hazards", 24, 6800,
+      Color{ 255, 215, 0, 255 }, Color{ 220, 110, 255, 255 }, Color{ 255, 240, 100, 255 } },
+    { 5, "GOLDEN RYNO V8 SUPREME", "Mastery: 24K gilded micro-missile tempest + 2x Bolt Jackpot multiplier on impact", 35, 9500,
+      Color{ 255, 215, 0, 255 }, Color{ 255, 60, 80, 255 }, Color{ 255, 215, 0, 255 } }
+}};
+
+enum class CommSpeaker : int {
+    CAPTAIN_QWARK = 0,
+    DR_NEFARIOUS = 1,
+    CLANK = 2
+};
+
+struct RadioCommMessage {
+    bool active = false;
+    CommSpeaker speaker = CommSpeaker::CAPTAIN_QWARK;
+    std::string speakerName;
+    std::string text;
+    float timer = 0.0f;
+    float maxTimer = 4.5f;
 };
 
 struct SkillPointDef {
@@ -236,6 +287,10 @@ struct SaveData {
 
     std::array<bool, NUM_SKILL_POINTS> skillPoints = { false };
 
+    // Store Expansion & Mastery Gadgets
+    bool hoverbootsUnlocked = false;
+    std::array<bool, NUM_WEAPONS> goldenWeapons = { false };
+
     // User Settings & Accessibility (Persisted)
     float masterVolume = 1.0f;
     float musicVolume = 0.55f;
@@ -285,6 +340,17 @@ struct PlayerLombax {
     float maxNanotechHp = 4.0f;
     float invulnTimer = 0.0f;
     float hyperBoostTimer = 0.0f;
+
+    // Overdrive Hoverboots (Gadget)
+    float overdriveDuration = 0.0f;
+    float overdriveCooldown = 0.0f;
+
+    // Swingshot Energy Grapple (Cinematic Jumps)
+    bool isSwinging = false;
+    float swingTimer = 0.0f;
+    float swingStartX = 0.0f;
+    int swingTargetLane = 2;
+    Vector3 swingNodePos = { 0.0f, 0.0f, 0.0f };
 
     // Bolt Multiplier (1x -> 2x -> 4x -> 8x -> 12x -> 20x)
     int multiplierTier = 1;
@@ -345,8 +411,14 @@ struct SkyBuilding {
     Color neonColor;
 };
 
+enum class BossType : int {
+    PROG_TWINS = 0,
+    EMPEROR_NEFARIOUS_FRIGATE = 1
+};
+
 struct BossDropship {
     bool active = false;
+    BossType bossType = BossType::PROG_TWINS;
     int bossTier = 0;
     std::string name = "PROG TWINS // COMMAND WARSHIP";
     float z = 42.0f;
@@ -358,6 +430,8 @@ struct BossDropship {
     int telegraphLane = -1;
     float telegraphTimer = 0.0f;
     float attackCooldown = 2.2f;
+    float laserSweepX = 0.0f;
+    float laserSweepTimer = 0.0f;
 };
 
 struct SkillPointToast {

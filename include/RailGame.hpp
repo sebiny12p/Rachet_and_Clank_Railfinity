@@ -32,6 +32,9 @@ private:
     void TriggerJumpOrGlide();
     void TriggerWrenchSlide();
     void TriggerFireWeapon();
+    void TriggerOverdriveBoost();
+    void TriggerSwingshotGrapple(Vector3 nodePos, int targetLane);
+    void TriggerRadioTransmission(CommSpeaker speaker, const std::string& name, const std::string& text);
     void CycleEquippedWeapon(int delta);
     void DamagePlayer(float dmg, bool minorBump = false);
     void AdvanceMultiplier();
@@ -93,6 +96,7 @@ private:
     void RenderGameOver2D();
     void RenderBrandingFooter2D() const;
     void RenderSkillToast2D() const;
+    void RenderRadioComm2D() const;
     void SetScreenMode(ScreenMode nextMode);
 
 private:
@@ -142,6 +146,7 @@ private:
     mutable int prevTouchCount_ = 0;
     float touchFeedbackJump_ = 0.0f;
     float touchFeedbackFire_ = 0.0f;
+    float touchFeedbackBoost_ = 0.0f;
     float touchFeedbackPause_ = 0.0f;
 
     // Settings state & confirmation modal
@@ -164,6 +169,7 @@ private:
     PlayerLombax player_{};
     BossDropship boss_{};
     SkillPointToast toast_{};
+    RadioCommMessage radioComm_{};
 
     // Object Pools
     std::array<RailHazard, MAX_HAZARDS> hazards_{};

@@ -751,102 +751,115 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawCylinderEx(shoulderCenter, neckTop, 0.18f, 0.16f, 8, furGold);
 
     // =========================================================================
-    // 3. AUTHENTIC CLANK CHARACTER MODEL & PROCEDURAL HELI-PACK (NO POP-IN!)
+    // 3. AUTHENTIC CLANK CHARACTER MODEL (MATCHING IN-GAME REFERENCE EXACTLY!)
     // =========================================================================
-    Vector3 clankPos = { shoulderCenter.x - 0.02f, shoulderCenter.y - 0.16f, shoulderCenter.z - 0.30f };
-    Color clankGold  = { 228, 182, 54, 255 };
+    Vector3 clankPos = { shoulderCenter.x - 0.02f, shoulderCenter.y - 0.14f, shoulderCenter.z - 0.28f };
+    Color chromeBright = { 230, 238, 248, 255 };
 
-    // --- A. Contoured Upper Torso Shell ---
-    DrawCylinderEx({ clankPos.x, clankPos.y - 0.06f, clankPos.z },
-                   { clankPos.x, clankPos.y + 0.18f, clankPos.z }, 0.20f, 0.22f, 8, chromeSilv);
-    DrawCube({ clankPos.x, clankPos.y + 0.06f, clankPos.z + 0.02f }, 0.38f, 0.26f, 0.22f, chromeSilv);
-    DrawCubeWires({ clankPos.x, clankPos.y + 0.06f, clankPos.z + 0.02f }, 0.39f, 0.27f, 0.23f, armorDark);
+    // --- A. Iconic Beveled Silver Backpack Housing (Matching Image 2) ---
+    // Main tapered backpack block
+    DrawCube({ clankPos.x, clankPos.y, clankPos.z }, 0.46f, 0.52f, 0.22f, chromeSilv);
+    DrawCubeWires({ clankPos.x, clankPos.y, clankPos.z }, 0.465f, 0.525f, 0.225f, armorDark);
 
-    // Golden shoulder joint caps
-    DrawSphere({ clankPos.x - 0.19f, clankPos.y + 0.15f, clankPos.z }, 0.055f, clankGold);
-    DrawSphere({ clankPos.x + 0.19f, clankPos.y + 0.15f, clankPos.z }, 0.055f, clankGold);
+    // Beveled outer edge frame around the backpack
+    DrawCylinderEx({ clankPos.x - 0.21f, clankPos.y - 0.24f, clankPos.z - 0.09f },
+                   { clankPos.x - 0.21f, clankPos.y + 0.24f, clankPos.z - 0.09f }, 0.028f, 0.028f, 6, chromeBright);
+    DrawCylinderEx({ clankPos.x + 0.21f, clankPos.y - 0.24f, clankPos.z - 0.09f },
+                   { clankPos.x + 0.21f, clankPos.y + 0.24f, clankPos.z - 0.09f }, 0.028f, 0.028f, 6, chromeBright);
+    DrawCylinderEx({ clankPos.x - 0.21f, clankPos.y + 0.24f, clankPos.z - 0.09f },
+                   { clankPos.x + 0.21f, clankPos.y + 0.24f, clankPos.z - 0.09f }, 0.028f, 0.028f, 6, chromeBright);
+    DrawCylinderEx({ clankPos.x - 0.21f, clankPos.y - 0.24f, clankPos.z - 0.09f },
+                   { clankPos.x + 0.21f, clankPos.y - 0.24f, clankPos.z - 0.09f }, 0.028f, 0.028f, 6, chromeBright);
 
-    // --- B. Segmented Hydraulic Waist & Pelvis ---
-    DrawCylinderEx({ clankPos.x, clankPos.y - 0.18f, clankPos.z },
-                   { clankPos.x, clankPos.y - 0.06f, clankPos.z }, 0.17f, 0.19f, 8, armorDark);
-    DrawCylinderEx({ clankPos.x, clankPos.y - 0.25f, clankPos.z },
-                   { clankPos.x, clankPos.y - 0.18f, clankPos.z }, 0.19f, 0.17f, 8, chromeSilv);
+    // --- B. Top Stepped Collar with 3 Iconic Metallic Rivets / Circular Ports (Image 2) ---
+    Vector3 topArch = { clankPos.x, clankPos.y + 0.21f, clankPos.z - 0.11f };
+    DrawCube({ topArch.x, topArch.y, topArch.z }, 0.42f, 0.09f, 0.05f, chromeBright);
+    // 3 Embossed Circular Rivets / Sockets across the top band
+    float rivetY = topArch.y + 0.005f;
+    float rivetZ = topArch.z - 0.028f;
+    // Left Rivet
+    DrawCylinderEx({ clankPos.x - 0.125f, rivetY, rivetZ + 0.01f },
+                   { clankPos.x - 0.125f, rivetY, rivetZ }, 0.034f, 0.034f, 8, armorDark);
+    DrawSphere({ clankPos.x - 0.125f, rivetY, rivetZ - 0.005f }, 0.026f, chromeBright);
+    // Center Rivet
+    DrawCylinderEx({ clankPos.x, rivetY + 0.012f, rivetZ + 0.01f },
+                   { clankPos.x, rivetY + 0.012f, rivetZ }, 0.038f, 0.038f, 8, armorDark);
+    DrawSphere({ clankPos.x, rivetY + 0.012f, rivetZ - 0.005f }, 0.029f, chromeBright);
+    // Right Rivet
+    DrawCylinderEx({ clankPos.x + 0.125f, rivetY, rivetZ + 0.01f },
+                   { clankPos.x + 0.125f, rivetY, rivetZ }, 0.034f, 0.034f, 8, armorDark);
+    DrawSphere({ clankPos.x + 0.125f, rivetY, rivetZ - 0.005f }, 0.026f, chromeBright);
 
-    // --- C. Folded Little Robot Legs (Backpack Mode) ---
-    // Left & right thighs folded along flanks
-    DrawCylinderEx({ clankPos.x - 0.16f, clankPos.y - 0.12f, clankPos.z - 0.02f },
-                   { clankPos.x - 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f }, 0.06f, 0.055f, 6, chromeSilv);
-    DrawCylinderEx({ clankPos.x + 0.16f, clankPos.y - 0.12f, clankPos.z - 0.02f },
-                   { clankPos.x + 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f }, 0.06f, 0.055f, 6, chromeSilv);
-    // Knee pivot joints
-    DrawSphere({ clankPos.x - 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f }, 0.055f, armorDark);
-    DrawSphere({ clankPos.x + 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f }, 0.055f, armorDark);
-    // Folded lower shins & circular magnetic boot soles under pelvis
-    DrawCylinderEx({ clankPos.x - 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f },
-                   { clankPos.x - 0.09f, clankPos.y - 0.27f, clankPos.z - 0.06f }, 0.05f, 0.05f, 6, chromeSilv);
-    DrawCylinderEx({ clankPos.x + 0.16f, clankPos.y - 0.24f, clankPos.z + 0.04f },
-                   { clankPos.x + 0.09f, clankPos.y - 0.27f, clankPos.z - 0.06f }, 0.05f, 0.05f, 6, chromeSilv);
-    DrawCylinderEx({ clankPos.x - 0.09f, clankPos.y - 0.27f, clankPos.z - 0.06f },
-                   { clankPos.x - 0.09f, clankPos.y - 0.27f, clankPos.z - 0.12f }, 0.06f, 0.06f, 6, armorDark);
-    DrawCylinderEx({ clankPos.x + 0.09f, clankPos.y - 0.27f, clankPos.z - 0.06f },
-                   { clankPos.x + 0.09f, clankPos.y - 0.27f, clankPos.z - 0.12f }, 0.06f, 0.06f, 6, armorDark);
+    // --- C. Large Recessed Dark Vent / Screen in Center of Back (Image 1 & 2) ---
+    Vector3 ventPos = { clankPos.x, clankPos.y - 0.01f, clankPos.z - 0.115f };
+    // Raised chrome frame border
+    DrawCube({ ventPos.x, ventPos.y, ventPos.z }, 0.32f, 0.30f, 0.035f, chromeBright);
+    DrawCubeWires({ ventPos.x, ventPos.y, ventPos.z }, 0.325f, 0.305f, 0.038f, armorDark);
+    // Recessed dark metallic screen pane
+    DrawCube({ ventPos.x, ventPos.y, ventPos.z - 0.012f }, 0.25f, 0.23f, 0.025f, { 22, 26, 34, 255 });
+    // Horizontal dark grey vent slats (Image 1 & 2)
+    for (int slat = -1; slat <= 1; ++slat) {
+        float slatY = ventPos.y + slat * 0.06f;
+        DrawCube({ ventPos.x, slatY, ventPos.z - 0.026f }, 0.23f, 0.018f, 0.012f, { 52, 60, 74, 255 });
+    }
 
-    // --- D. Iconic Chronosceptor Power Reactor Core (Center Back facing camera) ---
-    Vector3 corePos = { clankPos.x, clankPos.y + 0.08f, clankPos.z - 0.11f };
-    // Bezel ring collar
-    DrawCylinderEx(corePos, { corePos.x, corePos.y, corePos.z - 0.025f }, 0.125f, 0.125f, 12, armorDark);
-    DrawSphere({ corePos.x, corePos.y, corePos.z - 0.02f }, 0.10f, clankGold);
-    // Pulsing emerald green reactor diode
-    float corePulse = std::sin(globalTime_ * 3.8f) * 0.012f;
-    DrawSphere({ corePos.x, corePos.y, corePos.z - 0.035f }, 0.085f + corePulse, Color{ 45, 255, 90, 255 });
-    // Bright white center highlight
-    DrawSphere({ corePos.x, corePos.y, corePos.z - 0.055f }, 0.042f, WHITE);
+    // --- D. Clank's Rounded Metallic Feet Tucked at Bottom of Backpack (Image 1 & 2) ---
+    Vector3 footL = { clankPos.x - 0.12f, clankPos.y - 0.27f, clankPos.z - 0.06f };
+    Vector3 footR = { clankPos.x + 0.12f, clankPos.y - 0.27f, clankPos.z - 0.06f };
+    DrawSphere(footL, 0.085f, chromeBright);
+    DrawSphere(footR, 0.085f, chromeBright);
+    // Bottom notched rim soles (Image 1 & 2)
+    DrawCylinderEx({ footL.x, footL.y - 0.04f, footL.z }, { footL.x, footL.y + 0.01f, footL.z }, 0.088f, 0.082f, 8, armorDark);
+    DrawCylinderEx({ footR.x, footR.y - 0.04f, footR.z }, { footR.x, footR.y + 0.01f, footR.z }, 0.088f, 0.082f, 8, armorDark);
 
-    // --- E. Twin Rocket Thruster Exhaust Bells at Bottom of Pelvis ---
-    Vector3 nozL = { clankPos.x - 0.12f, clankPos.y - 0.26f, clankPos.z - 0.02f };
-    Vector3 nozR = { clankPos.x + 0.12f, clankPos.y - 0.26f, clankPos.z - 0.02f };
-    DrawCylinderEx(nozL, { nozL.x, nozL.y - 0.07f, nozL.z }, 0.065f, 0.050f, 8, armorDark);
-    DrawCylinderEx(nozR, { nozR.x, nozR.y - 0.07f, nozR.z }, 0.065f, 0.050f, 8, armorDark);
+    // --- E. Clank's Head & Face LOOKING DIRECTLY AT CAMERA (Image 2) ---
+    float clankHeadNod = airborne ? std::clamp(-player_.vy * 0.007f, -0.06f, 0.06f) : 0.0f;
+    Vector3 clankHead = { clankPos.x, clankPos.y + 0.38f + clankHeadNod, clankPos.z - 0.03f };
 
-    // --- F. Clank's Articulated Head & Expressive Robot Face ---
-    float clankHeadNod = airborne ? std::clamp(-player_.vy * 0.006f, -0.06f, 0.06f) : 0.0f;
-    Vector3 clankHead = { clankPos.x, clankPos.y + 0.35f + clankHeadNod, clankPos.z - 0.02f };
+    // Metallic spherical skull dome
+    DrawSphere(clankHead, 0.195f, chromeSilv);
+    // Rounded lower chin / jaw line (Image 1 & 2)
+    DrawSphere({ clankHead.x, clankHead.y - 0.065f, clankHead.z - 0.06f }, 0.145f, chromeBright);
+    // Subtle dark neck joint ring
+    DrawCylinderEx({ clankHead.x, clankHead.y - 0.14f, clankHead.z },
+                   { clankHead.x, clankHead.y - 0.06f, clankHead.z }, 0.12f, 0.13f, 8, armorDark);
 
-    // Skull dome
-    DrawSphere(clankHead, 0.175f, chromeSilv);
-    DrawCylinderEx({ clankHead.x, clankHead.y - 0.06f, clankHead.z },
-                   { clankHead.x, clankHead.y + 0.08f, clankHead.z }, 0.175f, 0.165f, 10, chromeSilv);
+    // Side cylindrical ear dials (Image 1 & 2)
+    Vector3 earL = { clankHead.x - 0.195f, clankHead.y + 0.015f, clankHead.z };
+    Vector3 earR = { clankHead.x + 0.195f, clankHead.y + 0.015f, clankHead.z };
+    DrawCylinderEx({ earL.x - 0.03f, earL.y, earL.z }, { earL.x + 0.02f, earL.y, earL.z }, 0.052f, 0.052f, 8, armorDark);
+    DrawCylinderEx({ earR.x - 0.02f, earR.y, earR.z }, { earR.x + 0.03f, earR.y, earR.z }, 0.052f, 0.052f, 8, armorDark);
+    DrawSphere({ earL.x - 0.03f, earL.y, earL.z }, 0.038f, chromeBright);
+    DrawSphere({ earR.x + 0.03f, earR.y, earR.z }, 0.038f, chromeBright);
 
-    // Side ear dials with golden caps
-    Vector3 earL = { clankHead.x + 0.175f, clankHead.y + 0.02f, clankHead.z };
-    Vector3 earR = { clankHead.x - 0.175f, clankHead.y + 0.02f, clankHead.z };
-    DrawCylinderEx({ earL.x - 0.02f, earL.y, earL.z }, { earL.x + 0.035f, earL.y, earL.z }, 0.052f, 0.052f, 8, armorDark);
-    DrawCylinderEx({ earR.x + 0.02f, earR.y, earR.z }, { earR.x - 0.035f, earR.y, earR.z }, 0.052f, 0.052f, 8, armorDark);
-    DrawSphere({ earL.x + 0.035f, earL.y, earL.z }, 0.038f, clankGold);
-    DrawSphere({ earR.x - 0.035f, earR.y, earR.z }, 0.038f, clankGold);
+    // --- F. BIG GLOWING EMERALD-GREEN CAMERA EYES (Image 1 & 2) ---
+    // Facing the player/camera in -Z direction!
+    Vector3 eyeL = { clankHead.x - 0.082f, clankHead.y + 0.052f, clankHead.z - 0.142f };
+    Vector3 eyeR = { clankHead.x + 0.082f, clankHead.y + 0.052f, clankHead.z - 0.142f };
 
-    // Big Glowing Emerald Camera Eyes facing forward/upward over Ratchet's collar
-    Vector3 eyeL = { clankHead.x + 0.072f, clankHead.y + 0.04f, clankHead.z + 0.125f };
-    Vector3 eyeR = { clankHead.x - 0.072f, clankHead.y + 0.04f, clankHead.z + 0.125f };
-    DrawSphere(eyeL, 0.062f, BLACK);
-    DrawSphere(eyeR, 0.062f, BLACK);
-    DrawSphere(eyeL, 0.050f, Color{ 40, 245, 85, 255 });
-    DrawSphere(eyeR, 0.050f, Color{ 40, 245, 85, 255 });
-    DrawSphere({ eyeL.x, eyeL.y, eyeL.z + 0.022f }, 0.020f, WHITE);
-    DrawSphere({ eyeR.x, eyeR.y, eyeR.z + 0.022f }, 0.020f, WHITE);
+    // Thick dark gunmetal socket rims
+    DrawSphere(eyeL, 0.082f, BLACK);
+    DrawSphere(eyeR, 0.082f, BLACK);
 
-    // Subtle dark mouth grille
-    DrawCylinderEx({ clankHead.x - 0.055f, clankHead.y - 0.08f, clankHead.z + 0.12f },
-                   { clankHead.x + 0.055f, clankHead.y - 0.08f, clankHead.z + 0.12f }, 0.016f, 0.016f, 4, armorDark);
+    // Brilliant luminous neon-lime / emerald glowing lenses (matching reference screenshot!)
+    Color clankEyeGlow = { 65, 255, 95, 255 };
+    DrawSphere(eyeL, 0.072f, clankEyeGlow);
+    DrawSphere(eyeR, 0.072f, clankEyeGlow);
+
+    // Bright inner lens highlights
+    DrawSphere({ eyeL.x, eyeL.y, eyeL.z - 0.028f }, 0.045f, { 185, 255, 195, 255 });
+    DrawSphere({ eyeR.x, eyeR.y, eyeR.z - 0.028f }, 0.045f, { 185, 255, 195, 255 });
+    DrawSphere({ eyeL.x - 0.015f, eyeL.y + 0.015f, eyeL.z - 0.045f }, 0.022f, WHITE);
+    DrawSphere({ eyeR.x - 0.015f, eyeR.y + 0.015f, eyeR.z - 0.045f }, 0.022f, WHITE);
 
     // --- G. Top Hatch Collar, Antenna & Organic Red Beacon Disappearance ---
     float deploy = player_.heliDeploy;
-    Vector3 hatchPos = { clankHead.x, clankHead.y + 0.165f, clankHead.z };
+    Vector3 hatchPos = { clankHead.x, clankHead.y + 0.185f, clankHead.z };
     // Circular titanium hatch collar
-    DrawCylinderEx(hatchPos, { hatchPos.x, hatchPos.y + 0.022f, hatchPos.z }, 0.075f, 0.070f, 10, armorDark);
+    DrawCylinderEx(hatchPos, { hatchPos.x, hatchPos.y + 0.025f, hatchPos.z }, 0.082f, 0.075f, 10, armorDark);
 
     // Organic Antenna & Red Dot Transition:
-    // When deploy == 0, antenna is fully upright and red light pulses brightly.
+    // When deploy == 0, antenna is fully upright and red beacon pulses brightly.
     // When deploy starts rising (0.0 -> 0.18), the antenna stem and red light smoothly sink into the hatch and fade away!
     float antFrac = std::clamp(deploy / 0.18f, 0.0f, 1.0f);
     float antVisible = 1.0f - antFrac;
@@ -855,12 +868,12 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         Vector3 stemTip = { hatchPos.x, hatchPos.y + 0.02f + stemH, hatchPos.z };
         DrawCylinderEx({ hatchPos.x, hatchPos.y + 0.02f, hatchPos.z }, stemTip,
                        0.016f * antVisible, 0.012f * antVisible, 6, chromeSilv);
-        // Red glowing beacon bulb at antenna tip
-        float redRadius = 0.042f * antVisible;
+        // Red glowing beacon bulb at antenna tip (Image 1 & 2)
+        float redRadius = 0.045f * antVisible;
         Color redCol  = ColorAlpha({ 255, 35, 35, 255 }, antVisible);
         Color redCore = ColorAlpha(WHITE, antVisible * 0.85f);
         DrawSphere(stemTip, redRadius, redCol);
-        DrawSphere(stemTip, redRadius * 0.42f, redCore);
+        DrawSphere(stemTip, redRadius * 0.45f, redCore);
     }
 
     // --- H. Articulated Segmented Robot Arms Wrapping Over Ratchet's Shoulders ---
@@ -877,11 +890,9 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawSphere(clankRElbow, 0.042f, armorDark);
     DrawCylinderEx(clankLElbow, clankLHand, 0.032f, 0.028f, 6, chromeSilv);
     DrawCylinderEx(clankRElbow, clankRHand, 0.032f, 0.028f, 6, chromeSilv);
-    // Articulated 3-fingered hands resting on Ratchet's front shoulder straps
+    // Articulated hands resting on Ratchet's front shoulder harness straps
     DrawSphere(clankLHand, 0.042f, armorDark);
     DrawSphere(clankRHand, 0.042f, armorDark);
-    DrawCylinderEx(clankLHand, { clankLHand.x - 0.02f, clankLHand.y - 0.04f, clankLHand.z + 0.04f }, 0.016f, 0.012f, 4, chromeSilv);
-    DrawCylinderEx(clankRHand, { clankRHand.x + 0.02f, clankRHand.y - 0.04f, clankRHand.z + 0.04f }, 0.016f, 0.012f, 4, chromeSilv);
 
     // --- I. Procedural Clank Heli-Pack Deployment (Smooth mechanical unfolding - NO POP-IN!) ---
     if (deploy > 0.008f) {
@@ -917,14 +928,14 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             DrawCircle3D(rotorHub, bladeSpan * 0.55f, { 1.0f, 0.0f, 0.0f }, 90.0f, ColorAlpha(WHITE, discFrac * 0.40f));
         }
 
-        // 4. Twin thruster exhaust plumes under Clank's backpack rocket bells
+        // 4. Twin thruster exhaust plumes under Clank's feet
         float thrustLen = 0.58f * deploy;
-        DrawCylinderEx({ nozL.x, nozL.y - 0.07f, nozL.z },
-                       { nozL.x, nozL.y - 0.07f - thrustLen, nozL.z },
-                       0.065f * deploy, 0.012f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
-        DrawCylinderEx({ nozR.x, nozR.y - 0.07f, nozR.z },
-                       { nozR.x, nozR.y - 0.07f - thrustLen, nozR.z },
-                       0.065f * deploy, 0.012f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
+        DrawCylinderEx({ footL.x, footL.y - 0.04f, footL.z },
+                       { footL.x, footL.y - 0.04f - thrustLen, footL.z },
+                       0.075f * deploy, 0.015f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
+        DrawCylinderEx({ footR.x, footR.y - 0.04f, footR.z },
+                       { footR.x, footR.y - 0.04f - thrustLen, footR.z },
+                       0.075f * deploy, 0.015f, 8, ColorAlpha(SKYBLUE, deploy * 0.90f));
     }
 
     // =========================================================================

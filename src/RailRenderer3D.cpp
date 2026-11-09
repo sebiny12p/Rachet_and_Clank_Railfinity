@@ -832,25 +832,81 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawSphere({ earL.x - 0.03f, earL.y, earL.z }, 0.038f, chromeBright);
     DrawSphere({ earR.x + 0.03f, earR.y, earR.z }, 0.038f, chromeBright);
 
-    // --- F. BIG GLOWING EMERALD-GREEN CAMERA EYES (Image 1 & 2) ---
-    // Facing the player/camera in -Z direction!
-    Vector3 eyeL = { clankHead.x - 0.082f, clankHead.y + 0.052f, clankHead.z - 0.142f };
-    Vector3 eyeR = { clankHead.x + 0.082f, clankHead.y + 0.052f, clankHead.z - 0.142f };
+    // --- F. CLANK'S ANIMATED EMERALD-GREEN EYES & FACIAL EXPRESSIONS (Image 1 & 2) ---
+    // Facing the player/camera directly in -Z direction!
+    Vector3 eyeL = { clankHead.x - 0.082f, clankHead.y + 0.052f, clankHead.z - 0.138f };
+    Vector3 eyeR = { clankHead.x + 0.082f, clankHead.y + 0.052f, clankHead.z - 0.138f };
 
-    // Thick dark gunmetal socket rims
-    DrawSphere(eyeL, 0.082f, BLACK);
-    DrawSphere(eyeR, 0.082f, BLACK);
+    // 1. Natural periodic blinking (every ~3.4s, quick 0.16s organic blink)
+    float blinkTimer = std::fmod(globalTime_ + 0.8f, 3.4f);
+    float blinkFrac = 0.0f; // 0.0 = wide open, 1.0 = fully closed
+    if (blinkTimer < 0.16f) {
+        blinkFrac = std::sin((blinkTimer / 0.16f) * 3.14159265f);
+    }
+    // Wincing when recently damaged
+    if (player_.invulnTimer > 0.7f) {
+        blinkFrac = std::max(blinkFrac, 0.75f);
+    }
 
-    // Brilliant luminous neon-lime / emerald glowing lenses (matching reference screenshot!)
-    Color clankEyeGlow = { 65, 255, 95, 255 };
-    DrawSphere(eyeL, 0.072f, clankEyeGlow);
-    DrawSphere(eyeR, 0.072f, clankEyeGlow);
+    // 2. Contextual Facial Expressions:
+    // When leaping up: wide-eyed excitement!
+    float eyeExcitement = (airborne && vy > 2.0f) ? 1.14f : 1.0f;
+    // When gliding: cool, focused squint
+    float eyeFocus = (player_.heliDeploy > 0.25f) ? (0.24f * player_.heliDeploy) : 0.0f;
+    float eyeOpenY = std::clamp((1.0f - blinkFrac) * eyeExcitement - eyeFocus, 0.04f, 1.15f);
 
-    // Bright inner lens highlights
-    DrawSphere({ eyeL.x, eyeL.y, eyeL.z - 0.028f }, 0.045f, { 185, 255, 195, 255 });
-    DrawSphere({ eyeR.x, eyeR.y, eyeR.z - 0.028f }, 0.045f, { 185, 255, 195, 255 });
-    DrawSphere({ eyeL.x - 0.015f, eyeL.y + 0.015f, eyeL.z - 0.045f }, 0.022f, WHITE);
-    DrawSphere({ eyeR.x - 0.015f, eyeR.y + 0.015f, eyeR.z - 0.045f }, 0.022f, WHITE);
+    float baseEyeRadius = 0.068f * eyeExcitement;
+
+    // Dark gunmetal circular socket bezels recessed into skull
+    DrawCylinderEx({ eyeL.x, eyeL.y, eyeL.z + 0.035f }, { eyeL.x, eyeL.y, eyeL.z - 0.005f }, 0.082f, 0.080f, 14, armorDark);
+    DrawCylinderEx({ eyeR.x, eyeR.y, eyeR.z + 0.035f }, { eyeR.x, eyeR.y, eyeR.z - 0.005f }, 0.082f, 0.080f, 14, armorDark);
+
+    // Glowing Neon-Lime / Emerald Green Camera Lenses (placed proud facing camera at -Z!)
+    Color clankEyeGreen  = { 60, 255, 95, 255 };
+    Color clankEyeBright = { 205, 255, 215, 255 };
+    if (player_.hyperBoostTimer > 0.0f) {
+        clankEyeGreen = { 100, 255, 170, 255 };
+    }
+
+    auto DrawClankEye = [&](Vector3 center) {
+        Vector3 lensPos = { center.x, center.y, center.z - 0.018f };
+        // Dark socket inner backing
+        DrawSphere(lensPos, baseEyeRadius, BLACK);
+
+        if (eyeOpenY > 0.12f) {
+            // Luminous glowing emerald lens
+            DrawSphere({ lensPos.x, lensPos.y, lensPos.z - 0.014f }, baseEyeRadius * 0.92f, clankEyeGreen);
+            // Center pupil glow
+            DrawSphere({ lensPos.x, lensPos.y, lensPos.z - 0.028f }, baseEyeRadius * 0.58f, clankEyeBright);
+            // Specular reflection glint (top-left)
+            DrawSphere({ lensPos.x - 0.016f, lensPos.y + 0.018f, lensPos.z - 0.040f }, 0.022f, WHITE);
+
+            // Chrome upper eyelid for blinking & facial expressions
+            if (blinkFrac > 0.05f || eyeFocus > 0.05f) {
+                float lidDrop = std::max(blinkFrac, eyeFocus) * 0.062f;
+                DrawCylinderEx({ lensPos.x - 0.070f, lensPos.y + baseEyeRadius - lidDrop, lensPos.z - 0.032f },
+                               { lensPos.x + 0.070f, lensPos.y + baseEyeRadius - lidDrop, lensPos.z - 0.032f },
+                               0.034f, 0.034f, 6, chromeBright);
+            }
+        } else {
+            // Fully closed eyelid line / blink slit
+            DrawCylinderEx({ lensPos.x - 0.060f, lensPos.y, lensPos.z - 0.032f },
+                           { lensPos.x + 0.060f, lensPos.y, lensPos.z - 0.032f },
+                           0.018f, 0.018f, 4, chromeBright);
+            // Thin glowing green slit hint
+            DrawCylinderEx({ lensPos.x - 0.042f, lensPos.y, lensPos.z - 0.038f },
+                           { lensPos.x + 0.042f, lensPos.y, lensPos.z - 0.038f },
+                           0.008f, 0.008f, 4, clankEyeGreen);
+        }
+    };
+
+    DrawClankEye(eyeL);
+    DrawClankEye(eyeR);
+
+    // Subtle dark mouth / smile grille (cheerful upward curve)
+    float smileCurve = (airborne ? 0.012f : 0.004f);
+    DrawCylinderEx({ clankHead.x - 0.055f, clankHead.y - 0.08f + smileCurve, clankHead.z - 0.125f },
+                   { clankHead.x + 0.055f, clankHead.y - 0.08f + smileCurve, clankHead.z - 0.125f }, 0.016f, 0.016f, 4, armorDark);
 
     // --- G. Top Hatch Collar, Antenna & Organic Red Beacon Disappearance ---
     float deploy = player_.heliDeploy;

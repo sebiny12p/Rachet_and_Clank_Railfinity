@@ -780,10 +780,13 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 
     auto DrawGrindBoot = [&](Vector3 fPos) {
         DrawCylinderEx({ fPos.x, fPos.y - 0.08f, fPos.z - 0.20f },
-                       { fPos.x, fPos.y - 0.08f, fPos.z + 0.26f }, 0.17f, 0.14f, 8, (armIdx == 0) ? chromeSilv : armorDark);
-        DrawSphere({ fPos.x, fPos.y - 0.05f, fPos.z + 0.22f }, 0.15f, (armIdx == 0) ? chromeSilv : armorOrange);
+                       { fPos.x, fPos.y - 0.08f, fPos.z + 0.26f }, 0.17f, 0.14f, 8, (armIdx == 0) ? leatherBrn : armorDark);
+        DrawSphere({ fPos.x, fPos.y - 0.05f, fPos.z + 0.22f }, 0.15f, (armIdx == 0) ? leatherBrn : armorOrange);
         DrawCylinderEx({ fPos.x, fPos.y - 0.02f, fPos.z - 0.04f },
                        { fPos.x, fPos.y + 0.15f, fPos.z - 0.02f }, 0.14f, 0.13f, 8, armorOrange);
+        // Cyan illuminated ankle collar ring (matching official Ratchet reference!)
+        DrawCylinderEx({ fPos.x, fPos.y + 0.07f, fPos.z - 0.02f },
+                       { fPos.x, fPos.y + 0.10f, fPos.z - 0.02f }, 0.144f, 0.144f, 8, SKYBLUE);
         // Magnetic rail lock soles glow with each suit's energy signature!
         DrawCube({ fPos.x, fPos.y - 0.12f, fPos.z + 0.02f }, 0.32f, 0.07f, 0.52f, visorCol);
     };
@@ -831,6 +834,17 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     // Leather harness belt across chest
     DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.10f, pelvisPos.z },
                    { shoulderCenter.x, shoulderCenter.y - 0.06f, shoulderCenter.z }, 0.28f, 0.33f, 6, leatherBrn);
+
+    // High collar around neck (matching official reference!)
+    DrawCylinderEx({ shoulderCenter.x, shoulderCenter.y + 0.08f, shoulderCenter.z },
+                   { shoulderCenter.x, shoulderCenter.y + 0.15f, shoulderCenter.z }, 0.18f, 0.20f, 8, (armIdx == 0) ? Color{ 195, 78, 20, 255 } : armorDark);
+
+    // Diagonal Commando Leather Harness Strap across chest (Left shoulder -> Right hip)
+    if (armIdx == 0) {
+        DrawCylinderEx({ shoulderCenter.x - 0.15f, shoulderCenter.y + 0.08f, shoulderCenter.z + 0.14f },
+                       { pelvisPos.x + 0.08f, pelvisPos.y + 0.06f, pelvisPos.z + 0.15f }, 0.032f, 0.032f, 6, leatherBrn);
+        DrawSphere({ shoulderCenter.x - 0.06f, shoulderCenter.y - 0.03f, shoulderCenter.z + 0.24f }, 0.032f, chromeBright);
+    }
     // Neck
     Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
     DrawCylinderEx(shoulderCenter, neckTop, 0.18f, 0.16f, 8, furGold);
@@ -1116,82 +1130,115 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     }
 
     // =========================================================================
-    // 4. RATCHET'S HEAD, AVIATOR CAP / HELMET & POINTED LOMBAX EARS!
+    // 4. AUTHENTIC RATCHET HEAD, FACIAL FEATURES & POINTED LOMBAX EARS!
     // =========================================================================
     Vector3 headPos = { neckTop.x, neckTop.y + 0.22f, neckTop.z + 0.02f };
-    // Golden fur head & snout
-    DrawSphere(headPos, 0.34f, furGold);
-    DrawCylinderEx(headPos, { headPos.x, headPos.y - 0.05f, headPos.z + 0.30f }, 0.22f, 0.14f, 8, furGold);
-    // Brown Leather Pilot Helmet Cap or Advanced Composite Armor Crown
-    DrawSphere({ headPos.x, headPos.y + 0.04f, headPos.z - 0.02f }, 0.348f, (armIdx == 0) ? leatherBrn : armorOrange);
+    Color furCream = { 248, 232, 196, 255 }; // Warm ivory/cream muzzle fur matching official model!
 
-    // Pilot Goggles (Classic) or Advanced Cybernetic Visor (Armor Suits)
-    if (armIdx == 0) {
-        // Classic Pilot Goggles (twin sky-blue cylinders looking forward)
-        DrawCylinderEx({ headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.20f },
-                       { headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.095f, 0.095f, 8, SKYBLUE);
-        DrawCylinderWiresEx({ headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.20f },
-                            { headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.098f, 0.098f, 8, GOLD);
-        // Green Lombax Eye Gaze on goggles
-        DrawSphere({ headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.052f, { 40, 220, 100, 255 });
-        DrawSphere({ headPos.x - 0.13f, headPos.y + 0.14f, headPos.z + 0.33f }, 0.026f, { 18, 24, 20, 255 });
+    if (armIdx == 0 || armIdx == 4) {
+        // --- AUTHENTIC BARE-HEADED RATCHET (MATCHING OFFICIAL REFERENCE IMAGE EXACTLY!) ---
+        // A. Golden fur head skull & sculpted cheeks
+        DrawSphere(headPos, 0.32f, furGold);
+        DrawSphere({ headPos.x - 0.16f, headPos.y - 0.04f, headPos.z + 0.08f }, 0.17f, furGold);
+        DrawSphere({ headPos.x + 0.16f, headPos.y - 0.04f, headPos.z + 0.08f }, 0.17f, furGold);
 
-        DrawCylinderEx({ headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.20f },
-                       { headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.095f, 0.095f, 8, SKYBLUE);
-        DrawCylinderWiresEx({ headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.20f },
-                            { headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.098f, 0.098f, 8, GOLD);
-        DrawSphere({ headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.32f }, 0.052f, { 40, 220, 100, 255 });
-        DrawSphere({ headPos.x + 0.13f, headPos.y + 0.14f, headPos.z + 0.33f }, 0.026f, { 18, 24, 20, 255 });
+        // B. Ratchet's signature brown crest hair tufts along crown of head
+        DrawCylinderEx({ headPos.x, headPos.y + 0.25f, headPos.z + 0.06f },
+                       { headPos.x, headPos.y + 0.33f, headPos.z - 0.12f }, 0.085f, 0.035f, 6, furStripe);
+        DrawCylinderEx({ headPos.x - 0.08f, headPos.y + 0.24f, headPos.z + 0.04f },
+                       { headPos.x - 0.09f, headPos.y + 0.31f, headPos.z - 0.14f }, 0.068f, 0.028f, 6, furStripe);
+        DrawCylinderEx({ headPos.x + 0.08f, headPos.y + 0.24f, headPos.z + 0.04f },
+                       { headPos.x + 0.09f, headPos.y + 0.31f, headPos.z - 0.14f }, 0.068f, 0.028f, 6, furStripe);
+
+        // C. Cream fur muzzle pad & cute black rounded triangular nose
+        DrawSphere({ headPos.x, headPos.y - 0.06f, headPos.z + 0.20f }, 0.16f, furCream);
+        DrawCylinderEx({ headPos.x, headPos.y - 0.05f, headPos.z + 0.16f },
+                       { headPos.x, headPos.y - 0.05f, headPos.z + 0.29f }, 0.14f, 0.085f, 8, furCream);
+        DrawSphere({ headPos.x, headPos.y - 0.025f, headPos.z + 0.305f }, 0.036f, { 28, 22, 22, 255 });
+        DrawCylinderEx({ headPos.x - 0.032f, headPos.y - 0.09f, headPos.z + 0.26f },
+                       { headPos.x + 0.032f, headPos.y - 0.09f, headPos.z + 0.26f }, 0.010f, 0.010f, 4, { 95, 48, 22, 255 });
+
+        // D. Three iconic horizontal dark-brown tiger stripes on each golden cheek
+        for (int s = 0; s < 3; ++s) {
+            float sy = headPos.y + 0.02f - s * 0.045f;
+            float sz = headPos.z + 0.10f + s * 0.025f;
+            DrawCylinderEx({ headPos.x - 0.25f, sy, sz }, { headPos.x - 0.18f, sy - 0.015f, sz + 0.06f }, 0.014f, 0.010f, 4, furStripe);
+            DrawCylinderEx({ headPos.x + 0.25f, sy, sz }, { headPos.x + 0.18f, sy - 0.015f, sz + 0.06f }, 0.014f, 0.010f, 4, furStripe);
+        }
+
+        // E. Ratchet's Large Expressive Emerald-Green Eyes!
+        auto DrawLombaxEye = [&](float eyeX) {
+            float eyeY = headPos.y + 0.065f;
+            // Almond eye socket contour
+            DrawCylinderEx({ eyeX, eyeY, headPos.z + 0.22f }, { eyeX, eyeY, headPos.z + 0.275f }, 0.068f, 0.068f, 8, { 55, 30, 16, 255 });
+            // Brilliant white sclera
+            DrawSphere({ eyeX, eyeY, headPos.z + 0.275f }, 0.064f, WHITE);
+            // Radiant emerald green Lombax iris
+            DrawSphere({ eyeX, eyeY, headPos.z + 0.290f }, 0.045f, { 35, 215, 95, 255 });
+            // Dark pupil
+            DrawSphere({ eyeX, eyeY, headPos.z + 0.300f }, 0.024f, { 18, 22, 22, 255 });
+            // Crisp white shine highlight glint
+            DrawSphere({ eyeX - 0.012f, eyeY + 0.014f, headPos.z + 0.308f }, 0.012f, WHITE);
+        };
+        DrawLombaxEye(headPos.x - 0.105f);
+        DrawLombaxEye(headPos.x + 0.105f);
+
+        // F. Expressive arched dark-brown Lombax eyebrows
+        DrawCylinderEx({ headPos.x - 0.04f, headPos.y + 0.145f, headPos.z + 0.26f },
+                       { headPos.x - 0.17f, headPos.y + 0.130f, headPos.z + 0.22f }, 0.020f, 0.012f, 6, furStripe);
+        DrawCylinderEx({ headPos.x + 0.04f, headPos.y + 0.145f, headPos.z + 0.26f },
+                       { headPos.x + 0.17f, headPos.y + 0.130f, headPos.z + 0.22f }, 0.020f, 0.012f, 6, furStripe);
+
+        // Praetorian Royal Golden Diadem Crown on bare head
+        if (armIdx == 4) {
+            DrawCylinderEx({ headPos.x - 0.18f, headPos.y + 0.17f, headPos.z + 0.20f },
+                           { headPos.x + 0.18f, headPos.y + 0.17f, headPos.z + 0.20f }, 0.035f, 0.035f, 6, GOLD);
+            DrawSphere({ headPos.x, headPos.y + 0.22f, headPos.z + 0.24f }, 0.065f, armorDark);
+            DrawSphere({ headPos.x, headPos.y + 0.22f, headPos.z + 0.26f }, 0.042f, visorCol);
+            DrawSphere({ headPos.x - 0.010f, headPos.y + 0.23f, headPos.z + 0.27f }, 0.015f, WHITE);
+        }
     } else {
-        // Armor Suit Twin Visor Lenses (matching the exact clean forward structure of Classic goggles!)
+        // --- COMBAT BATTLE HELMET SUITS: CARBONOX (1), INFERNOX (2), MARAUDER (3) ---
+        DrawSphere({ headPos.x, headPos.y + 0.04f, headPos.z - 0.02f }, 0.348f, armorOrange);
+        DrawCylinderEx(headPos, { headPos.x, headPos.y - 0.05f, headPos.z + 0.30f }, 0.22f, 0.14f, 8, armorDark);
+
         float vRad = 0.090f;
-        // Left Visor Eye
         Vector3 vL_base = { headPos.x - 0.13f, headPos.y + 0.13f, headPos.z + 0.20f };
         Vector3 vL_lens = { headPos.x - 0.13f, headPos.y + 0.13f, headPos.z + 0.31f };
         DrawCylinderEx(vL_base, vL_lens, vRad, vRad, 8, visorCol);
         DrawCylinderWiresEx(vL_base, vL_lens, vRad + 0.003f, vRad + 0.003f, 8, armorDark);
         DrawSphere(vL_lens, 0.052f, WHITE);
 
-        // Right Visor Eye
         Vector3 vR_base = { headPos.x + 0.13f, headPos.y + 0.13f, headPos.z + 0.20f };
         Vector3 vR_lens = { headPos.x + 0.13f, headPos.y + 0.13f, headPos.z + 0.31f };
         DrawCylinderEx(vR_base, vR_lens, vRad, vRad, 8, visorCol);
         DrawCylinderWiresEx(vR_base, vR_lens, vRad + 0.003f, vRad + 0.003f, 8, armorDark);
         DrawSphere(vR_lens, 0.052f, WHITE);
 
-        // Visor bridge connecting left and right lenses
         DrawCylinderEx({ headPos.x - 0.13f, headPos.y + 0.13f, headPos.z + 0.28f },
                        { headPos.x + 0.13f, headPos.y + 0.13f, headPos.z + 0.28f }, 0.045f, 0.045f, 6, visorCol);
-
-        // Forehead crest gem on Praetorian
-        if (armIdx == 4) {
-            DrawSphere({ headPos.x, headPos.y + 0.24f, headPos.z + 0.20f }, 0.075f, armorDark);
-            DrawSphere({ headPos.x, headPos.y + 0.24f, headPos.z + 0.23f }, 0.045f, visorCol);
-        }
     }
 
-    // True Pointed Fan-Shaped Lombax Ears (Broad vertical attachment at skull -> tapering to a sharp pointed tip!)
-    // Built from 4 stacked horizontal spars that converge to a single outer tip so the ear is THIN front-to-back
-    // and WIDE vertically near the head, tapering to a sharp point!
+    // True Pointed Fan-Shaped Lombax Ears angled upward and outward (matching official reference!)
     float earBob = std::sin(globalTime_ * 20.0f) * 0.03f - std::clamp(player_.vy * 0.010f, -0.16f, 0.16f);
     for (int side = -1; side <= 1; side += 2) {
         float s = static_cast<float>(side);
-        Vector3 earTip     = { headPos.x + s * 0.92f, headPos.y + 0.22f + earBob, headPos.z - 0.10f };
-        Vector3 rootTop    = { headPos.x + s * 0.26f, headPos.y + 0.15f, headPos.z - 0.02f };
-        Vector3 rootUpper  = { headPos.x + s * 0.28f, headPos.y + 0.06f, headPos.z - 0.03f };
-        Vector3 rootMid    = { headPos.x + s * 0.28f, headPos.y - 0.03f, headPos.z - 0.04f };
-        Vector3 rootBot    = { headPos.x + s * 0.24f, headPos.y - 0.12f, headPos.z - 0.05f };
+        Vector3 earTip     = { headPos.x + s * 0.88f, headPos.y + 0.36f + earBob, headPos.z - 0.08f };
+        Vector3 rootTop    = { headPos.x + s * 0.24f, headPos.y + 0.18f, headPos.z - 0.02f };
+        Vector3 rootUpper  = { headPos.x + s * 0.26f, headPos.y + 0.08f, headPos.z - 0.03f };
+        Vector3 rootMid    = { headPos.x + s * 0.26f, headPos.y - 0.01f, headPos.z - 0.04f };
+        Vector3 rootBot    = { headPos.x + s * 0.22f, headPos.y - 0.10f, headPos.z - 0.05f };
 
-        // 1. Thick dark-brown/auburn upper ear rim tapering to a sharp point at earTip
+        // 1. Thick dark-brown/auburn upper ear rim tapering to sharp point
         DrawCylinderEx(rootTop, earTip, 0.085f, 0.025f, 6, furStripe);
-        // 2. Golden fur upper-middle ear blade tapering into earTip
+        // 2. Golden fur upper-middle ear blade
         DrawCylinderEx(rootUpper, earTip, 0.095f, 0.020f, 6, furGold);
-        // 3. Golden fur lower-middle ear blade tapering into earTip
+        // 3. Golden fur lower-middle ear blade
         DrawCylinderEx(rootMid, Vector3Lerp(rootMid, earTip, 0.92f), 0.090f, 0.025f, 6, furGold);
-        // 4. Warm tan lower ear fold cartilage ridge tapering into the outer edge
+        // 4. Warm tan/peach lower ear fold cartilage ridge
         DrawCylinderEx(rootBot, Vector3Lerp(rootTop, earTip, 0.85f), 0.075f, 0.020f, 6, furInner);
 
-        // 3 Iconic Dark-Brown Vertical Tiger Stripes along the back of the ear fan!
+        // 3 Iconic Dark-Brown Vertical Tiger Stripes along back of ear fan
         for (int st = 1; st <= 3; ++st) {
             float frac = st * 0.23f;
             Vector3 stTop = Vector3Lerp(rootTop, earTip, frac);
@@ -1327,8 +1374,10 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         // Golden fur upper arm
         DrawCylinderEx(sh, elb, 0.105f, 0.090f, 8, furGold);
         DrawSphere(elb, 0.092f, furGold);
+        // Flared mechanic glove cuff collar below elbow (matching official reference!)
+        DrawCylinderEx({ elb.x, elb.y - 0.015f, elb.z }, { elb.x, elb.y - 0.065f, elb.z }, 0.116f, 0.102f, 8, (armIdx == 0) ? Color{ 110, 58, 26, 255 } : armorDark);
         // Tapered glove forearm
-        DrawCylinderEx(elb, hnd, 0.092f, 0.110f, 8, leatherBrn);
+        DrawCylinderEx({ elb.x, elb.y - 0.04f, elb.z }, hnd, 0.096f, 0.108f, 8, leatherBrn);
         // Compact gloved fist
         DrawSphere(hnd, 0.115f, gloveBrn);
     };
@@ -1361,11 +1410,12 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
         Vector3 jawBaseR = Vector3Add(wNeck, Vector3Scale(wPerp, +0.17f));
         DrawCylinderEx(jawBaseL, jawBaseR, 0.062f, 0.062f, 6, armorDark);
 
-        // Twin Open Parallel Wrench Prongs (U-shaped crescent wrench head)
+        // Twin Open Parallel Wrench Prongs (Iconic Cobalt Blue Jaws matching official reference!)
+        Color jawColor = (armIdx == 0) ? Color{ 45, 95, 175, 255 } : chromeSilv;
         Vector3 jawTipL = Vector3Add(jawBaseL, Vector3Scale(wDir, 0.26f));
         Vector3 jawTipR = Vector3Add(jawBaseR, Vector3Scale(wDir, 0.26f));
-        DrawCylinderEx(jawBaseL, jawTipL, 0.062f, 0.038f, 6, chromeSilv);
-        DrawCylinderEx(jawBaseR, jawTipR, 0.062f, 0.038f, 6, chromeSilv);
+        DrawCylinderEx(jawBaseL, jawTipL, 0.062f, 0.038f, 6, jawColor);
+        DrawCylinderEx(jawBaseR, jawTipR, 0.062f, 0.038f, 6, jawColor);
 
         // Horizontal Right-to-Left Slash Arc Trail across Ratchet's lane during swing!
         if (wrenchSwinging) {

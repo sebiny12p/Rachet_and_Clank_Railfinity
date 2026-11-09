@@ -10,8 +10,8 @@ constexpr int VIRTUAL_WIDTH = 1280;
 constexpr int VIRTUAL_HEIGHT = 720;
 constexpr float FIXED_DT = 1.0f / 120.0f;
 
-constexpr int NUM_LANES = 3;
-constexpr float LANE_WIDTH = 3.2f; // Screen-Left = +3.2f (Lane 0), Center = 0.0f (Lane 1), Screen-Right = -3.2f (Lane 2)
+constexpr int NUM_LANES = 5; // 0 = Far Left, 1 = Mid Left, 2 = Center, 3 = Mid Right, 4 = Far Right
+constexpr float LANE_WIDTH = 3.2f; // Distance between adjacent rails
 
 constexpr size_t MAX_HAZARDS = 96;
 constexpr size_t MAX_BOLTS = 256;
@@ -107,11 +107,20 @@ struct SaveData {
 };
 
 struct PlayerLombax {
-    int currentLane = 1;      // 0 = Left, 1 = Center, 2 = Right
+    int currentLane = 2;      // 0 = Far Left, 1 = Mid Left, 2 = Center, 3 = Mid Right, 4 = Far Right
     float x = 0.0f;           // Smoothly interpolated X coordinate
     float y = 0.0f;           // Height above rail
     float vy = 0.0f;          // Vertical velocity
     float laneTiltDeg = 0.0f; // Lean angle when switching lanes
+
+    // Acrobatic Rail-to-Rail Hop Animation
+    bool isHopping = false;
+    float hopTimer = 0.0f;
+    float hopDuration = 0.22f;
+    float hopStartX = 0.0f;
+    float hopTargetX = 0.0f;
+    int hopDir = 0;           // -1 = Hop Left, +1 = Hop Right
+    float hopRollDeg = 0.0f;
 
     bool grounded = true;
     bool heliGliding = false;
@@ -201,7 +210,7 @@ struct BossDropship {
     float hoverX = 0.0f;
     float hoverY = 4.2f;
     float phase = 0.0f;
-    std::array<float, NUM_LANES> turretHp = { 120.0f, 120.0f, 120.0f };
+    std::array<float, NUM_LANES> turretHp = { 0.0f, 120.0f, 120.0f, 120.0f, 0.0f };
     float maxTurretHp = 120.0f;
     int telegraphLane = -1;
     float telegraphTimer = 0.0f;

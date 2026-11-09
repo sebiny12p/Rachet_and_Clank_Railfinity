@@ -52,11 +52,12 @@ private:
     void SpawnParticleBurst3D(Vector3 pos, int count, Color color, float minSpd, float maxSpd, float size, float life);
     void TriggerBossDropship();
 
-    // Helpers (Note: camera looks from -Z toward +Z, so +X is screen-left and -X is screen-right)
-    static float GetLaneX(int lane) { return (1 - lane) * LANE_WIDTH; }
+    // Helpers (5-Lane Matrix: Lane 0 = +6.4m, Lane 1 = +3.2m, Lane 2 = 0m, Lane 3 = -3.2m, Lane 4 = -6.4m)
+    static float GetLaneX(int lane) { return (2 - lane) * LANE_WIDTH; }
     float GetTrackCurveX(float z) const;
     float GetTrackCurveY(float z) const;
     Vector3 ApplyTrackCurve(float laneX, float y, float z) const;
+    bool IsRailActiveAt(int lane, float z) const;
     bool IsRailGapAt(int lane, float z) const;
     GalaxySector GetCurrentSector() const;
     const char* GetSectorName(GalaxySector s) const;
@@ -119,10 +120,12 @@ private:
     float sectorBannerTimer_ = 0.0f;
     GalaxySector lastSector_ = GalaxySector::METROPOLIS_KERWAN;
 
-    // Touch / Mouse Swipe Gesture Tracking
+    // Touch / Mouse Swipe & Tap Gesture Tracking
     bool pointerDown_ = false;
     Vector2 pointerStartPos_ = { 0.0f, 0.0f };
     float pointerDownTime_ = 0.0f;
+    bool touchHoldingJump_ = false;
+    bool gestureConsumed_ = false;
 
     PlayerLombax player_{};
     BossDropship boss_{};

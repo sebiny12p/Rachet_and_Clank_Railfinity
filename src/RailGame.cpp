@@ -200,9 +200,10 @@ void RailGame::StartNewRun(bool dailySeed) {
 
     // Reset Lombax Player
     player_ = PlayerLombax{};
-    player_.currentLane = 1;
-    player_.x = GetLaneX(1);
+    player_.currentLane = 2; // Center lane on 5-lane grid (0=FarL, 1=MidL, 2=Center, 3=MidR, 4=FarR)
+    player_.x = GetLaneX(2);
     player_.y = 0.0f;
+    player_.isHopping = false;
     player_.maxNanotechHp = 4.0f + static_cast<float>(save_.armorLevel);
     player_.nanotechHp = player_.maxNanotechHp;
     player_.maxHeliFuel = 1.2f + save_.bootThrusterLevel * 0.25f;
@@ -217,7 +218,7 @@ void RailGame::StartNewRun(bool dailySeed) {
     for (auto& pt : particles_) pt.active = false;
 
     // Spawn starter line of shiny Bolts right in front of Ratchet on the center rail!
-    SpawnRailBoltLine(1, 10.0f, 7, 2.6f, false);
+    SpawnRailBoltLine(2, 10.0f, 7, 2.6f, false);
 
     for (int i = 0; i < 4; ++i) {
         SpawnChunkPattern(nextChunkZ_);
@@ -268,6 +269,44 @@ bool RailGame::IsRailGapAt(int lane, float z) const {
     return false;
 }
 
+bool RailGame::IsRailActiveAt(int lane, float z) const {
+    if (lane < 0 || lane >= NUM_LANES) return false;
+
+    // In Menus / Front Page: keep center 3 lanes (1, 2, 3) active
+    if (mode_ != ScreenMode::PLAYING && mode_ != ScreenMode::PAUSED && mode_ != ScreenMode::GAME_OVER) {
+        return (lane >= 1 && lane <= 3);
+    }
+
+    // Dynamic 3-lane active route corridor flowing across 5 world tracks (max 3 at any time):
+    // 180m world blocks:
+    // Block 0: Lanes 1, 2, 3 (Center City Hub)
+    // Block 1: Lanes 0, 1, 2 (Left Sky-Freeway)
+    // Block 2: Lanes 1, 2, 3 (Re-converging Central Hub)
+    // Block 3: Lanes 2, 3, 4 (Right Megacorp Industrial Overpass)
+    float worldDist = distanceMeters_ + z;
+    int block = static_cast<int>(std::floor(std::max(0.0f, worldDist) / 180.0f));
+    int routeMode = block % 4;
+
+    int minLane = 1;
+    int maxLane = 3;
+    if (routeMode == 1) {
+        minLane = 0; maxLane = 2;
+    } else if (routeMode == 3) {
+        minLane = 2; maxLane = 4;
+    }
+
+    if (lane < minLane || lane > maxLane) {
+        return false;
+    }
+
+    // Physical sheared gap in the rail
+    if (IsRailGapAt(lane, z)) {
+        return false;
+    }
+
+    return true;
+}
+
 GalaxySector RailGame::GetCurrentSector() const {
     int stage = (static_cast<int>(distanceMeters_) / 500) % 4;
     return static_cast<GalaxySector>(stage);
@@ -303,10 +342,17 @@ void RailGame::SwitchLane(int delta) {
     int target = std::clamp(player_.currentLane + delta, 0, NUM_LANES - 1);
     if (target != player_.currentLane) {
         player_.currentLane = target;
-        player_.laneTiltDeg = (delta < 0) ? 26.0f : -26.0f;
-        player_.landingSquashTimer = 0.20f;
+        player_.isHopping = true;
+        player_.hopTimer = 0.0f;
+        player_.hopDuration = 0.22f; // Quick, responsive acrobatic lateral leap (~0.22s)
+        player_.hopStartX = player_.x;
+        player_.hopTargetX = GetLaneX(target);
+        player_.hopDir = (delta > 0) ? 1 : -1;
+        player_.landingSquashTimer = 0.0f;
+
+        // Radial burst of magnetic grind boot disengagement sparks
+        SpawnParticleBurst3D({ player_.x, player_.y + 0.1f, 0.0f }, 12, SKYBLUE, 3.0f, 8.0f, 0.20f, 0.28f);
         audio_.PlayRailHop();
-        SpawnParticleBurst3D({ player_.x, player_.y + 0.3f, 0.0f }, 12, ORANGE, 2.0f, 8.0f, 0.22f, 0.30f);
     }
 }
 
@@ -509,11 +555,20 @@ void RailGame::SpawnChunkPattern(float startZ) {
     float difficulty = std::min(1.0f, distanceMeters_ / 2200.0f);
     int pattern = rng_.RangeInt(0, 6);
 
+    // Calculate active 3-lane route corridor at this world distance (Max 3 rails at any time!)
+    float worldDist = distanceMeters_ + startZ;
+    int block = static_cast<int>(std::floor(std::max(0.0f, worldDist) / 180.0f));
+    int routeMode = block % 4;
+    int minLane = 1;
+    if (routeMode == 1) minLane = 0;       // Left Sky-Freeway branch (Lanes 0, 1, 2)
+    else if (routeMode == 3) minLane = 2;  // Right Megacorp Industrial branch (Lanes 2, 3, 4)
+    std::array<int, 3> activeLanes = { minLane, minLane + 1, minLane + 2 };
+
     if (pattern == 0) {
         // Wave 0: Single Laser Gate Row with 1 Open Safe Lane + Guided Bolt Line
-        int safeLane = rng_.RangeInt(0, 2);
+        int safeLane = activeLanes[rng_.RangeInt(0, 2)];
         SpawnRailBoltLine(safeLane, startZ + 2.0f, 5, 2.8f, false);
-        for (int l = 0; l < NUM_LANES; ++l) {
+        for (int l : activeLanes) {
             if (l == safeLane) {
                 SpawnHazard((player_.nanotechHp < player_.maxNanotechHp && rng_.Chance(0.45f))
                             ? HazardKind::NANOTECH_CRATE : HazardKind::BOLT_CRATE, l, startZ + 18.0f);
@@ -526,10 +581,12 @@ void RailGame::SpawnChunkPattern(float startZ) {
             }
         }
     } else if (pattern == 1) {
-        // Wave 1: Single Rail Gap on 1 or 2 lanes + Hyper Boost Pad on the intact lane
-        int boostLane = rng_.RangeInt(0, 2);
-        int secondSafe = (distanceMeters_ < 250.0f) ? ((boostLane + 1) % 3) : -1;
-        for (int l = 0; l < NUM_LANES; ++l) {
+        // Wave 1: Cinematic Sheared Rail Chasm (18.0m gap!) + Hyper Boost Pad on safe lane
+        int boostLane = activeLanes[rng_.RangeInt(0, 2)];
+        int secondSafe = (distanceMeters_ < 250.0f) ? activeLanes[(rng_.RangeInt(0, 1) == 0) ? 0 : 2] : -1;
+        if (secondSafe == boostLane) secondSafe = -1;
+
+        for (int l : activeLanes) {
             if (l == boostLane) {
                 SpawnHazard(HazardKind::HYPER_BOOST_PAD, l, startZ + 5.0f);
                 SpawnRailBoltLine(l, startZ + 11.0f, 5, 2.8f, false);
@@ -537,23 +594,24 @@ void RailGame::SpawnChunkPattern(float startZ) {
             } else if (l == secondSafe) {
                 SpawnRailBoltLine(l, startZ + 6.0f, 5, 2.8f, false);
             } else {
-                SpawnHazard(HazardKind::BROKEN_RAIL_GAP, l, startZ + 12.0f, 7.5f);
-                SpawnRailBoltLine(l, startZ + 6.5f, 5, 2.6f, true);
+                // Grand Sheared Chasm (18.0m!) requiring Heli-Pack Glide or Lane Hop!
+                SpawnHazard(HazardKind::BROKEN_RAIL_GAP, l, startZ + 14.0f, 18.0f);
+                SpawnRailBoltLine(l, startZ + 7.0f, 6, 2.8f, true); // High arching bolt arc for Clank gliding
             }
         }
     } else if (pattern == 2) {
         // Wave 2: Thugs-4-Less Chopper Drone + Optional TNT Barrel (1 lane stays clear!)
-        int clearLane = rng_.RangeInt(0, 2);
-        int droneLane = (clearLane + 1) % 3;
-        int tntLane   = (clearLane + 2) % 3;
+        int clearLane = activeLanes[rng_.RangeInt(0, 2)];
+        int droneLane = (activeLanes[0] == clearLane) ? activeLanes[1] : activeLanes[0];
+        int tntLane   = (activeLanes[2] == clearLane) ? activeLanes[1] : activeLanes[2];
         SpawnRailBoltLine(clearLane, startZ + 4.0f, 6, 2.8f, false);
         SpawnHazard(HazardKind::THUG_DRONE, droneLane, startZ + 14.0f);
         SpawnHazard(HazardKind::TNT_CRATE, tntLane, startZ + 12.0f);
         SpawnHazard(HazardKind::BOLT_CRATE, droneLane, startZ + 24.0f);
     } else if (pattern == 3) {
-        // Wave 3: Single Clean Jump or Slide Line (Only 1 row per chunk so player has plenty of time to land!)
-        int openLane = rng_.RangeInt(0, 2);
-        for (int l = 0; l < NUM_LANES; ++l) {
+        // Wave 3: Single Clean Jump or Slide Line
+        int openLane = activeLanes[rng_.RangeInt(0, 2)];
+        for (int l : activeLanes) {
             if (l == openLane) {
                 SpawnRailBoltLine(l, startZ + 4.0f, 5, 2.8f, false);
                 SpawnHazard(HazardKind::BOLT_CRATE, l, startZ + 20.0f);
@@ -566,17 +624,18 @@ void RailGame::SpawnChunkPattern(float startZ) {
             }
         }
     } else if (pattern == 4) {
-        // Wave 4: Electrified Rail on 1-2 lanes + Megacorp Enforcer or Bolt Crates
-        int safeLane = rng_.RangeInt(0, 2);
-        int enfLane  = (safeLane + 1) % 3;
+        // Wave 4: Electrified Rail on 1 lane + Megacorp Enforcer
+        int safeLane = activeLanes[rng_.RangeInt(0, 2)];
+        int enfLane  = (activeLanes[0] == safeLane) ? activeLanes[1] : activeLanes[0];
+        int elecLane = (activeLanes[2] == safeLane) ? activeLanes[1] : activeLanes[2];
         SpawnRailBoltLine(safeLane, startZ + 4.0f, 6, 2.8f, false);
         SpawnHazard(HazardKind::BOLT_CRATE, safeLane, startZ + 22.0f);
         SpawnHazard(HazardKind::SHIELDED_ENFORCER, enfLane, startZ + 14.0f);
-        SpawnHazard(HazardKind::ELECTRIFIED_RAIL, (safeLane + 2) % 3, startZ + 12.0f, 8.0f);
+        SpawnHazard(HazardKind::ELECTRIFIED_RAIL, elecLane, startZ + 12.0f, 9.5f);
     } else if (pattern == 5) {
-        // Wave 5: Pure Breather / Gadgetron Crate & Bolt Jackpot Straightaway (Zero deadly obstacles!)
-        int rariLane = rng_.RangeInt(0, 2);
-        for (int l = 0; l < NUM_LANES; ++l) {
+        // Wave 5: Pure Breather / Gadgetron Crate & Bolt Jackpot Straightaway (Bonus Raritanium on outer rails!)
+        int rariLane = activeLanes[rng_.RangeInt(0, 2)];
+        for (int l : activeLanes) {
             SpawnRailBoltLine(l, startZ + 2.0f, 5, 2.6f, false);
             if (l == rariLane) {
                 SpawnHazard(rng_.Chance(0.55f) ? HazardKind::RARITANIUM_CACHE : HazardKind::NANOTECH_CRATE, l, startZ + 18.0f);
@@ -585,19 +644,19 @@ void RailGame::SpawnChunkPattern(float startZ) {
             }
         }
     } else {
-        // Wave 6: Gentle Lane-Switch Guided by Bolts (Plenty of spacing between the 2 steps)
-        int open1 = rng_.RangeInt(0, 2);
-        int open2 = (open1 + 1) % 3;
+        // Wave 6: Gentle Lane-Switch Guided by Bolts
+        int open1 = activeLanes[rng_.RangeInt(0, 2)];
+        int open2 = (activeLanes[0] == open1) ? activeLanes[1] : activeLanes[0];
         SpawnRailBoltLine(open1, startZ + 2.0f, 5, 2.6f, false);
-        for (int l = 0; l < NUM_LANES; ++l) {
-            if (l != open1) SpawnHazard(HazardKind::ELECTRIFIED_RAIL, l, startZ + 8.0f, 6.5f);
+        for (int l : activeLanes) {
+            if (l != open1) SpawnHazard(HazardKind::ELECTRIFIED_RAIL, l, startZ + 8.0f, 7.5f);
         }
         SpawnRailBoltLine(open2, startZ + 22.0f, 5, 2.6f, false);
         SpawnHazard(HazardKind::BOLT_CRATE, open2, startZ + 36.0f);
     }
 
-    // Generous open breathing room before the next obstacle chunk (60m early on -> 46m at max speed)!
-    float spacing = std::max(46.0f, 60.0f - difficulty * 14.0f);
+    // Generous open breathing room before the next obstacle chunk (62m early on -> 48m at max speed)!
+    float spacing = std::max(48.0f, 62.0f - difficulty * 14.0f);
     nextChunkZ_ = startZ + spacing;
 }
 
@@ -693,7 +752,7 @@ void RailGame::TriggerBossDropship() {
     boss_.hoverY = 4.2f;
     boss_.phase = 0.0f;
     boss_.maxTurretHp = 110.0f + boss_.bossTier * 45.0f;
-    boss_.turretHp = { boss_.maxTurretHp, boss_.maxTurretHp, boss_.maxTurretHp };
+    boss_.turretHp = { 0.0f, boss_.maxTurretHp, boss_.maxTurretHp, boss_.maxTurretHp, 0.0f };
     boss_.telegraphLane = -1;
     boss_.telegraphTimer = 0.0f;
     boss_.attackCooldown = 2.0f;
@@ -718,21 +777,6 @@ void RailGame::HandleInput() {
         if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  SwitchLane(-1);
         if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) SwitchLane(+1);
 
-        // Jump / Heli-Pack Glide
-        if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP)) {
-            TriggerJumpOrGlide();
-        }
-        bool jumpHeld = IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_W) || IsKeyDown(KEY_UP);
-        if (!player_.grounded && player_.heliFuel > 0.0f) {
-            if (jumpHeld && player_.vy <= 6.5f) {
-                player_.heliGliding = true;
-            } else if (!jumpHeld) {
-                player_.heliGliding = false;
-            }
-        } else {
-            player_.heliGliding = false;
-        }
-
         // Wrench Slide / Crouch
         if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_LEFT_CONTROL)) {
             TriggerWrenchSlide();
@@ -756,44 +800,111 @@ void RailGame::HandleInput() {
             TriggerFireWeapon();
         }
 
-        // Touch / Mouse Swipe & Tap Gesture Handling (for Android & Mouse play)
+        // Mobile & Mouse On-Screen Action Controls + Swipe Gestures
         Vector2 vm = GetVirtualMouse();
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            // Check bottom weapon hotbar clicks first (Slots 1..6)
-            for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
-                Rectangle slotRect = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
-                if (CheckCollisionPointRec(vm, slotRect) && save_.unlockedWeapons[w]) {
+        Rectangle btnJumpRec = { VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+        Rectangle btnFireRec = { VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+
+        // 1. Check Weapon Hotbar Slots (1..6)
+        bool onHotbar = false;
+        for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
+            Rectangle slotRect = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
+            if (CheckCollisionPointRec(vm, slotRect)) {
+                onHotbar = true;
+                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && save_.unlockedWeapons[w]) {
                     save_.equippedWeapon = w;
                     audio_.PlayUiClick();
                     return;
                 }
             }
-            pointerDown_ = true;
-            pointerStartPos_ = vm;
-            pointerDownTime_ = globalTime_;
         }
 
-        if (pointerDown_ && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            pointerDown_ = false;
-            Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
-            float dist = Vector2Length(delta);
-            if (dist > 36.0f) {
-                // Swipe detected!
-                if (std::abs(delta.x) > std::abs(delta.y)) {
-                    SwitchLane(delta.x < 0.0f ? -1 : +1);
-                } else {
-                    if (delta.y < 0.0f) TriggerJumpOrGlide();
-                    else TriggerWrenchSlide();
+        // 2. Check On-Screen Action Buttons
+        bool onJumpBtn = CheckCollisionPointRec(vm, btnJumpRec);
+        bool onFireBtn = CheckCollisionPointRec(vm, btnFireRec);
+
+        if (onJumpBtn) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                TriggerJumpOrGlide();
+            }
+            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                touchHoldingJump_ = true;
+            }
+        } else if (onFireBtn) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                TriggerFireWeapon();
+            }
+        } else if (!onHotbar) {
+            // 3. Screen Gestures & Air-Touch Hold (Mobile-Optimized)
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                pointerDown_ = true;
+                pointerStartPos_ = vm;
+                pointerDownTime_ = globalTime_;
+                gestureConsumed_ = false;
+
+                // Air Tap & Hold: Touching screen mid-air immediately deploys Clank's Heli-Pack!
+                if (!player_.grounded && player_.heliFuel > 0.0f) {
+                    touchHoldingJump_ = true;
                 }
-            } else {
-                // Quick tap = Fire Equipped Weapon!
-                TriggerFireWeapon();
             }
-        } else if (pointerDown_ && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            if (globalTime_ - pointerDownTime_ > 0.18f &&
-                Vector2Distance(vm, pointerStartPos_) < 30.0f) {
-                TriggerFireWeapon();
+
+            if (pointerDown_ && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
+                float dist = Vector2Length(delta);
+
+                if (!gestureConsumed_ && dist > 26.0f) {
+                    if (std::abs(delta.x) > std::abs(delta.y)) {
+                        SwitchLane(delta.x < 0.0f ? -1 : +1);
+                        gestureConsumed_ = true;
+                    } else {
+                        if (delta.y < -24.0f) {
+                            // Instant Swipe-Up Jump (Does not wait for finger release!)
+                            TriggerJumpOrGlide();
+                            touchHoldingJump_ = true;
+                            gestureConsumed_ = true;
+                        } else if (delta.y > 28.0f) {
+                            // Instant Swipe-Down Slide
+                            TriggerWrenchSlide();
+                            gestureConsumed_ = true;
+                        }
+                    }
+                } else if (gestureConsumed_ && delta.y < -20.0f) {
+                    // Continuing to hold thumb after swiping up = Glide with Heli-Pack!
+                    touchHoldingJump_ = true;
+                }
             }
+
+            if (pointerDown_ && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                if (!gestureConsumed_) {
+                    Vector2 delta = Vector2Subtract(vm, pointerStartPos_);
+                    if (Vector2Length(delta) < 24.0f && (globalTime_ - pointerDownTime_) < 0.35f) {
+                        // Quick Screen Tap = Fire Equipped Weapon!
+                        TriggerFireWeapon();
+                    }
+                }
+                pointerDown_ = false;
+                gestureConsumed_ = false;
+                touchHoldingJump_ = false;
+            }
+        }
+
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            touchHoldingJump_ = false;
+        }
+
+        // Jump & Heli-Pack Glide (Keyboard + Touch Holding)
+        if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP)) {
+            TriggerJumpOrGlide();
+        }
+        bool jumpHeld = IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_W) || IsKeyDown(KEY_UP) || touchHoldingJump_;
+        if (!player_.grounded && player_.heliFuel > 0.0f) {
+            if (jumpHeld && player_.vy <= 6.5f) {
+                player_.heliGliding = true;
+            } else if (!jumpHeld) {
+                player_.heliGliding = false;
+            }
+        } else {
+            player_.heliGliding = false;
         }
     } else if (mode_ == ScreenMode::TITLE_FRONT_PAGE) {
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
@@ -879,10 +990,49 @@ void RailGame::UpdatePlayingFixed(float dt) {
         TriggerBossDropship();
     }
 
-    // Player Horizontal Lane Interpolation & Tilt
-    float targetX = GetLaneX(player_.currentLane);
-    player_.x = Lerp(player_.x, targetX, 16.0f * dt);
-    player_.laneTiltDeg = Lerp(player_.laneTiltDeg, 0.0f, 10.0f * dt);
+    // Player Horizontal Lane Interpolation & Acrobatic Rail-to-Rail Leap
+    if (player_.isHopping) {
+        player_.hopTimer += dt;
+        float t = std::clamp(player_.hopTimer / player_.hopDuration, 0.0f, 1.0f);
+        // Smooth hermite / smoothstep interpolation
+        float smoothT = t * t * (3.0f - 2.0f * t);
+        player_.x = Lerp(player_.hopStartX, player_.hopTargetX, smoothT);
+
+        // Dynamic acrobatic tilt & roll
+        player_.laneTiltDeg = -player_.hopDir * std::sin(t * 3.14159265f) * 40.0f;
+        player_.hopRollDeg = player_.hopDir * 360.0f * t;
+
+        if (t >= 1.0f) {
+            player_.isHopping = false;
+            player_.hopRollDeg = 0.0f;
+            player_.landingSquashTimer = 0.22f; // Knee squash impact
+            cameraShake_ = std::max(cameraShake_, 0.14f);
+            audio_.PlayRailHop();
+
+            // Reclamp magnetic sparks on destination rail
+            SpawnParticleBurst3D({ player_.hopTargetX, player_.y + 0.08f, 0.0f }, 16, GOLD, 2.5f, 8.0f, 0.22f, 0.32f);
+            SpawnParticleBurst3D({ player_.hopTargetX, player_.y + 0.08f, 0.0f }, 8, SKYBLUE, 1.5f, 5.0f, 0.15f, 0.22f);
+        }
+    } else {
+        float targetX = GetLaneX(player_.currentLane);
+        player_.x = Lerp(player_.x, targetX, 16.0f * dt);
+        player_.laneTiltDeg = Lerp(player_.laneTiltDeg, 0.0f, 10.0f * dt);
+    }
+
+    // Check if the rail beneath Ratchet has terminated or broken
+    if (player_.grounded && !player_.isHopping) {
+        if (!IsRailActiveAt(player_.currentLane, 0.0f)) {
+            // Rail ran out! Ratchet falls into the abyss unless he glides or hops!
+            player_.grounded = false;
+            player_.vy = -14.0f;
+            DamagePlayer(1.0f, false);
+            cameraShake_ = 0.55f;
+            screenFlashColor_ = RED;
+            screenFlashAlpha_ = 0.40f;
+            audio_.PlayExplosion();
+            SpawnParticleBurst3D({ player_.x, 0.2f, 0.0f }, 25, ORANGE, 3.0f, 10.0f, 0.30f, 0.5f);
+        }
+    }
 
     // Player Timers & Procedural Animation Counters
     if (player_.slideTimer > 0.0f) player_.slideTimer = std::max(0.0f, player_.slideTimer - dt);
@@ -1350,8 +1500,15 @@ void RailGame::UpdateBossFixed(float dt) {
     boss_.hoverX = std::sin(boss_.phase) * 2.2f;
     boss_.hoverY = 4.2f + std::cos(boss_.phase * 1.4f) * 0.6f;
 
-    // Check if all 3 turrets are destroyed
-    if (boss_.turretHp[0] <= 0.0f && boss_.turretHp[1] <= 0.0f && boss_.turretHp[2] <= 0.0f) {
+    // Check if all active turrets are destroyed
+    bool allTurretsDown = true;
+    for (int l = 0; l < NUM_LANES; ++l) {
+        if (boss_.turretHp[l] > 0.0f) {
+            allTurretsDown = false;
+            break;
+        }
+    }
+    if (allTurretsDown) {
         boss_.active = false;
         distanceSinceBoss_ = 0.0f;
         save_.totalBossesDefeated++;

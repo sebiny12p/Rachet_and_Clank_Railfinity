@@ -9,20 +9,25 @@ An infinite, procedural 3D action grindrail runner built in **C++20** with **Ray
 
 ## Key Character & Animation Systems
 
-### 1. Dynamic Procedural Jumping Animation
-- **Ascending Leap (`vy > 0`):** Snappy Lombax athletic knee tuck that dynamically tightens as vertical launch momentum increases, with Ratchet's arms flaring backward for aerial balance and ears fluttering in the slipstream.
+### 1. Dynamic Procedural Jumping & Acrobatic Rail-to-Rail Hops
+- **Acrobatic Rail Leap:** Switching rails triggers an authentic lateral parabolic leap arc ($y_{\text{hop}} = \sin(\pi \cdot t) \times 1.25\text{m}$) accompanied by an acrobatic 360° lateral corkscrew roll.
+- **Magnetic Boot Sparks:** Electric cyan spark burst upon disengaging from the rail, followed by a shower of gold grinding sparks, knee squash compression (`landingSquashTimer`), and screen impact punch when snapping onto the destination rail.
+- **Ascending Leap (`vy > 0`):** Snappy Lombax athletic knee tuck that dynamically tightens with vertical launch momentum.
 - **Descending Arc (`vy < 0`):** Legs smoothly extend downward to spot the plasma rail, readying magnetic grind boots for impact.
 - **Rail Touchdown:** Reactive knee squash compression bounce (`landingSquashTimer`) with radial gold impact sparks.
 
-### 2. Smooth Clank Heli-Pack Deployment (Zero Pop-In!)
-- **Telescoping Chrome Mast:** Upon engaging mid-air glide (`Hold Space / W`), Clank's head hatch opens as a multi-stage polished chrome mast extends upward from `0.0m` to `0.82m` over `0.15s`.
-- **Twin Titanium Blades:** Rotor blades unfold from vertical stowage to horizontal flight plane while accelerating from `0 RPM` to a hypersonic spin blur.
-- **Aerodynamic Vortex Halo:** A glowing cyan energy halo ring and pulsing disc scale outwards with the rotor diameter.
-- **Thruster Plume:** Twin thruster exhausts flare out from beneath Clank's backpack with cyan particle trails.
-- **Authentic Glide Pose:** Ratchet raises his arms to grasp Clank's shoulder harness straps while his legs dangle below with rhythmic Lombax kick and sway.
-- **Clank's Rig:** Articulated robot backpack with reactive head nod, glowing green power core, and robot hands gripping Ratchet's shoulders.
+### 2. Smooth Clank Heli-Pack Deployment & Mobile Touch Controls
+- **Telescoping Chrome Mast:** Upon engaging mid-air glide (`Hold Space / W` or touch hold), Clank's head hatch opens as a multi-stage polished chrome mast extends upward from `0.0m` to `0.82m`.
+- **Twin Titanium Blades & Emerald Eye HUD:** Rotor blades unfold from vertical stowage to horizontal flight plane while accelerating from `0 RPM` to a hypersonic spin blur, while Clank's luminous emerald eyes narrow in focused concentration.
+- **Mobile Touch Overhaul:** Instant swipe-up detection (no finger release required), continuous touch-hold glide mechanics, and dedicated holographic `[JUMP / GLIDE]` (with live spinning rotor icon & emerald fuel ring) and `[FIRE]` action buttons.
+- **Clank Backpack Model:** Faithfully modeled to in-game reference—camera-facing skull, 3 top rivets, recessed vent with horizontal slats, folded metallic feet at bottom, and organic blinking/facial expressions.
 
-### 3. OmniWrench 8000 Starting Melee Weapon
+### 3. Dynamic 5-Rail World Grid (Capped at 3 Active Tracks)
+- **5-Lane Matrix (`-2` to `+2`):** Rails dynamically branch across 5 possible world slots (`Far Left`, `Mid Left`, `Center`, `Mid Right`, `Far Right`), strictly capped at **3 active rails** at any given moment for optimal visual clarity.
+- **Procedural Branching:** Sky-freeways branch in from skyscraper overpasses while ending rails feature illuminated terminus bumpers and sheared end caps.
+- **Grand Sheared Chasms (16-20m):** Massive rail breakages featuring jagged heated metal endpoints, dangling high-voltage spark cables, and floating holographic caution volumes requiring precise lane hops or Clank Heli-Pack glides to cross.
+
+### 4. OmniWrench 8000 Starting Melee Weapon
 - **Instant Melee Sweep:** Ratchet swings the OmniWrench 8000 horizontally across his entire rail lane in a wide 180° arc (`wrenchSwingTimer`).
 - **Resource-Free Destruction:** Shatters wooden bolt crates, explosive mines, and proximity barriers without spending weapon ammo.
 - **OmniWrench Slide:** Crouching/sliding (`[S] / [Down] / [L-Ctrl]`) initiates a low grind posture with the wrench spinning along the plasma rail to collect low-hanging bolts and duck under overhead laser barriers.

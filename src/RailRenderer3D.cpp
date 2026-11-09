@@ -151,7 +151,10 @@ void RailGame::RenderWorld3D() {
 
         bool blinkHide = (player_.invulnTimer > 0.0f && std::fmod(globalTime_, 0.12f) < 0.06f);
         if (!blinkHide) {
-            RenderLombaxHero3D({ player_.x, player_.y, 0.0f }, player_.laneTiltDeg,
+            float hopArcY = (player_.isHopping) ? std::sin(std::clamp(player_.hopTimer / player_.hopDuration, 0.0f, 1.0f) * 3.14159265f) * 1.25f : 0.0f;
+            float landingSquash = (player_.landingSquashTimer > 0.0f) ? std::sin((player_.landingSquashTimer / 0.22f) * 3.14159265f) * 0.18f : 0.0f;
+            Vector3 heroPos = { player_.x, player_.y + hopArcY - landingSquash, 0.0f };
+            RenderLombaxHero3D(heroPos, player_.laneTiltDeg,
                                player_.slideTimer > 0.0f, player_.heliGliding,
                                player_.wrenchSwingTimer, save_.equippedWeapon);
         }
@@ -161,7 +164,7 @@ void RailGame::RenderWorld3D() {
             Vector3 bp = ApplyTrackCurve(0.0f, 0.72f, 5.5f + i * 3.0f);
             RenderSingleHexBolt3D(bp, globalTime_ * 180.0f + i * 45.0f, 1.0f, i == 2);
         }
-        Vector3 ringPos = ApplyTrackCurve(GetLaneX(0), 0.15f, 13.5f);
+        Vector3 ringPos = ApplyTrackCurve(GetLaneX(1), 0.15f, 13.5f);
         for (int s = 0; s < 10; ++s) {
             float a1 = (s * 36.0f + globalTime_ * 55.0f) * DEG2RAD;
             float a2 = ((s + 1) * 36.0f + globalTime_ * 55.0f) * DEG2RAD;
@@ -285,14 +288,20 @@ void RailGame::RenderSkyline3D() const {
 }
 
 void RailGame::RenderGrindRails3D() const {
-    // 1. Draw 3 Curving Tubular Metallic Gold-and-Steel Grindrails all the way into the Reactor Ports at Z = 146!
+    // 1. Draw 5-Lane Tubular Metallic Grindrails (Active 3-rail window dynamically rendered)
     constexpr float segLen = 3.0f;
     for (int l = 0; l < NUM_LANES; ++l) {
         float lx = GetLaneX(l);
         for (float z = -10.0f; z < 145.0f; z += segLen) {
             float midZ = z + segLen * 0.5f;
-            if (IsRailGapAt(l, midZ)) {
-                continue; // Physical gap in the tubular rail!
+            if (!IsRailActiveAt(l, midZ)) {
+                // If previous segment was active and this one is not, draw an illuminated sheared terminus cap!
+                if (z > 0.0f && IsRailActiveAt(l, midZ - segLen)) {
+                    Vector3 pTerm = ApplyTrackCurve(lx, -0.10f, z);
+                    DrawCube(pTerm, 0.72f, 0.44f, 0.36f, { 255, 120, 20, 240 });
+                    DrawCubeWires(pTerm, 0.76f, 0.48f, 0.40f, YELLOW);
+                }
+                continue; // Rail not present or broken!
             }
             Vector3 pA = ApplyTrackCurve(lx, -0.10f, z);
             Vector3 pB = ApplyTrackCurve(lx, -0.10f, z + segLen + 0.06f);
@@ -526,9 +535,29 @@ void RailGame::RenderHazards3D() const {
                 float endZ   = h.z + h.lengthZ * 0.5f;
                 Vector3 pStart = ApplyTrackCurve(rawLx, -0.10f, startZ);
                 Vector3 pEnd   = ApplyTrackCurve(rawLx, -0.10f, endZ);
-                DrawCube(pStart, 1.05f * s, 0.42f * s, 0.42f * s, RED);
-                DrawCubeWires(pStart, 1.08f * s, 0.45f * s, 0.45f * s, YELLOW);
-                DrawCube(pEnd, 1.05f * s, 0.42f * s, 0.42f * s, ORANGE);
+
+                // 1. Sheared, jagged glowing metal stumps at gap entrance & exit
+                DrawCylinderEx({ pStart.x, pStart.y, pStart.z - 0.6f }, pStart, 0.28f * s, 0.20f * s, 8, { 55, 62, 74, 255 });
+                DrawCylinderEx(pStart, { pStart.x + 0.05f, pStart.y - 0.08f, pStart.z + 0.40f }, 0.22f * s, 0.04f * s, 6, { 255, 120, 30, 255 });
+
+                DrawCylinderEx({ pEnd.x, pEnd.y, pEnd.z + 0.6f }, pEnd, 0.28f * s, 0.20f * s, 8, { 55, 62, 74, 255 });
+                DrawCylinderEx(pEnd, { pEnd.x - 0.05f, pEnd.y - 0.08f, pEnd.z - 0.40f }, 0.22f * s, 0.04f * s, 6, { 255, 120, 30, 255 });
+
+                // 2. Dangling frayed high-voltage spark cables
+                float cableSag = std::sin(h.animPhase * 2.8f) * 0.16f;
+                DrawCylinderEx(pStart, { pStart.x + 0.12f, pStart.y - 1.25f + cableSag, pStart.z + 0.4f }, 0.04f * s, 0.02f * s, 4, DARKGRAY);
+                DrawCylinderEx(pEnd, { pEnd.x - 0.12f, pEnd.y - 1.25f - cableSag, pEnd.z - 0.4f }, 0.04f * s, 0.02f * s, 4, DARKGRAY);
+
+                if (std::fmod(h.animPhase, 0.8f) < 0.35f) {
+                    DrawSphere({ pStart.x + 0.12f, pStart.y - 1.25f + cableSag, pStart.z + 0.4f }, 0.10f * s, SKYBLUE);
+                    DrawSphere({ pEnd.x - 0.12f, pEnd.y - 1.25f - cableSag, pEnd.z - 0.4f }, 0.10f * s, YELLOW);
+                }
+
+                // 3. Floating 3D Holographic Hazard Caution Zone in the abyss
+                Vector3 midChasm = ApplyTrackCurve(rawLx, 0.80f, h.z);
+                float pulse = 0.80f + std::sin(h.animPhase * 4.0f) * 0.20f;
+                DrawCubeWires(midChasm, 1.6f * s, 1.2f * s, h.lengthZ * 0.85f,
+                              Color{ 255, 55, 35, static_cast<unsigned char>(160 * pulse) });
                 break;
             }
             case HazardKind::HYPER_BOOST_PAD: {
@@ -1399,7 +1428,8 @@ void RailGame::RenderHud2D() {
         DrawRectangle(static_cast<int>(bx - 6), 24, static_cast<int>(bw + 12), 54, { 18, 12, 24, 230 });
         DrawText(boss_.name.c_str(), static_cast<int>(bx + 8), 28, 18, GOLD);
 
-        float totalHp = boss_.turretHp[0] + boss_.turretHp[1] + boss_.turretHp[2];
+        float totalHp = 0.0f;
+        for (int l = 0; l < NUM_LANES; ++l) totalHp += boss_.turretHp[l];
         float ratio = std::clamp(totalHp / (boss_.maxTurretHp * 3.0f), 0.0f, 1.0f);
         DrawRectangle(static_cast<int>(bx), 52, static_cast<int>(bw), 16, { 50, 20, 20, 255 });
         DrawRectangle(static_cast<int>(bx), 52, static_cast<int>(bw * ratio), 16, RED);
@@ -1442,6 +1472,38 @@ void RailGame::RenderHud2D() {
     else std::snprintf(xpLine, sizeof(xpLine), "LEVEL V%d  |  WEAP XP: %d / %d", eqLvl, save_.weaponXp[eq], eqLvl * 120);
     DrawText(xpLine, 32, VIRTUAL_HEIGHT - 65, 14, GOLD);
     DrawText(weaps[eq].specialPerk, 32, VIRTUAL_HEIGHT - 44, 12, SKYBLUE);
+
+    // On-Screen Holographic Touch Controls (Optimized for Mobile & Touch Screen Play)
+    Rectangle btnJumpRec = { VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+    Rectangle btnFireRec = { VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+
+    bool isGlidingNow = player_.heliGliding;
+    Color jumpRingCol = isGlidingNow ? Color{ 60, 255, 95, 255 } : (player_.grounded ? Color{ 80, 180, 255, 220 } : Color{ 255, 200, 50, 255 });
+
+    // 1. [JUMP / GLIDE] Holographic Button
+    DrawCircle(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 44.0f, { 14, 22, 38, 200 });
+    DrawCircleLines(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 44.0f, jumpRingCol);
+    if (isGlidingNow) {
+        // Glowing Clank Emerald Heli-Ring + Fuel Arc
+        DrawCircleLines(static_cast<int>(btnJumpRec.x + 48), static_cast<int>(btnJumpRec.y + 48), 47.0f, { 60, 255, 95, 255 });
+    }
+    // Mini Rotor Icon
+    Vector2 jc = { btnJumpRec.x + 48, btnJumpRec.y + 42 };
+    DrawCircle(static_cast<int>(jc.x), static_cast<int>(jc.y), 7.0f, isGlidingNow ? Color{ 60, 255, 95, 255 } : WHITE);
+    float bladeRot = isGlidingNow ? (globalTime_ * 1200.0f * DEG2RAD) : 0.0f;
+    Vector2 b1 = { jc.x + std::cos(bladeRot) * 22.0f, jc.y + std::sin(bladeRot) * 22.0f };
+    Vector2 b2 = { jc.x - std::cos(bladeRot) * 22.0f, jc.y - std::sin(bladeRot) * 22.0f };
+    DrawLineEx(b1, b2, 3.0f, isGlidingNow ? Color{ 60, 255, 95, 255 } : LIGHTGRAY);
+    DrawText(isGlidingNow ? "GLIDING" : "JUMP", static_cast<int>(btnJumpRec.x + (isGlidingNow ? 14 : 27)), static_cast<int>(btnJumpRec.y + 68), 13, jumpRingCol);
+
+    // 2. [FIRE / WRENCH] Holographic Button
+    DrawCircle(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), 38.0f, { 18, 20, 32, 190 });
+    DrawCircleLines(static_cast<int>(btnFireRec.x + 41), static_cast<int>(btnFireRec.y + 41), 38.0f, { 255, 120, 45, 220 });
+    Vector2 fc = { btnFireRec.x + 41, btnFireRec.y + 36 };
+    DrawCircleLines(static_cast<int>(fc.x), static_cast<int>(fc.y), 12.0f, ORANGE);
+    DrawLine(static_cast<int>(fc.x - 16), static_cast<int>(fc.y), static_cast<int>(fc.x + 16), static_cast<int>(fc.y), ORANGE);
+    DrawLine(static_cast<int>(fc.x), static_cast<int>(fc.y - 16), static_cast<int>(fc.x), static_cast<int>(fc.y + 16), ORANGE);
+    DrawText("FIRE", static_cast<int>(btnFireRec.x + 24), static_cast<int>(btnFireRec.y + 58), 13, GOLD);
 
     // Sector Entry Banner
     if (sectorBannerTimer_ > 0.0f) {
@@ -1549,7 +1611,7 @@ void RailGame::RenderMainMenu2D() {
     Rectangle btnLab    = { 50.0f, 455.0f, 400.0f, 66.0f };
     Rectangle btnSkills = { VIRTUAL_WIDTH - 380.0f, 215.0f, 330.0f, 66.0f };
 
-    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Infinite procedural 3-lane action", ORANGE)) {
+    if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "Dynamic 5-rail transit network (Max 3 active)", ORANGE)) {
         StartNewRun(false);
     }
 
@@ -1583,7 +1645,7 @@ void RailGame::RenderMainMenu2D() {
     DrawText("CONTROLS (PC & TOUCH)", VIRTUAL_WIDTH - 362, 314, 18, GOLD);
     DrawText("> A / D or Swipe L/R: Switch Rail", VIRTUAL_WIDTH - 362, 344, 14, WHITE);
     DrawText("> SPACE / W or Swipe Up: Jump", VIRTUAL_WIDTH - 362, 368, 14, WHITE);
-    DrawText("> Hold SPACE mid-air: Clank Glide", VIRTUAL_WIDTH - 362, 392, 14, WHITE);
+    DrawText("> Hold SPACE / Touch: Clank Glide", VIRTUAL_WIDTH - 362, 392, 14, WHITE);
     DrawText("> S / DOWN or Swipe Down: Slide", VIRTUAL_WIDTH - 362, 416, 14, WHITE);
     DrawText("> L-CLICK / F / Tap: Fire / Wrench", VIRTUAL_WIDTH - 362, 440, 14, WHITE);
     DrawText("> 1-6 / Q-E: Switch Weapon", VIRTUAL_WIDTH - 362, 464, 14, WHITE);

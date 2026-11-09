@@ -47,6 +47,12 @@ else()
     add_executable(RatchetAndClankRailfinity ${SOURCES})
     target_include_directories(RatchetAndClankRailfinity PRIVATE include)
     target_link_libraries(RatchetAndClankRailfinity PRIVATE raylib)
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets
+            ${CMAKE_CURRENT_BINARY_DIR}/assets
+    )
+    add_dependencies(RatchetAndClankRailfinity copy_assets)
 endif()
 
 if (WIN32)

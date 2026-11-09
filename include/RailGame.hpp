@@ -138,6 +138,10 @@ private:
     bool isDraggingWardrobe_ = false;
     Vector2 lastMousePos_{};
 
+    // Authentic 3D Mesh Assets
+    Model ratchetModel_{};
+    bool ratchetModelLoaded_ = false;
+
     PlayerLombax player_{};
     BossDropship boss_{};
     SkillPointToast toast_{};

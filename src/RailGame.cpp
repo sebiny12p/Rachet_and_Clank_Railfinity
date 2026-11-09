@@ -98,11 +98,31 @@ void RailGame::Init() {
         b.neonColor = (i % 3 == 0) ? Color{ 255, 155, 40, 255 } :
                       (i % 3 == 1) ? Color{ 60, 215, 255, 255 } : Color{ 210, 85, 255, 255 };
     }
+
+    // Load Authentic 3D Ratchet Character Model (PS3 A Crack in Time)
+    const char* modelPath = FileExists("assets/models/ratchet/Armor0.obj") ? "assets/models/ratchet/Armor0.obj"
+                          : FileExists("../assets/models/ratchet/Armor0.obj") ? "../assets/models/ratchet/Armor0.obj" : nullptr;
+    if (modelPath) {
+        ratchetModel_ = LoadModel(modelPath);
+        ratchetModelLoaded_ = (ratchetModel_.meshCount > 0);
+        if (ratchetModelLoaded_) {
+            TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials)",
+                     ratchetModel_.meshCount, ratchetModel_.materialCount);
+            for (int i = 0; i < ratchetModel_.materialCount; ++i) {
+                TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u",
+                         i, ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id);
+            }
+        }
+    }
 }
 
 void RailGame::Shutdown() {
     SaveProgress();
     audio_.Shutdown();
+    if (ratchetModelLoaded_) {
+        UnloadModel(ratchetModel_);
+        ratchetModelLoaded_ = false;
+    }
     if (renderTarget_.id != 0) {
         UnloadRenderTexture(renderTarget_);
     }

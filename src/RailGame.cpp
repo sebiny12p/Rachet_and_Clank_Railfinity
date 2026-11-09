@@ -99,15 +99,17 @@ void RailGame::Init() {
                       (i % 3 == 1) ? Color{ 60, 215, 255, 255 } : Color{ 210, 85, 255, 255 };
     }
 
-    // Load Authentic 3D Ratchet Character Model (PS3 A Crack in Time)
-    const char* modelPath = FileExists("assets/models/ratchet/Armor0.obj") ? "assets/models/ratchet/Armor0.obj"
+    // Load Authentic 3D Ratchet Head Model (PS3 A Crack in Time)
+    const char* modelPath = FileExists("assets/models/ratchet/ratchet_head.obj") ? "assets/models/ratchet/ratchet_head.obj"
+                          : FileExists("../assets/models/ratchet/ratchet_head.obj") ? "../assets/models/ratchet/ratchet_head.obj"
+                          : FileExists("assets/models/ratchet/Armor0.obj") ? "assets/models/ratchet/Armor0.obj"
                           : FileExists("../assets/models/ratchet/Armor0.obj") ? "../assets/models/ratchet/Armor0.obj" : nullptr;
     if (modelPath) {
         ratchetModel_ = LoadModel(modelPath);
         ratchetModelLoaded_ = (ratchetModel_.meshCount > 0);
         if (ratchetModelLoaded_) {
-            TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials)",
-                     ratchetModel_.meshCount, ratchetModel_.materialCount);
+            TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials) from %s",
+                     ratchetModel_.meshCount, ratchetModel_.materialCount, modelPath);
             for (int i = 0; i < ratchetModel_.materialCount; ++i) {
                 TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u",
                          i, ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id);

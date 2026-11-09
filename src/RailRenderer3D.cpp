@@ -755,128 +755,104 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Color clankBeaconCol = clkDef.beaconColor;
 
     // =========================================================================
-    // 1. LEGS & MAGNETIC GRIND BOOTS / AUTHENTIC 3D RATCHET MESH
+    // 1. LEGS & MAGNETIC GRIND BOOTS (ARMOR SKINS & ENERGY GLOW SOLES)
     // =========================================================================
     float recoilLeanZ = -recoilKick * 0.10f;
     Vector3 shoulderCenter = { pos.x + leanX * 0.4f, pos.y + 1.15f + crouchDrop, pos.z + recoilLeanZ };
 
-    if (ratchetModelLoaded_) {
-        // --- AUTHENTIC 3D MESH RATCHET MODEL (PS3 A Crack in Time) ---
-        float mScale = 0.170f;
-        Vector3 mPos = { pos.x + leanX * 0.4f, pos.y + 0.04f + crouchDrop, pos.z };
-
-        float rotDeg = (tiltDeg * 0.45f);
-        Matrix matScale = MatrixScale(mScale, mScale, mScale);
-        Matrix matRot   = MatrixRotateY(rotDeg * DEG2RAD);
-        Matrix matTrans = MatrixTranslate(mPos.x, mPos.y, mPos.z);
-        Matrix matTransform = MatrixMultiply(MatrixMultiply(matScale, matRot), matTrans);
-
-        for (int i = 0; i < ratchetModel_.meshCount; ++i) {
-            if (i == 14) continue; // Skip Japanese thick eyebrows, render authentic Western eyebrows (mesh 18)
-            DrawMesh(ratchetModel_.meshes[i], ratchetModel_.materials[ratchetModel_.meshMaterial[i]], matTransform);
+    float jumpTuck = 0.0f;
+    float legSway = 0.0f;
+    if (airborne) {
+        if (player_.heliDeploy > 0.12f) {
+            // Dangling in Clank's flight harness with rhythmic Lombax leg kick/sway
+            legSway = std::sin(globalTime_ * 9.0f) * 0.12f * player_.heliDeploy;
+            jumpTuck = 0.18f;
+        } else if (vy > 0.0f) {
+            // Ascending leap: snappy knee tuck tightens with upward momentum
+            float t = std::clamp(vy / 18.5f, 0.0f, 1.0f);
+            jumpTuck = 0.20f + t * 0.28f;
+        } else {
+            // Descending arc: legs extend downward to prepare for rail impact
+            float t = std::clamp(-vy / 24.0f, 0.0f, 1.0f);
+            jumpTuck = std::max(0.04f, 0.20f - t * 0.16f);
         }
+    }
 
-        // Magnetic rail lock soles glow under grind boots
-        Vector3 footL = { mPos.x + 0.14f, mPos.y, mPos.z + 0.10f };
-        Vector3 footR = { mPos.x - 0.14f, mPos.y, mPos.z - 0.10f };
-        DrawCube({ footL.x, footL.y - 0.02f, footL.z }, 0.18f, 0.04f, 0.32f, visorCol);
-        DrawCube({ footR.x, footR.y - 0.02f, footR.z }, 0.18f, 0.04f, 0.32f, visorCol);
-    } else {
-        float vy = player_.vy;
-        float jumpTuck = 0.0f;
-        float legSway = 0.0f;
-        if (airborne) {
-            if (player_.heliDeploy > 0.12f) {
-                // Dangling in Clank's flight harness with rhythmic Lombax leg kick/sway
-                legSway = std::sin(globalTime_ * 9.0f) * 0.12f * player_.heliDeploy;
-                jumpTuck = 0.18f;
-            } else if (vy > 0.0f) {
-                // Ascending leap: snappy knee tuck tightens with upward momentum
-                float t = std::clamp(vy / 18.5f, 0.0f, 1.0f);
-                jumpTuck = 0.20f + t * 0.28f;
-            } else {
-                // Descending arc: legs extend downward to prepare for rail impact
-                float t = std::clamp(-vy / 24.0f, 0.0f, 1.0f);
-                jumpTuck = std::max(0.04f, 0.20f - t * 0.16f);
-            }
-        }
+    Vector3 leftFoot  = { pos.x + 0.13f, pos.y + 0.12f + jumpTuck + legSway, pos.z + (sliding ? 0.38f : 0.20f) };
+    Vector3 rightFoot = { pos.x - 0.13f, pos.y + 0.12f + jumpTuck * 0.82f - legSway, pos.z - (sliding ? 0.28f : 0.20f) };
 
-        Vector3 leftFoot  = { pos.x + 0.13f, pos.y + 0.12f + jumpTuck + legSway, pos.z + (sliding ? 0.38f : 0.20f) };
-        Vector3 rightFoot = { pos.x - 0.13f, pos.y + 0.12f + jumpTuck * 0.82f - legSway, pos.z - (sliding ? 0.28f : 0.20f) };
+    auto DrawGrindBoot = [&](Vector3 fPos) {
+        DrawCylinderEx({ fPos.x, fPos.y - 0.06f, fPos.z - 0.15f },
+                       { fPos.x, fPos.y - 0.06f, fPos.z + 0.18f }, 0.120f, 0.100f, 8, (armIdx == 0) ? chromeSilv : armorDark);
+        DrawSphere({ fPos.x, fPos.y - 0.04f, fPos.z + 0.16f }, 0.105f, (armIdx == 0) ? chromeSilv : armorOrange);
+        DrawCylinderEx({ fPos.x, fPos.y - 0.02f, fPos.z - 0.03f },
+                       { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, armorOrange);
+        // Magnetic rail lock soles glow with each suit's energy signature!
+        DrawCube({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.22f, 0.05f, 0.36f, visorCol);
+    };
+    DrawGrindBoot(leftFoot);
+    DrawGrindBoot(rightFoot);
 
-        auto DrawGrindBoot = [&](Vector3 fPos) {
-            DrawCylinderEx({ fPos.x, fPos.y - 0.06f, fPos.z - 0.15f },
-                           { fPos.x, fPos.y - 0.06f, fPos.z + 0.18f }, 0.120f, 0.100f, 8, (armIdx == 0) ? chromeSilv : armorDark);
-            DrawSphere({ fPos.x, fPos.y - 0.04f, fPos.z + 0.16f }, 0.105f, (armIdx == 0) ? chromeSilv : armorOrange);
-            DrawCylinderEx({ fPos.x, fPos.y - 0.02f, fPos.z - 0.03f },
-                           { fPos.x, fPos.y + 0.12f, fPos.z - 0.02f }, 0.100f, 0.090f, 8, armorOrange);
-            // Magnetic rail lock soles glow with each suit's energy signature!
-            DrawCube({ fPos.x, fPos.y - 0.09f, fPos.z + 0.01f }, 0.22f, 0.05f, 0.36f, visorCol);
-        };
-        DrawGrindBoot(leftFoot);
-        DrawGrindBoot(rightFoot);
+    float kneeForwardTuck = airborne ? (jumpTuck * 0.32f) : 0.0f;
+    Vector3 pelvisPos = { pos.x + leanX * 0.6f, pos.y + 0.72f + crouchDrop, pos.z };
+    Vector3 leftKnee  = { pos.x + 0.17f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f + jumpTuck * 0.55f, pos.z + 0.16f + kneeForwardTuck };
+    Vector3 rightKnee = { pos.x - 0.17f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f + jumpTuck * 0.45f, pos.z - 0.08f + kneeForwardTuck };
+    Vector3 leftHip   = { pelvisPos.x + 0.12f, pelvisPos.y, pelvisPos.z + 0.04f };
+    Vector3 rightHip  = { pelvisPos.x - 0.12f, pelvisPos.y, pelvisPos.z - 0.04f };
 
-        float kneeForwardTuck = airborne ? (jumpTuck * 0.32f) : 0.0f;
-        Vector3 pelvisPos = { pos.x + leanX * 0.6f, pos.y + 0.72f + crouchDrop, pos.z };
-        Vector3 leftKnee  = { pos.x + 0.17f + leanX * 0.3f, pos.y + 0.44f + crouchDrop * 0.55f + jumpTuck * 0.55f, pos.z + 0.16f + kneeForwardTuck };
-        Vector3 rightKnee = { pos.x - 0.17f + leanX * 0.3f, pos.y + 0.42f + crouchDrop * 0.55f + jumpTuck * 0.45f, pos.z - 0.08f + kneeForwardTuck };
-        Vector3 leftHip   = { pelvisPos.x + 0.12f, pelvisPos.y, pelvisPos.z + 0.04f };
-        Vector3 rightHip  = { pelvisPos.x - 0.12f, pelvisPos.y, pelvisPos.z - 0.04f };
+    DrawCylinderEx({ leftFoot.x, leftFoot.y + 0.08f, leftFoot.z }, leftKnee, 0.080f, 0.095f, 8, pantsBlue);
+    DrawCylinderEx({ rightFoot.x, rightFoot.y + 0.08f, rightFoot.z }, rightKnee, 0.080f, 0.095f, 8, pantsBlue);
+    DrawSphere(leftKnee, 0.095f, armorDark);
+    DrawSphere(rightKnee, 0.095f, armorDark);
+    DrawCylinderEx(leftKnee, leftHip, 0.095f, 0.115f, 8, pantsBlue);
+    DrawCylinderEx(rightKnee, rightHip, 0.095f, 0.115f, 8, pantsBlue);
 
-        DrawCylinderEx({ leftFoot.x, leftFoot.y + 0.08f, leftFoot.z }, leftKnee, 0.080f, 0.095f, 8, pantsBlue);
-        DrawCylinderEx({ rightFoot.x, rightFoot.y + 0.08f, rightFoot.z }, rightKnee, 0.080f, 0.095f, 8, pantsBlue);
-        DrawSphere(leftKnee, 0.095f, armorDark);
-        DrawSphere(rightKnee, 0.095f, armorDark);
-        DrawCylinderEx(leftKnee, leftHip, 0.095f, 0.115f, 8, pantsBlue);
-        DrawCylinderEx(rightKnee, rightHip, 0.095f, 0.115f, 8, pantsBlue);
+    // =========================================================================
+    // 2. PELVIS, BELT, TAIL & COMPACT ATHLETIC TORSO (CUSTOM ARMOR SUITS)
+    // =========================================================================
+    DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.04f, pelvisPos.z },
+                   { pelvisPos.x, pelvisPos.y + 0.07f, pelvisPos.z }, 0.21f, 0.20f, 8, leatherBrn);
 
-        // =========================================================================
-        // 2. PELVIS, BELT, TAIL & COMPACT ATHLETIC TORSO
-        // =========================================================================
-        DrawCylinderEx({ pelvisPos.x, pelvisPos.y - 0.04f, pelvisPos.z },
-                       { pelvisPos.x, pelvisPos.y + 0.07f, pelvisPos.z }, 0.21f, 0.20f, 8, leatherBrn);
+    // Whipping Striped Lombax Tail
+    Vector3 t0 = { pelvisPos.x, pelvisPos.y - 0.02f, pelvisPos.z - 0.16f };
+    for (int seg = 0; seg < 4; ++seg) {
+        float f1 = static_cast<float>(seg + 1) * 0.25f;
+        float wagX = std::sin(globalTime_ * 10.0f - seg * 0.85f) * (0.24f * f1) - leanX * 0.7f * f1;
+        float wagY = std::cos(globalTime_ * 5.0f - seg * 0.6f) * 0.06f + f1 * 0.10f;
+        Vector3 t1 = { pelvisPos.x + wagX, pelvisPos.y - 0.04f + wagY, pelvisPos.z - 0.16f - f1 * 0.95f };
+        float r0 = 0.075f - seg * 0.009f;
+        float r1 = (seg == 3) ? 0.095f : (0.068f - seg * 0.009f);
+        DrawCylinderEx(t0, t1, r0, r1, 6, (seg % 2 == 0) ? furGold : furStripe);
+        if (seg == 3) DrawSphere(t1, 0.095f, furStripe);
+        t0 = t1;
+    }
 
-        // Whipping Striped Lombax Tail
-        Vector3 t0 = { pelvisPos.x, pelvisPos.y - 0.02f, pelvisPos.z - 0.16f };
-        for (int seg = 0; seg < 4; ++seg) {
-            float f1 = static_cast<float>(seg + 1) * 0.25f;
-            float wagX = std::sin(globalTime_ * 10.0f - seg * 0.85f) * (0.24f * f1) - leanX * 0.7f * f1;
-            float wagY = std::cos(globalTime_ * 5.0f - seg * 0.6f) * 0.06f + f1 * 0.10f;
-            Vector3 t1 = { pelvisPos.x + wagX, pelvisPos.y - 0.04f + wagY, pelvisPos.z - 0.16f - f1 * 0.95f };
-            float r0 = 0.075f - seg * 0.009f;
-            float r1 = (seg == 3) ? 0.095f : (0.068f - seg * 0.009f);
-            DrawCylinderEx(t0, t1, r0, r1, 6, (seg % 2 == 0) ? furGold : furStripe);
-            if (seg == 3) DrawSphere(t1, 0.095f, furStripe);
-            t0 = t1;
-        }
+    // Slim, Athletic Lombax Torso & Fitted Armor
+    shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.44f, pelvisPos.z + recoilLeanZ };
+    DrawCylinderEx(pelvisPos, shoulderCenter, 0.19f, 0.24f, 8, armorOrange);
+    // Form-fitting leather harness / vest across chest
+    DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
+                   { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, leatherBrn);
+    // Neck
+    Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.06f, shoulderCenter.z + 0.02f };
+    DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
 
-        // Slim, Athletic Lombax Torso & Fitted Armor
-        shoulderCenter = { pelvisPos.x + leanX * 0.4f, pelvisPos.y + 0.44f, pelvisPos.z + recoilLeanZ };
-        DrawCylinderEx(pelvisPos, shoulderCenter, 0.19f, 0.24f, 8, armorOrange);
-        // Form-fitting leather harness / vest across chest
-        DrawCylinderEx({ pelvisPos.x, pelvisPos.y + 0.06f, pelvisPos.z },
-                       { shoulderCenter.x, shoulderCenter.y - 0.04f, shoulderCenter.z }, 0.20f, 0.245f, 6, leatherBrn);
-        // Neck
-        Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
-        DrawCylinderEx(shoulderCenter, neckTop, 0.13f, 0.11f, 8, furGold);
-
-        // Form-Fitting Armor Pauldrons on Left and Right Shoulders
-        for (int side = -1; side <= 1; side += 2) {
-            float s = static_cast<float>(side);
-            Vector3 pP = { shoulderCenter.x + s * 0.245f, shoulderCenter.y + 0.04f, shoulderCenter.z };
-            if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
-                DrawCube(pP, 0.14f, 0.10f, 0.15f, armorOrange);
-                DrawCubeWires(pP, 0.145f, 0.105f, 0.155f, visorCol);
-            } else if (armIdx == 2) { // Infernox: Molten basalt pauldrons with magma seams
-                DrawSphere(pP, 0.095f, armorOrange);
-                DrawSphereWires(pP, 0.098f, 6, 6, visorCol);
-            } else if (armIdx == 3) { // Deadlocked Marauder: Combat spikes on shoulder guards
-                DrawSphere(pP, 0.092f, armorOrange);
-                DrawCylinderEx(pP, { pP.x + s * 0.11f, pP.y + 0.08f, pP.z }, 0.038f, 0.010f, 6, armorDark);
-            } else if (armIdx == 4) { // Lombax Praetorian: Royal curved gold pauldrons
-                DrawSphere(pP, 0.100f, armorOrange);
-                DrawSphereWires(pP, 0.104f, 6, 6, armorDark);
-            }
+    // Form-Fitting Armor Pauldrons on Left and Right Shoulders
+    for (int side = -1; side <= 1; side += 2) {
+        float s = static_cast<float>(side);
+        Vector3 pP = { shoulderCenter.x + s * 0.245f, shoulderCenter.y + 0.04f, shoulderCenter.z };
+        if (armIdx == 1) { // Carbonox: Reinforced angular graphite pauldrons with cyan edges
+            DrawCube(pP, 0.14f, 0.10f, 0.15f, armorOrange);
+            DrawCubeWires(pP, 0.145f, 0.105f, 0.155f, visorCol);
+        } else if (armIdx == 2) { // Infernox: Molten basalt pauldrons with magma seams
+            DrawSphere(pP, 0.095f, armorOrange);
+            DrawSphereWires(pP, 0.098f, 6, 6, visorCol);
+        } else if (armIdx == 3) { // Deadlocked Marauder: Combat spikes on shoulder guards
+            DrawSphere(pP, 0.092f, armorOrange);
+            DrawCylinderEx(pP, { pP.x + s * 0.11f, pP.y + 0.08f, pP.z }, 0.038f, 0.010f, 6, armorDark);
+        } else if (armIdx == 4) { // Lombax Praetorian: Royal curved gold pauldrons
+            DrawSphere(pP, 0.100f, armorOrange);
+            DrawSphereWires(pP, 0.104f, 6, 6, armorDark);
         }
     }
 
@@ -1142,16 +1118,32 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     }
 
     // =========================================================================
-    // 4. RATCHET'S LOMBAX FACE & ARMS (PROCEDURAL FALLBACK IF NO 3D MESH LOADED)
+    // 4. RATCHET'S AUTHENTIC LOMBAX HEAD (3D MESH OR PROCEDURAL FALLBACK)
     // =========================================================================
     Vector3 rightHand = { shoulderCenter.x - 0.48f, shoulderCenter.y - 0.18f, shoulderCenter.z + 0.08f };
     Vector3 wrenchForwardDir = Vector3Normalize({ -0.82f, 0.42f, 0.18f });
     Vector3 wrenchJawPerp    = { 0.0f, 1.0f, 0.0f };
 
-    if (!ratchetModelLoaded_) {
-        Vector3 neckTop = { shoulderCenter.x, shoulderCenter.y + 0.14f, shoulderCenter.z + 0.02f };
-        Vector3 headPos = { neckTop.x, neckTop.y + 0.22f, neckTop.z + 0.02f };
+    Vector3 headPos = { neckTop.x, neckTop.y + 0.22f, neckTop.z + 0.02f };
 
+    if (ratchetModelLoaded_) {
+        // --- AUTHENTIC 3D MESH RATCHET HEAD (PS3 A Crack in Time) ---
+        float mScale = 0.170f;
+        float rotDeg = (tiltDeg * 0.45f);
+        Matrix matScale = MatrixScale(mScale, mScale, mScale);
+        Matrix matRot   = MatrixRotateY(rotDeg * DEG2RAD);
+        Matrix matTrans = MatrixTranslate(neckTop.x, neckTop.y, neckTop.z);
+        Matrix matTransform = MatrixMultiply(MatrixMultiply(matScale, matRot), matTrans);
+
+        for (int i = 0; i < ratchetModel_.meshCount; ++i) {
+            if (ratchetModel_.meshCount > 7) {
+                // If full 19-mesh model was loaded, only draw head/face/ear submeshes:
+                // 0: Head, 1: Ear_Fur, 2: Face_Fur, 3: Eye_Lens, 4: Eyes, 5: Cap_Teeth, 18: Eyebrow_Fur
+                if (i != 0 && i != 1 && i != 2 && i != 3 && i != 4 && i != 5 && i != 18) continue;
+            }
+            DrawMesh(ratchetModel_.meshes[i], ratchetModel_.materials[ratchetModel_.meshMaterial[i]], matTransform);
+        }
+    } else {
         Color furCream   = { 246, 230, 198, 255 }; // Light cream muzzle fur
         Color noseBlack  = { 24, 20, 26, 255 };    // Dark leather nose button
         Color eyeSclera  = { 252, 252, 255, 255 }; // Pure white eye sclera
@@ -1267,114 +1259,114 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             st2Top.z -= 0.025f; st2Bot.z -= 0.025f;
             DrawCylinderEx(st2Top, st2Bot, 0.024f, 0.016f, 4, furStripe);
         }
-
-        // F. Sleek Headgear / Accessories (Frames the face without covering or obscuring!)
-        if (armIdx == 1) {
-            // Carbonox: Sleek graphite commando temple comlinks with glowing cyan micro-LEDs
-            for (int side = -1; side <= 1; side += 2) {
-                float s = static_cast<float>(side);
-                Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
-                DrawSphere(comPos, 0.038f, armorDark);
-                DrawSphere({ comPos.x + s * 0.012f, comPos.y, comPos.z + 0.015f }, 0.018f, visorCol);
-                DrawCylinderEx(comPos, { comPos.x + s * 0.06f, comPos.y + 0.12f, comPos.z - 0.04f }, 0.008f, 0.004f, 4, chromeBright);
-            }
-        } else if (armIdx == 2) {
-            // Infernox: Volcanic basalt ear-guards with glowing magma ember micro-LEDs
-            for (int side = -1; side <= 1; side += 2) {
-                float s = static_cast<float>(side);
-                Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
-                DrawSphere(comPos, 0.038f, armorDark);
-                DrawSphere({ comPos.x + s * 0.012f, comPos.y, comPos.z + 0.015f }, 0.018f, visorCol);
-            }
-        } else if (armIdx == 3) {
-            // Deadlocked Marauder: Gladiator battle ear mounts with dark metallic studs
-            for (int side = -1; side <= 1; side += 2) {
-                float s = static_cast<float>(side);
-                Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
-                DrawSphere(comPos, 0.040f, armorDark);
-                DrawSphere({ comPos.x + s * 0.016f, comPos.y, comPos.z + 0.012f }, 0.020f, GOLD);
-            }
-        } else if (armIdx == 4) {
-            // Lombax Praetorian: Royal golden diadem circlet on upper brow with purple psionic gem
-            DrawCylinderEx({ headPos.x - 0.16f, headPos.y + 0.155f, headPos.z + 0.16f },
-                           { headPos.x + 0.16f, headPos.y + 0.155f, headPos.z + 0.16f }, 0.018f, 0.018f, 6, GOLD);
-            DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.235f }, 0.030f, armorDark);
-            DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.245f }, 0.022f, visorCol);
-            DrawSphere({ headPos.x - 0.006f, headPos.y + 0.175f, headPos.z + 0.252f }, 0.008f, WHITE);
-        }
-
-        // =========================================================================
-        // 5. CLEAN, NATURAL ARMS WITH SIDE-MOUNTED GUN AIMING & RECOIL!
-        // =========================================================================
-        Vector3 leftShoulder  = { shoulderCenter.x + 0.23f, shoulderCenter.y - 0.02f, shoulderCenter.z };
-        Vector3 rightShoulder = { shoulderCenter.x - 0.23f, shoulderCenter.y - 0.02f, shoulderCenter.z };
-        DrawSphere(leftShoulder,  0.082f, armorOrange);
-        DrawSphere(rightShoulder, 0.082f, armorOrange);
-
-        // Smooth alternating skater balance arm swing
-        float swingL = std::sin(globalTime_ * 8.0f) * 0.06f;
-        float swingR = std::cos(globalTime_ * 8.0f) * 0.06f;
-
-        Vector3 leftElbow = {
-            leftShoulder.x + 0.18f,
-            leftShoulder.y - 0.20f + swingL * 0.5f,
-            leftShoulder.z - 0.03f
-        };
-        Vector3 leftHand = {
-            leftShoulder.x + 0.36f,
-            leftShoulder.y - 0.28f + swingL,
-            leftShoulder.z + 0.12f
-        };
-
-        Vector3 surfRightElbow = {
-            rightShoulder.x - 0.18f,
-            rightShoulder.y - 0.20f + swingR * 0.5f,
-            rightShoulder.z - 0.03f
-        };
-        Vector3 surfRightHand = {
-            rightShoulder.x - 0.36f,
-            rightShoulder.y - 0.28f + swingR,
-            rightShoulder.z + 0.10f
-        };
-
-        Vector3 aimRightElbow = {
-            rightShoulder.x - 0.18f,
-            rightShoulder.y - 0.12f - recoilKick * 0.04f,
-            rightShoulder.z + 0.06f - recoilKick * 0.16f
-        };
-        Vector3 aimRightHand = {
-            rightShoulder.x - 0.22f,
-            rightShoulder.y + 0.02f + recoilKick * 0.12f,
-            rightShoulder.z + 0.34f - recoilKick * 0.22f
-        };
-
-        Vector3 rightElbow = Vector3Lerp(surfRightElbow, aimRightElbow, aimBlend);
-        rightHand          = Vector3Lerp(surfRightHand,  aimRightHand,  aimBlend);
-
-        if (airborne && wrenchTimer <= 0.0f && player_.gunAimTimer <= 0.0f) {
-            float deploy = player_.heliDeploy;
-            if (deploy > 0.22f) {
-                float gripFrac = (deploy - 0.22f) / 0.78f;
-                Vector3 gripLeftHand   = { leftShoulder.x - 0.08f, leftShoulder.y + 0.16f, leftShoulder.z + 0.06f };
-                Vector3 gripRightHand  = { rightShoulder.x + 0.08f, rightShoulder.y + 0.16f, rightShoulder.z + 0.06f };
-                Vector3 gripLeftElbow  = { leftShoulder.x + 0.14f, leftShoulder.y + 0.06f, leftShoulder.z };
-                Vector3 gripRightElbow = { rightShoulder.x - 0.14f, rightShoulder.y + 0.06f, rightShoulder.z };
-                leftHand   = Vector3Lerp(leftHand, gripLeftHand, gripFrac);
-                rightHand  = Vector3Lerp(rightHand, gripRightHand, gripFrac);
-                leftElbow  = Vector3Lerp(leftElbow, gripLeftElbow, gripFrac);
-                rightElbow = Vector3Lerp(rightElbow, gripRightElbow, gripFrac);
-            }
-        }
-
-        auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd) {
-            DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, furGold);
-            DrawSphere(elb, 0.068f, furGold);
-            DrawCylinderEx(elb, hnd, 0.068f, 0.082f, 8, leatherBrn);
-            DrawSphere(hnd, 0.085f, gloveBrn);
-        };
-        DrawCleanArm(leftShoulder,  leftElbow,  leftHand);
-        DrawCleanArm(rightShoulder, rightElbow, rightHand);
     }
+
+    // F. Sleek Headgear / Accessories (Frames the face without covering or obscuring!)
+    if (armIdx == 1) {
+        // Carbonox: Sleek graphite commando temple comlinks with glowing cyan micro-LEDs
+        for (int side = -1; side <= 1; side += 2) {
+            float s = static_cast<float>(side);
+            Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
+            DrawSphere(comPos, 0.038f, armorDark);
+            DrawSphere({ comPos.x + s * 0.012f, comPos.y, comPos.z + 0.015f }, 0.018f, visorCol);
+            DrawCylinderEx(comPos, { comPos.x + s * 0.06f, comPos.y + 0.12f, comPos.z - 0.04f }, 0.008f, 0.004f, 4, chromeBright);
+        }
+    } else if (armIdx == 2) {
+        // Infernox: Volcanic basalt ear-guards with glowing magma ember micro-LEDs
+        for (int side = -1; side <= 1; side += 2) {
+            float s = static_cast<float>(side);
+            Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
+            DrawSphere(comPos, 0.038f, armorDark);
+            DrawSphere({ comPos.x + s * 0.012f, comPos.y, comPos.z + 0.015f }, 0.018f, visorCol);
+        }
+    } else if (armIdx == 3) {
+        // Deadlocked Marauder: Gladiator battle ear mounts with dark metallic studs
+        for (int side = -1; side <= 1; side += 2) {
+            float s = static_cast<float>(side);
+            Vector3 comPos = { headPos.x + s * 0.25f, headPos.y + 0.05f, headPos.z + 0.06f };
+            DrawSphere(comPos, 0.040f, armorDark);
+            DrawSphere({ comPos.x + s * 0.016f, comPos.y, comPos.z + 0.012f }, 0.020f, GOLD);
+        }
+    } else if (armIdx == 4) {
+        // Lombax Praetorian: Royal golden diadem circlet on upper brow with purple psionic gem
+        DrawCylinderEx({ headPos.x - 0.16f, headPos.y + 0.155f, headPos.z + 0.16f },
+                       { headPos.x + 0.16f, headPos.y + 0.155f, headPos.z + 0.16f }, 0.018f, 0.018f, 6, GOLD);
+        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.235f }, 0.030f, armorDark);
+        DrawSphere({ headPos.x, headPos.y + 0.170f, headPos.z + 0.245f }, 0.022f, visorCol);
+        DrawSphere({ headPos.x - 0.006f, headPos.y + 0.175f, headPos.z + 0.252f }, 0.008f, WHITE);
+    }
+
+    // =========================================================================
+    // 5. CLEAN, NATURAL ARMS WITH SIDE-MOUNTED GUN AIMING & RECOIL!
+    // =========================================================================
+    Vector3 leftShoulder  = { shoulderCenter.x + 0.23f, shoulderCenter.y - 0.02f, shoulderCenter.z };
+    Vector3 rightShoulder = { shoulderCenter.x - 0.23f, shoulderCenter.y - 0.02f, shoulderCenter.z };
+    DrawSphere(leftShoulder,  0.082f, armorOrange);
+    DrawSphere(rightShoulder, 0.082f, armorOrange);
+
+    // Smooth alternating skater balance arm swing
+    float swingL = std::sin(globalTime_ * 8.0f) * 0.06f;
+    float swingR = std::cos(globalTime_ * 8.0f) * 0.06f;
+
+    Vector3 leftElbow = {
+        leftShoulder.x + 0.18f,
+        leftShoulder.y - 0.20f + swingL * 0.5f,
+        leftShoulder.z - 0.03f
+    };
+    Vector3 leftHand = {
+        leftShoulder.x + 0.36f,
+        leftShoulder.y - 0.28f + swingL,
+        leftShoulder.z + 0.12f
+    };
+
+    Vector3 surfRightElbow = {
+        rightShoulder.x - 0.18f,
+        rightShoulder.y - 0.20f + swingR * 0.5f,
+        rightShoulder.z - 0.03f
+    };
+    Vector3 surfRightHand = {
+        rightShoulder.x - 0.36f,
+        rightShoulder.y - 0.28f + swingR,
+        rightShoulder.z + 0.10f
+    };
+
+    Vector3 aimRightElbow = {
+        rightShoulder.x - 0.18f,
+        rightShoulder.y - 0.12f - recoilKick * 0.04f,
+        rightShoulder.z + 0.06f - recoilKick * 0.16f
+    };
+    Vector3 aimRightHand = {
+        rightShoulder.x - 0.22f,
+        rightShoulder.y + 0.02f + recoilKick * 0.12f,
+        rightShoulder.z + 0.34f - recoilKick * 0.22f
+    };
+
+    Vector3 rightElbow = Vector3Lerp(surfRightElbow, aimRightElbow, aimBlend);
+    rightHand          = Vector3Lerp(surfRightHand,  aimRightHand,  aimBlend);
+
+    if (airborne && wrenchTimer <= 0.0f && player_.gunAimTimer <= 0.0f) {
+        float deploy = player_.heliDeploy;
+        if (deploy > 0.22f) {
+            float gripFrac = (deploy - 0.22f) / 0.78f;
+            Vector3 gripLeftHand   = { leftShoulder.x - 0.08f, leftShoulder.y + 0.16f, leftShoulder.z + 0.06f };
+            Vector3 gripRightHand  = { rightShoulder.x + 0.08f, rightShoulder.y + 0.16f, rightShoulder.z + 0.06f };
+            Vector3 gripLeftElbow  = { leftShoulder.x + 0.14f, leftShoulder.y + 0.06f, leftShoulder.z };
+            Vector3 gripRightElbow = { rightShoulder.x - 0.14f, rightShoulder.y + 0.06f, rightShoulder.z };
+            leftHand   = Vector3Lerp(leftHand, gripLeftHand, gripFrac);
+            rightHand  = Vector3Lerp(rightHand, gripRightHand, gripFrac);
+            leftElbow  = Vector3Lerp(leftElbow, gripLeftElbow, gripFrac);
+            rightElbow = Vector3Lerp(rightElbow, gripRightElbow, gripFrac);
+        }
+    }
+
+    auto DrawCleanArm = [&](Vector3 sh, Vector3 elb, Vector3 hnd) {
+        DrawCylinderEx(sh, elb, 0.075f, 0.065f, 8, furGold);
+        DrawSphere(elb, 0.068f, furGold);
+        DrawCylinderEx(elb, hnd, 0.068f, 0.082f, 8, leatherBrn);
+        DrawSphere(hnd, 0.085f, gloveBrn);
+    };
+    DrawCleanArm(leftShoulder,  leftElbow,  leftHand);
+    DrawCleanArm(rightShoulder, rightElbow, rightHand);
 
     // Dynamic right-hand positioning for weapon swing/aiming across both 3D mesh and fallback
     bool wrenchSwinging = (wrenchTimer > 0.0f);
@@ -1390,13 +1382,6 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
             shoulderCenter.z + std::max(0.14f, dirZ * 0.58f)
         };
         wrenchForwardDir = Vector3Normalize({ dirX, 0.05f - s * 0.10f, dirZ });
-    } else if (ratchetModelLoaded_ && aimBlend > 0.0f) {
-        Vector3 aimHand = {
-            shoulderCenter.x - 0.22f,
-            shoulderCenter.y + 0.02f + recoilKick * 0.12f,
-            shoulderCenter.z + 0.34f - recoilKick * 0.22f
-        };
-        rightHand = Vector3Lerp(rightHand, aimHand, aimBlend);
     }
 
     // =========================================================================

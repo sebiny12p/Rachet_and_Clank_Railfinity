@@ -68,9 +68,28 @@ const std::array<SkillPointDef, NUM_SKILL_POINTS>& RailGame::GetSkillPointCatalo
     return SKILL_POINT_CATALOG;
 }
 
+void RailGame::UpdateVirtualResolution() {
+    float sw = static_cast<float>(GetScreenWidth());
+    float sh = static_cast<float>(GetScreenHeight());
+    if (sw > 0.0f && sh > 0.0f) {
+        float targetW = std::max(1280.0f, std::round(720.0f * (sw / sh)));
+        if (renderTarget_.id == 0 || std::abs(virtualWidth_ - targetW) > 1.0f) {
+            virtualWidth_ = targetW;
+            if (renderTarget_.id != 0) {
+                UnloadRenderTexture(renderTarget_);
+            }
+            renderTarget_ = LoadRenderTexture(static_cast<int>(virtualWidth_), 720);
+            SetTextureFilter(renderTarget_.texture, TEXTURE_FILTER_BILINEAR);
+        }
+    } else if (renderTarget_.id == 0) {
+        virtualWidth_ = 1280.0f;
+        renderTarget_ = LoadRenderTexture(1280, 720);
+        SetTextureFilter(renderTarget_.texture, TEXTURE_FILTER_BILINEAR);
+    }
+}
+
 void RailGame::Init() {
-    renderTarget_ = LoadRenderTexture(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-    SetTextureFilter(renderTarget_.texture, TEXTURE_FILTER_BILINEAR);
+    UpdateVirtualResolution();
 
     audio_.Init();
     LoadSave();
@@ -369,11 +388,6 @@ int RailGame::GetCorridorMinLaneAt(float worldZ) const {
 
 bool RailGame::IsRailActiveAt(int lane, float z) const {
     if (lane < 0 || lane >= NUM_LANES) return false;
-    float worldZ = totalWorldTravel_ + z;
-    int minLane = GetCorridorMinLaneAt(worldZ);
-    if (lane < minLane || lane > minLane + 2) {
-        return false; // Strictly capped at 3 rails at a time!
-    }
     return !IsRailGapAt(lane, z);
 }
 
@@ -404,7 +418,7 @@ Vector2 RailGame::ToVirtualCoords(Vector2 screenPos) const {
     float sw = static_cast<float>(GetScreenWidth());
     float sh = static_cast<float>(GetScreenHeight());
     if (sw <= 0.0f || sh <= 0.0f) return { 0.0f, 0.0f };
-    return { screenPos.x * (VIRTUAL_WIDTH / sw), screenPos.y * (VIRTUAL_HEIGHT / sh) };
+    return { screenPos.x * (virtualWidth_ / sw), screenPos.y * (720.0f / sh) };
 }
 
 bool RailGame::IsRectHovered(Rectangle r) const {
@@ -443,8 +457,7 @@ bool RailGame::IsButtonClicked(Rectangle r) const {
 }
 
 void RailGame::SwitchLane(int delta) {
-    int curMin = GetCorridorMinLaneAt(totalWorldTravel_);
-    int target = std::clamp(player_.currentLane + delta, curMin, curMin + 2);
+    int target = std::clamp(player_.currentLane + delta, 0, NUM_LANES - 1);
     if (target != player_.currentLane) {
         player_.currentLane = target;
         player_.isHopping = true;
@@ -1011,7 +1024,7 @@ void RailGame::HandleInput() {
         }
 
         // 1. On-Screen Touch Pause Button (Top-Right, aligned with HUD pause button)
-        Rectangle pauseBtn = { VIRTUAL_WIDTH - 386.0f, 20.0f, 54.0f, 54.0f };
+        Rectangle pauseBtn = { virtualWidth_ - 386.0f, 20.0f, 54.0f, 54.0f };
         Rectangle pauseHitbox = { pauseBtn.x - 16.0f, pauseBtn.y - 16.0f, pauseBtn.width + 32.0f, pauseBtn.height + 32.0f };
 
         bool pauseTriggered = (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P));
@@ -1134,14 +1147,14 @@ void RailGame::HandleInput() {
 
         // 2. Action Buttons & Quick-Select Weapon Hotbar Hitboxes
         Rectangle btnJumpRec = save_.leftHandedControls
-                             ? Rectangle{ 30.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f }
-                             : Rectangle{ VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+                             ? Rectangle{ 30.0f, 720.0f - 216.0f, 96.0f, 96.0f }
+                             : Rectangle{ virtualWidth_ - 128.0f, 720.0f - 216.0f, 96.0f, 96.0f };
         Rectangle btnFireRec = save_.leftHandedControls
-                             ? Rectangle{ 140.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f }
-                             : Rectangle{ VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+                             ? Rectangle{ 140.0f, 720.0f - 208.0f, 82.0f, 82.0f }
+                             : Rectangle{ virtualWidth_ - 238.0f, 720.0f - 208.0f, 82.0f, 82.0f };
         Rectangle btnBoostRec = save_.leftHandedControls
-                              ? Rectangle{ 236.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f }
-                              : Rectangle{ VIRTUAL_WIDTH - 326.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f };
+                              ? Rectangle{ 236.0f, 720.0f - 200.0f, 74.0f, 74.0f }
+                              : Rectangle{ virtualWidth_ - 326.0f, 720.0f - 200.0f, 74.0f, 74.0f };
         float pad = 14.0f;
         Rectangle jumpHitbox = { btnJumpRec.x - pad, btnJumpRec.y - pad, btnJumpRec.width + pad * 2.0f, btnJumpRec.height + pad * 2.0f };
         Rectangle fireHitbox = { btnFireRec.x - pad, btnFireRec.y - pad, btnFireRec.width + pad * 2.0f, btnFireRec.height + pad * 2.0f };
@@ -1151,7 +1164,7 @@ void RailGame::HandleInput() {
         for (const auto& np : newPresses) {
             // Weapon Hotbar tap
             for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
-                Rectangle slotRect = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
+                Rectangle slotRect = { virtualWidth_ - 418.0f + w * 66.0f, 720.0f - 84.0f, 60.0f, 64.0f };
                 Rectangle slotHitbox = { slotRect.x - 8.0f, slotRect.y - 8.0f, slotRect.width + 16.0f, slotRect.height + 16.0f };
                 if (CheckCollisionPointRec(np.pos, slotHitbox) && save_.unlockedWeapons[w]) {
                     save_.equippedWeapon = w;
@@ -1720,8 +1733,8 @@ void RailGame::UpdatePlayingFixed(float dt) {
         h.z -= stepDist;
         h.animPhase += 3.5f * dt;
 
-        // Immediately purge any hazard on a terminated or non-existent rail
-        if (h.kind != HazardKind::BROKEN_RAIL_GAP && !IsRailActiveAt(h.lane, h.z)) {
+        // Clean up hazard when safely behind the camera
+        if (h.z < -10.0f) {
             h.active = false;
             continue;
         }
@@ -2085,10 +2098,8 @@ void RailGame::UpdatePlayingFixed(float dt) {
             // Stationary rail-trail / jump-arc bolt moves strictly with its rail
             b.pos.z -= stepDist;
 
-            // Immediately purge any bolt if its rail terminated or is inactive
-            int bLane = 2 - static_cast<int>(std::round(b.pos.x / LANE_WIDTH));
-            bLane = std::clamp(bLane, 0, NUM_LANES - 1);
-            if (!IsRailActiveAt(bLane, b.pos.z)) {
+            // Clean up bolt when safely behind the camera
+            if (b.pos.z < -10.0f) {
                 b.active = false;
                 continue;
             }

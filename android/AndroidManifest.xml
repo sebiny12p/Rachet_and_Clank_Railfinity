@@ -13,7 +13,10 @@
         android:label="Ratchet &amp; Clank: Railfinity"
         android:icon="@drawable/icon"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-        android:hasCode="true">
+        android:hasCode="true"
+        android:resizeableActivity="true">
+
+        <meta-data android:name="android.max_aspect" android:value="2.6" />
 
         <activity
             android:name="com.sebinylabs.railfinity.NativeLoader"

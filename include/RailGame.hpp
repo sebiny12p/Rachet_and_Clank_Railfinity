@@ -20,6 +20,10 @@ public:
     static const std::array<WeaponDef, NUM_WEAPONS>& GetWeaponCatalog();
     static const std::array<SkillPointDef, NUM_SKILL_POINTS>& GetSkillPointCatalog();
 
+    float GetVirtualWidth() const { return virtualWidth_; }
+    float GetVirtualHeight() const { return 720.0f; }
+    void UpdateVirtualResolution();
+
 private:
     // Save / Load
     void LoadSave();
@@ -102,6 +106,7 @@ private:
     void SetScreenMode(ScreenMode nextMode);
 
 private:
+    float virtualWidth_ = 1280.0f;
     RenderTexture2D renderTarget_{};
     Camera3D camera_{};
     RailAudio audio_{};

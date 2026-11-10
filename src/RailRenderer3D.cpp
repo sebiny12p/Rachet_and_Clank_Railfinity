@@ -57,6 +57,8 @@ float GetPortalEmergenceScale(float z) {
 } // namespace
 
 void RailGame::RenderFrame() {
+    UpdateVirtualResolution();
+
     BeginTextureMode(renderTarget_);
 
     GalaxySector sec = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER)
@@ -91,7 +93,7 @@ void RailGame::RenderFrame() {
     // Crucial: ClearBackground clears both the color buffer AND the 3D Depth Buffer of renderTarget_!
     ClearBackground(skyTop);
 
-    DrawRectangleGradientV(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, skyTop, skyBot);
+    DrawRectangleGradientV(0, 0, static_cast<int>(virtualWidth_), 720, skyTop, skyBot);
 
     RenderWorld3D();
 
@@ -99,7 +101,7 @@ void RailGame::RenderFrame() {
     if (screenFlashAlpha_ > 0.0f && save_.screenFlashes) {
         Color fc = screenFlashColor_;
         fc.a = static_cast<unsigned char>(std::clamp(screenFlashAlpha_ * 255.0f, 0.0f, 255.0f));
-        DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, fc);
+        DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, fc);
     }
 
     // 2D Overlays & Menus
@@ -179,6 +181,19 @@ void RailGame::RenderWorld3D() {
     }
 
     BeginMode3D(cam);
+
+    // Dynamic wide frustum with optimal near/far clipping for mobile GPUs:
+    // Standard BeginMode3D uses near = 0.01 and far = 1000.0, causing severe depth precision degradation
+    // on mobile OpenGL ES GPUs (Mali-G615), which results in Z-fighting, submesh flickering, and asset pop-out.
+    // By overriding the projection matrix with near = 0.35 and far = 240.0, we gain >140x depth precision!
+    rlMatrixMode(RL_PROJECTION);
+    rlLoadIdentity();
+    double nearPlane = 0.35;
+    double farPlane = 240.0;
+    double top = nearPlane * std::tan(cam.fovy * 0.5 * DEG2RAD);
+    double right = top * (static_cast<double>(virtualWidth_) / 720.0);
+    rlFrustum(-right, right, -top, top, nearPlane, farPlane);
+    rlMatrixMode(RL_MODELVIEW);
 
     RenderSkyline3D();
     RenderGrindRails3D();
@@ -380,20 +395,20 @@ void RailGame::RenderSkyline3D() const {
 }
 
 void RailGame::RenderGrindRails3D() const {
-    // 1. Draw 5-Lane Tubular Metallic Grindrails (Strictly capped at 3 active rails at any point!)
+    // 1. Draw 5-Lane Tubular Metallic Grindrails continuously across all lanes!
     constexpr float segLen = 3.0f;
     for (int l = 0; l < NUM_LANES; ++l) {
         float lx = GetLaneX(l);
         for (float z = -10.0f; z < 145.0f; z += segLen) {
             float midZ = z + segLen * 0.5f;
-            if (!IsRailActiveAt(l, midZ)) {
-                // If previous segment was active and this one is not, draw an illuminated sheared terminus cap!
-                if (z > 0.0f && IsRailActiveAt(l, midZ - segLen)) {
+            if (IsRailGapAt(l, midZ)) {
+                // If previous segment was solid and this one is a broken gap, draw an illuminated sheared terminus cap!
+                if (z > 0.0f && !IsRailGapAt(l, midZ - segLen)) {
                     Vector3 pTerm = ApplyTrackCurve(lx, -0.10f, z);
                     DrawCube(pTerm, 0.72f, 0.44f, 0.36f, { 255, 120, 20, 240 });
                     DrawCubeWires(pTerm, 0.76f, 0.48f, 0.40f, YELLOW);
                 }
-                continue; // Rail not in active 3-rail window or broken!
+                continue; // Intentional broken gap hazard to hop over
             }
             Vector3 pA = ApplyTrackCurve(lx, -0.10f, z);
             Vector3 pB = ApplyTrackCurve(lx, -0.10f, z + segLen + 0.06f);
@@ -413,7 +428,7 @@ void RailGame::RenderGrindRails3D() const {
         }
     }
 
-    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (Enclosing exactly the active 3-rail window)
+    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (Enclosing all 5 lanes seamlessly)
     float trussSpacing = 16.0f;
     float trussOffset = std::fmod(distanceMeters_ * 2.2f, trussSpacing);
     Color trussCol = { 52, 88, 80, 255 };
@@ -423,11 +438,9 @@ void RailGame::RenderGrindRails3D() const {
         float emerge = GetPortalEmergenceScale(z);
         if (emerge <= 0.02f) continue;
 
-        float worldZ = totalWorldTravel_ + z;
-        int minL = GetCorridorMinLaneAt(worldZ);
-        Vector3 cCenter = ApplyTrackCurve(GetLaneX(minL + 1), -0.35f, z);
-        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(minL) + 0.9f) * emerge, -0.35f, z);
-        Vector3 cRight  = ApplyTrackCurve((GetLaneX(minL + 2) - 0.9f) * emerge, -0.35f, z);
+        Vector3 cCenter = ApplyTrackCurve(GetLaneX(2), -0.35f, z);
+        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 0.9f) * emerge, -0.35f, z);
+        Vector3 cRight  = ApplyTrackCurve((GetLaneX(NUM_LANES - 1) - 0.9f) * emerge, -0.35f, z);
 
         DrawCylinderEx(cLeft, cRight, 0.18f * emerge, 0.18f * emerge, 6, trussCol);
         DrawCylinderEx({ cLeft.x * 0.7f, cCenter.y - 2.6f * emerge, z },
@@ -442,6 +455,9 @@ void RailGame::RenderGrindRails3D() const {
             Color bandCol = (s % 2 == 0) ? Color{ 245, 205, 35, 255 } : Color{ 25, 28, 32, 255 };
             DrawCylinderEx({ cLeft.x + 0.4f * emerge, cLeft.y + s * 0.32f * emerge, z },
                            { cLeft.x + 0.4f * emerge, cLeft.y + (s + 1) * 0.32f * emerge, z },
+                           0.12f * emerge, 0.12f * emerge, 6, bandCol);
+            DrawCylinderEx({ cRight.x - 0.4f * emerge, cRight.y + s * 0.32f * emerge, z },
+                           { cRight.x - 0.4f * emerge, cRight.y + (s + 1) * 0.32f * emerge, z },
                            0.12f * emerge, 0.12f * emerge, 6, bandCol);
         }
     }
@@ -2341,20 +2357,20 @@ void RailGame::RenderHud2D() {
     DrawRectangle(245, 80, static_cast<int>(104.0f * player_.multiplierProgress), 12, GOLD);
 
     // Top-Right Bolts, Raritanium & Distance Odometer
-    DrawRectangle(VIRTUAL_WIDTH - 320, 20, 300, 96, { 12, 18, 32, 215 });
-    DrawRectangleLinesEx({ VIRTUAL_WIDTH - 320.0f, 20.0f, 300.0f, 96.0f }, 2.0f, { 65, 215, 255, 190 });
+    DrawRectangle(static_cast<int>(virtualWidth_ - 320), 20, 300, 96, { 12, 18, 32, 215 });
+    DrawRectangleLinesEx({ virtualWidth_ - 320.0f, 20.0f, 300.0f, 96.0f }, 2.0f, { 65, 215, 255, 190 });
 
     char distBuf[64], boltBuf[64], rariBuf[64];
     std::snprintf(distBuf, sizeof(distBuf), "DISTANCE: %d m", static_cast<int>(distanceMeters_));
     std::snprintf(boltBuf, sizeof(boltBuf), "BOLTS: %d (+%d)", save_.bolts, runBoltsEarned_);
     std::snprintf(rariBuf, sizeof(rariBuf), "RARITANIUM: %d (+%d)", save_.raritanium, runRaritaniumEarned_);
 
-    DrawText(distBuf, VIRTUAL_WIDTH - 304, 28, 24, WHITE);
-    DrawText(boltBuf, VIRTUAL_WIDTH - 304, 58, 18, GOLD);
-    DrawText(rariBuf, VIRTUAL_WIDTH - 304, 82, 16, SKYBLUE);
+    DrawText(distBuf, static_cast<int>(virtualWidth_ - 304), 28, 24, WHITE);
+    DrawText(boltBuf, static_cast<int>(virtualWidth_ - 304), 58, 18, GOLD);
+    DrawText(rariBuf, static_cast<int>(virtualWidth_ - 304), 82, 16, SKYBLUE);
 
     // On-Screen Holographic Touch Pause Button (Mobile-Friendly)
-    Rectangle pauseBtn = { VIRTUAL_WIDTH - 386.0f, 20.0f, 54.0f, 54.0f };
+    Rectangle pauseBtn = { virtualWidth_ - 386.0f, 20.0f, 54.0f, 54.0f };
     bool pauseActive = (touchFeedbackPause_ > 0.0f);
     bool pauseHover = IsRectHovered(pauseBtn) || pauseActive;
     DrawRectangleRec(pauseBtn, pauseActive ? Color{ 45, 75, 115, 255 } : (pauseHover ? Color{ 24, 38, 62, 230 } : Color{ 12, 18, 32, 200 }));
@@ -2366,7 +2382,7 @@ void RailGame::RenderHud2D() {
     // Boss Health Bar
     if (boss_.active) {
         float bw = 520.0f;
-        float bx = (VIRTUAL_WIDTH - bw) * 0.5f;
+        float bx = (virtualWidth_ - bw) * 0.5f;
         DrawRectangle(static_cast<int>(bx - 6), 24, static_cast<int>(bw + 12), 54, { 18, 12, 24, 230 });
         DrawText(boss_.name.c_str(), static_cast<int>(bx + 8), 28, 18, GOLD);
 
@@ -2381,7 +2397,7 @@ void RailGame::RenderHud2D() {
     // Bottom-Right Quick-Select Weapon Hotbar (1..6)
     const auto& weaps = GetWeaponCatalog();
     for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
-        Rectangle sr = { VIRTUAL_WIDTH - 418.0f + w * 66.0f, VIRTUAL_HEIGHT - 84.0f, 60.0f, 64.0f };
+        Rectangle sr = { virtualWidth_ - 418.0f + w * 66.0f, 720.0f - 84.0f, 60.0f, 64.0f };
         bool unlocked = save_.unlockedWeapons[w];
         bool equipped = (save_.equippedWeapon == w);
 
@@ -2406,22 +2422,22 @@ void RailGame::RenderHud2D() {
     int eq = save_.equippedWeapon;
     int eqLvl = save_.weaponLevels[eq];
     const char* wTitle = (eqLvl >= 5) ? weaps[eq].omegaName : weaps[eq].name;
-    DrawRectangle(20, VIRTUAL_HEIGHT - 96, 480, 76, { 12, 18, 32, 220 });
-    DrawRectangleLinesEx({ 20.0f, VIRTUAL_HEIGHT - 96.0f, 480.0f, 76.0f }, 1.5f, weaps[eq].projectileColor);
-    DrawText(wTitle, 32, VIRTUAL_HEIGHT - 88, 18, WHITE);
+    DrawRectangle(20, static_cast<int>(720.0f - 96.0f), 480, 76, { 12, 18, 32, 220 });
+    DrawRectangleLinesEx({ 20.0f, 720.0f - 96.0f, 480.0f, 76.0f }, 1.5f, weaps[eq].projectileColor);
+    DrawText(wTitle, 32, static_cast<int>(720.0f - 88.0f), 18, WHITE);
     char xpLine[64];
     if (eqLvl >= 5) std::snprintf(xpLine, sizeof(xpLine), "OMEGA MASTERWORK V5");
     else std::snprintf(xpLine, sizeof(xpLine), "LEVEL V%d  |  WEAP XP: %d / %d", eqLvl, save_.weaponXp[eq], eqLvl * 120);
-    DrawText(xpLine, 32, VIRTUAL_HEIGHT - 65, 14, GOLD);
-    DrawText(weaps[eq].specialPerk, 32, VIRTUAL_HEIGHT - 44, 12, SKYBLUE);
+    DrawText(xpLine, 32, static_cast<int>(720.0f - 65.0f), 14, GOLD);
+    DrawText(weaps[eq].specialPerk, 32, static_cast<int>(720.0f - 44.0f), 12, SKYBLUE);
 
     // On-Screen Holographic Touch Controls (Optimized for Mobile & Touch Screen Play)
     Rectangle btnJumpRec = save_.leftHandedControls
-                         ? Rectangle{ 30.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f }
-                         : Rectangle{ VIRTUAL_WIDTH - 128.0f, VIRTUAL_HEIGHT - 216.0f, 96.0f, 96.0f };
+                         ? Rectangle{ 30.0f, 720.0f - 216.0f, 96.0f, 96.0f }
+                         : Rectangle{ virtualWidth_ - 128.0f, 720.0f - 216.0f, 96.0f, 96.0f };
     Rectangle btnFireRec = save_.leftHandedControls
-                         ? Rectangle{ 140.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f }
-                         : Rectangle{ VIRTUAL_WIDTH - 238.0f, VIRTUAL_HEIGHT - 208.0f, 82.0f, 82.0f };
+                         ? Rectangle{ 140.0f, 720.0f - 208.0f, 82.0f, 82.0f }
+                         : Rectangle{ virtualWidth_ - 238.0f, 720.0f - 208.0f, 82.0f, 82.0f };
 
     bool isGlidingNow = player_.heliGliding;
     Color jumpRingCol = isGlidingNow ? Color{ 60, 255, 95, 255 } : (player_.grounded ? Color{ 80, 180, 255, 220 } : Color{ 255, 200, 50, 255 });
@@ -2460,8 +2476,8 @@ void RailGame::RenderHud2D() {
     // 3. [OVERDRIVE HOVERBOOTS BOOST] Holographic Button (If Unlocked!)
     if (save_.hoverbootsUnlocked) {
         Rectangle btnBoostRec = save_.leftHandedControls
-                              ? Rectangle{ 236.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f }
-                              : Rectangle{ VIRTUAL_WIDTH - 326.0f, VIRTUAL_HEIGHT - 200.0f, 74.0f, 74.0f };
+                              ? Rectangle{ 236.0f, 720.0f - 200.0f, 74.0f, 74.0f }
+                              : Rectangle{ virtualWidth_ - 326.0f, 720.0f - 200.0f, 74.0f, 74.0f };
         bool boostActive = (player_.overdriveDuration > 0.0f || touchFeedbackBoost_ > 0.0f);
         bool boostReady = (player_.overdriveCooldown <= 0.0f);
         Color boostRingCol = boostActive ? GOLD : (boostReady ? ORANGE : DARKGRAY);
@@ -2492,23 +2508,23 @@ void RailGame::RenderHud2D() {
         char hoverMsg[64];
         std::snprintf(hoverMsg, sizeof(hoverMsg), "! CLANK EMERGENCY HOVER (%.1fs): HOP TO ACTIVE RAIL !", player_.emergencyHoverTimer);
         int mw = MeasureText(hoverMsg, 18);
-        DrawRectangle(VIRTUAL_WIDTH / 2 - mw / 2 - 20, 168, mw + 40, 36, { 55, 14, 18, 245 });
-        DrawRectangleLines(VIRTUAL_WIDTH / 2 - mw / 2 - 20, 168, mw + 40, 36, RED);
+        DrawRectangle(static_cast<int>(virtualWidth_ * 0.5f - mw * 0.5f - 20), 168, mw + 40, 36, { 55, 14, 18, 245 });
+        DrawRectangleLines(static_cast<int>(virtualWidth_ * 0.5f - mw * 0.5f - 20), 168, mw + 40, 36, RED);
         Color txtCol = (std::fmod(globalTime_ * 10.0f, 1.0f) < 0.5f) ? YELLOW : WHITE;
-        DrawText(hoverMsg, VIRTUAL_WIDTH / 2 - mw / 2, 177, 18, txtCol);
+        DrawText(hoverMsg, static_cast<int>(virtualWidth_ * 0.5f - mw * 0.5f), 177, 18, txtCol);
     } else if (!IsRailActiveAt(player_.currentLane, 32.0f)) {
-        DrawRectangle(VIRTUAL_WIDTH / 2 - 210, 168, 420, 36, { 35, 12, 16, 230 });
-        DrawRectangleLines(VIRTUAL_WIDTH / 2 - 210, 168, 420, 36, RED);
-        DrawText("! TRACK ENDING AHEAD: HOP OVER !", VIRTUAL_WIDTH / 2 - 185, 177, 18, RED);
+        DrawRectangle(static_cast<int>(virtualWidth_ * 0.5f - 210), 168, 420, 36, { 35, 12, 16, 230 });
+        DrawRectangleLines(static_cast<int>(virtualWidth_ * 0.5f - 210), 168, 420, 36, RED);
+        DrawText("! TRACK ENDING AHEAD: HOP OVER !", static_cast<int>(virtualWidth_ * 0.5f - 185), 177, 18, RED);
     }
 
     // Sector Entry Banner
     if (sectorBannerTimer_ > 0.0f) {
         const char* sName = GetSectorName(GetCurrentSector());
         int sw = MeasureText(sName, 20);
-        DrawRectangle(VIRTUAL_WIDTH / 2 - sw / 2 - 20, 128, sw + 40, 38, { 12, 18, 32, 220 });
-        DrawRectangleLines(VIRTUAL_WIDTH / 2 - sw / 2 - 20, 128, sw + 40, 38, ORANGE);
-        DrawText(sName, VIRTUAL_WIDTH / 2 - sw / 2, 137, 20, GOLD);
+        DrawRectangle(static_cast<int>(virtualWidth_ * 0.5f - sw * 0.5f - 20), 128, sw + 40, 38, { 12, 18, 32, 220 });
+        DrawRectangleLines(static_cast<int>(virtualWidth_ * 0.5f - sw * 0.5f - 20), 128, sw + 40, 38, ORANGE);
+        DrawText(sName, static_cast<int>(virtualWidth_ * 0.5f - sw * 0.5f), 137, 20, GOLD);
     }
 
     // Retro Holographic Radio Comm Chatter Box
@@ -2517,7 +2533,7 @@ void RailGame::RenderHud2D() {
 
 void RailGame::RenderSplashIntro2D() {
     // Fill screen with vibrant Sebio sky-blue background
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 128, 219, 255, 255 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, Color{ 128, 219, 255, 255 });
 
     float t = splashTimer_;
     // Total splash duration: 2.4s (0.0s - 0.5s fade in, 0.5s - 1.2s flash glow, 1.2s - 1.9s hold, 1.9s - 2.4s fade out)
@@ -2538,47 +2554,47 @@ void RailGame::RenderSplashIntro2D() {
         float scale = 0.92f + flash * 0.05f;
         float w = splashLogo_.width * scale;
         float h = splashLogo_.height * scale;
-        Rectangle dest = { (VIRTUAL_WIDTH - w) * 0.5f, (VIRTUAL_HEIGHT - h) * 0.5f, w, h };
+        Rectangle dest = { (virtualWidth_ - w) * 0.5f, (720.0f - h) * 0.5f, w, h };
         Color logoCol = { 255, 255, 255, static_cast<unsigned char>(255 * alpha) };
         DrawTexturePro(splashLogo_, { 0, 0, (float)splashLogo_.width, (float)splashLogo_.height }, dest, { 0, 0 }, 0.0f, logoCol);
     } else {
         // Fallback procedural logo if texture fails to load
         const char* l1 = "SEBINY LABS";
         int w1 = MeasureText(l1, 56);
-        DrawText(l1, (VIRTUAL_WIDTH - w1) / 2, 310, 56, Color{ 235, 30, 45, static_cast<unsigned char>(255 * alpha) });
+        DrawText(l1, static_cast<int>((virtualWidth_ - w1) / 2), 310, 56, Color{ 235, 30, 45, static_cast<unsigned char>(255 * alpha) });
         const char* l2 = "Discover new adventures";
         int w2 = MeasureText(l2, 22);
-        DrawText(l2, (VIRTUAL_WIDTH - w2) / 2, 385, 22, Color{ 20, 60, 180, static_cast<unsigned char>(255 * alpha) });
+        DrawText(l2, static_cast<int>((virtualWidth_ - w2) / 2), 385, 22, Color{ 20, 60, 180, static_cast<unsigned char>(255 * alpha) });
     }
 
     if (flash > 0.0f) {
-        DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 255, 255, 255, static_cast<unsigned char>(flash * 140) });
+        DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, Color{ 255, 255, 255, static_cast<unsigned char>(flash * 140) });
     }
 
     // Skip prompt indicator
     const char* skipHint = "TAP OR PRESS SPACE TO SKIP";
     int shw = MeasureText(skipHint, 13);
-    DrawText(skipHint, (VIRTUAL_WIDTH - shw) / 2, VIRTUAL_HEIGHT - 38, 13, Color{ 40, 80, 140, static_cast<unsigned char>(160 * alpha) });
+    DrawText(skipHint, static_cast<int>((virtualWidth_ - shw) / 2), 720 - 38, 13, Color{ 40, 80, 140, static_cast<unsigned char>(160 * alpha) });
 }
 
 void RailGame::RenderBrandingFooter2D() const {
-    DrawRectangle(0, VIRTUAL_HEIGHT - 56, VIRTUAL_WIDTH, 56, { 8, 12, 22, 240 });
-    DrawLine(0, VIRTUAL_HEIGHT - 56, VIRTUAL_WIDTH, VIRTUAL_HEIGHT - 56, { 255, 165, 40, 160 });
+    DrawRectangle(0, 720 - 56, static_cast<int>(virtualWidth_), 56, { 8, 12, 22, 240 });
+    DrawLine(0, 720 - 56, static_cast<int>(virtualWidth_), 720 - 56, { 255, 165, 40, 160 });
 
     const char* studio = "SEBINY LABS";
     int sw = MeasureText(studio, 18);
-    DrawText(studio, (VIRTUAL_WIDTH - sw) / 2, VIRTUAL_HEIGHT - 48, 18, GOLD);
+    DrawText(studio, static_cast<int>((virtualWidth_ - sw) / 2), 720 - 48, 18, GOLD);
 
     const char* ipOwner = "Non-commercial fan tribute. Ratchet & Clank and Before the Nexus are trademarks of Sony Interactive Entertainment LLC / Insomniac Games.";
     int iw = MeasureText(ipOwner, 14);
-    DrawText(ipOwner, (VIRTUAL_WIDTH - iw) / 2, VIRTUAL_HEIGHT - 22, 14, { 185, 205, 225, 235 });
+    DrawText(ipOwner, static_cast<int>((virtualWidth_ - iw) / 2), 720 - 22, 14, { 185, 205, 225, 235 });
 }
 
 void RailGame::RenderTitleFrontPage2D() {
     // Insomniac / Rift Apart style Title Screen (Dimensional Rift glow, Lombax silhouette, Press Any Key)
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 6, 10, 20, 160 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 6, 10, 20, 160 });
 
-    Vector2 center = { VIRTUAL_WIDTH * 0.5f, 260.0f };
+    Vector2 center = { virtualWidth_ * 0.5f, 260.0f };
     float pulse = std::sin(globalTime_ * 2.2f);
 
     // Dimensionator Rift Ring
@@ -2589,50 +2605,50 @@ void RailGame::RenderTitleFrontPage2D() {
 
     const char* preTitle = "INSOMNIAC GAMES FAN TRIBUTE // NEXUS SECTOR";
     int ptw = MeasureText(preTitle, 16);
-    DrawText(preTitle, (VIRTUAL_WIDTH - ptw) / 2, 380, 16, { 255, 185, 95, 230 });
+    DrawText(preTitle, static_cast<int>((virtualWidth_ - ptw) / 2), 380, 16, { 255, 185, 95, 230 });
 
     const char* title = "RATCHET & CLANK: RAILFINITY";
     int tw = MeasureText(title, 58);
-    DrawText(title, (VIRTUAL_WIDTH - tw) / 2, 410, 58, GOLD);
+    DrawText(title, static_cast<int>((virtualWidth_ - tw) / 2), 410, 58, GOLD);
 
-    DrawLine(VIRTUAL_WIDTH / 2 - 320, 485, VIRTUAL_WIDTH / 2 + 320, 485, { 255, 165, 40, 120 });
+    DrawLine(static_cast<int>(virtualWidth_ * 0.5f - 320), 485, static_cast<int>(virtualWidth_ * 0.5f + 320), 485, { 255, 165, 40, 120 });
 
     // Pulsing "Press Any Key / Tap Screen to Start" Call to Action
     float blink = std::sin(globalTime_ * 4.2f) * 0.5f + 0.5f;
     Color promptCol = { 255, 255, 255, static_cast<unsigned char>(140 + blink * 115) };
     const char* prompt = "PRESS ANY KEY OR TAP SCREEN TO START";
     int pw = MeasureText(prompt, 22);
-    DrawText(prompt, (VIRTUAL_WIDTH - pw) / 2, 525, 22, promptCol);
+    DrawText(prompt, static_cast<int>((virtualWidth_ - pw) / 2), 525, 22, promptCol);
 
     const char* ostNotice = "PLAYING: RATCHET & CLANK: RIFT APART OST - RIFT APART";
     int onw = MeasureText(ostNotice, 14);
-    DrawText(ostNotice, (VIRTUAL_WIDTH - onw) / 2, 595, 14, { 140, 210, 255, 200 });
+    DrawText(ostNotice, static_cast<int>((virtualWidth_ - onw) / 2), 595, 14, { 140, 210, 255, 200 });
 
     RenderBrandingFooter2D();
 }
 
 void RailGame::RenderMainMenu2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, 165, { 10, 14, 26, 210 });
-    DrawLine(0, 165, VIRTUAL_WIDTH, 165, ORANGE);
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 165, { 10, 14, 26, 210 });
+    DrawLine(0, 165, static_cast<int>(virtualWidth_), 165, ORANGE);
 
     const char* pre = "SOLANA & POLARIS INTERGALACTIC GRINDWAY NETWORK";
     int pw = MeasureText(pre, 16);
-    DrawText(pre, (VIRTUAL_WIDTH - pw) / 2, 24, 16, SKYBLUE);
+    DrawText(pre, static_cast<int>((virtualWidth_ - pw) / 2), 24, 16, SKYBLUE);
 
     const char* title = "RATCHET & CLANK: RAILFINITY";
     int tw = MeasureText(title, 52);
-    DrawText(title, (VIRTUAL_WIDTH - tw) / 2, 50, 52, GOLD);
+    DrawText(title, static_cast<int>((virtualWidth_ - tw) / 2), 50, 52, GOLD);
 
     const char* sub = "INFINITE 3D BEFORE-THE-NEXUS GRINDRAIL ACTION";
     int subw = MeasureText(sub, 18);
-    DrawText(sub, (VIRTUAL_WIDTH - subw) / 2, 110, 18, WHITE);
+    DrawText(sub, static_cast<int>((virtualWidth_ - subw) / 2), 110, 18, WHITE);
 
     char stats[160];
     std::snprintf(stats, sizeof(stats),
                   "BOLTS: %d   |   RARITANIUM: %d   |   BEST RUN: %d m   |   DAILY BEST: %d m",
                   save_.bolts, save_.raritanium, save_.bestDistanceMeters, save_.bestDailyMeters);
     int stw = MeasureText(stats, 16);
-    DrawText(stats, (VIRTUAL_WIDTH - stw) / 2, 140, 16, LIGHTGRAY);
+    DrawText(stats, static_cast<int>((virtualWidth_ - stw) / 2), 140, 16, LIGHTGRAY);
 
     auto MenuButton = [&](Rectangle r, const char* label, const char* desc, Color col) -> bool {
         bool hov = IsRectHovered(r);
@@ -2657,8 +2673,8 @@ void RailGame::RenderMainMenu2D() {
     Rectangle btnLab      = { 50.0f, 359.0f, 400.0f, 52.0f };
     Rectangle btnWardrobe = { 50.0f, 417.0f, 400.0f, 52.0f };
     Rectangle btnCareer   = { 50.0f, 475.0f, 400.0f, 52.0f };
-    Rectangle btnSkills   = { VIRTUAL_WIDTH - 380.0f, 185.0f, 330.0f, 52.0f };
-    Rectangle btnSettings = { VIRTUAL_WIDTH - 380.0f, 243.0f, 330.0f, 52.0f };
+    Rectangle btnSkills   = { virtualWidth_ - 380.0f, 185.0f, 330.0f, 52.0f };
+    Rectangle btnSettings = { virtualWidth_ - 380.0f, 243.0f, 330.0f, 52.0f };
 
     if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "High-Speed Planetary Grindrails", ORANGE)) {
         StartNewRun(false);
@@ -2711,34 +2727,38 @@ void RailGame::RenderMainMenu2D() {
     }
 
     // Controls Reference Box on Right
-    DrawRectangle(VIRTUAL_WIDTH - 380, 304, 330, 224, { 12, 18, 32, 225 });
-    DrawRectangleLines(VIRTUAL_WIDTH - 380, 304, 330, 224, SKYBLUE);
-    DrawText("CONTROLS & GAMEPAD", VIRTUAL_WIDTH - 362, 314, 16, GOLD);
-    DrawText("> Left Stick / A-D: Switch Rail", VIRTUAL_WIDTH - 362, 334, 13, WHITE);
-    DrawText("> (A) / SPACE / Swipe Up: Jump", VIRTUAL_WIDTH - 362, 354, 13, WHITE);
-    DrawText("> Hold (A) / SPACE: Clank Glide", VIRTUAL_WIDTH - 362, 374, 13, WHITE);
-    DrawText("> (B) / S / Swipe Down: Slide", VIRTUAL_WIDTH - 362, 394, 13, WHITE);
-    DrawText("> (X) / RT / Click / F: Fire / Wrench", VIRTUAL_WIDTH - 362, 414, 13, WHITE);
-    DrawText("> (Y) / L-Shift: Overdrive Boots", VIRTUAL_WIDTH - 362, 434, 13, GOLD);
-    DrawText("> LB / RB / 1-6: Cycle Weapons", VIRTUAL_WIDTH - 362, 454, 13, WHITE);
-    DrawText("> N: Skip OST Track  |  C: Career Stats", VIRTUAL_WIDTH - 362, 474, 12, SKYBLUE);
-    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", VIRTUAL_WIDTH - 362, 494, 12, LIGHTGRAY);
+    DrawRectangle(static_cast<int>(virtualWidth_ - 380), 304, 330, 224, { 12, 18, 32, 225 });
+    DrawRectangleLines(static_cast<int>(virtualWidth_ - 380), 304, 330, 224, SKYBLUE);
+    DrawText("CONTROLS & GAMEPAD", static_cast<int>(virtualWidth_ - 362), 314, 16, GOLD);
+    DrawText("> Left Stick / A-D: Switch Rail", static_cast<int>(virtualWidth_ - 362), 334, 13, WHITE);
+    DrawText("> (A) / SPACE / Swipe Up: Jump", static_cast<int>(virtualWidth_ - 362), 354, 13, WHITE);
+    DrawText("> Hold (A) / SPACE: Clank Glide", static_cast<int>(virtualWidth_ - 362), 374, 13, WHITE);
+    DrawText("> (B) / S / Swipe Down: Slide", static_cast<int>(virtualWidth_ - 362), 394, 13, WHITE);
+    DrawText("> (X) / RT / Click / F: Fire / Wrench", static_cast<int>(virtualWidth_ - 362), 414, 13, WHITE);
+    DrawText("> (Y) / L-Shift: Overdrive Boots", static_cast<int>(virtualWidth_ - 362), 434, 13, GOLD);
+    DrawText("> LB / RB / 1-6: Cycle Weapons", static_cast<int>(virtualWidth_ - 362), 454, 13, WHITE);
+    DrawText("> N: Skip OST Track  |  C: Career Stats", static_cast<int>(virtualWidth_ - 362), 474, 12, SKYBLUE);
+    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", static_cast<int>(virtualWidth_ - 362), 494, 12, LIGHTGRAY);
 
     RenderBrandingFooter2D();
 }
 
 void RailGame::RenderGadgetronVendor2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
-    DrawText("GADGETRON WEAPONS VENDOR", 60, 26, 26, GOLD);
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 24, 235 });
+
+    float cardW = 1160.0f;
+    float cardX = (virtualWidth_ - cardW) * 0.5f;
+
+    DrawText("GADGETRON WEAPONS VENDOR", static_cast<int>(cardX), 26, 26, GOLD);
 
     char curr[96];
     std::snprintf(curr, sizeof(curr), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
     int cw = MeasureText(curr, 20);
-    DrawText(curr, VIRTUAL_WIDTH - cw - 60, 30, 20, SKYBLUE);
+    DrawText(curr, static_cast<int>(cardX + cardW - cw), 30, 20, SKYBLUE);
 
     const auto& cat = GetWeaponCatalog();
     for (int i = 0; i < static_cast<int>(NUM_WEAPONS); ++i) {
-        Rectangle r = { 60.0f, 68.0f + i * 82.0f, 1160.0f, 76.0f };
+        Rectangle r = { cardX, 68.0f + i * 82.0f, cardW, 76.0f };
         bool unlocked = save_.unlockedWeapons[i];
         bool equipped = (save_.equippedWeapon == i);
         int lvl = save_.weaponLevels[i];
@@ -2830,7 +2850,7 @@ void RailGame::RenderGadgetronVendor2D() {
         }
     }
 
-    Rectangle backBtn = { 60.0f, 568.0f, 220.0f, 46.0f };
+    Rectangle backBtn = { cardX, 568.0f, 220.0f, 46.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
@@ -2841,16 +2861,20 @@ void RailGame::RenderGadgetronVendor2D() {
 }
 
 void RailGame::RenderRaritaniumLab2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
-    DrawText("RARITANIUM ENGINEERING LAB", 60, 40, 26, SKYBLUE);
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 24, 235 });
+
+    float labW = 1150.0f;
+    float labX = (virtualWidth_ - labW) * 0.5f;
+
+    DrawText("RARITANIUM ENGINEERING LAB", static_cast<int>(labX), 40, 26, SKYBLUE);
 
     char curr[96];
     std::snprintf(curr, sizeof(curr), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
     int cw = MeasureText(curr, 20);
-    DrawText(curr, VIRTUAL_WIDTH - cw - 60, 44, 20, GOLD);
+    DrawText(curr, static_cast<int>(labX + labW - cw), 44, 20, GOLD);
 
     auto DrawModCard = [&](int idx, const char* title, const char* desc, int& lvl, int maxLvl, int baseBoltCost) {
-        Rectangle r = { 60.0f + (idx % 2) * 585.0f, 110.0f + (idx / 2) * 210.0f, 565.0f, 185.0f };
+        Rectangle r = { labX + (idx % 2) * 585.0f, 110.0f + (idx / 2) * 210.0f, 565.0f, 185.0f };
         int bCost = baseBoltCost * (lvl + 1);
         bool maxed = (lvl >= maxLvl);
         bool canBuy = (!maxed && save_.bolts >= bCost);
@@ -2886,7 +2910,7 @@ void RailGame::RenderRaritaniumLab2D() {
     DrawModCard(3, "MULTIPLIER AMPLIFIER", "Accelerates Bolt Multiplier climb toward 20x.", save_.multiplierModLevel, 5, 400);
 
     // Overdrive Hoverboots Flagship Gadget Matrix Card
-    Rectangle hgRec = { 60.0f, 510.0f, 1150.0f, 85.0f };
+    Rectangle hgRec = { labX, 510.0f, 1150.0f, 85.0f };
     DrawRectangleRec(hgRec, save_.hoverbootsUnlocked ? Color{ 22, 38, 56, 240 } : Color{ 16, 24, 40, 235 });
     DrawRectangleLinesEx(hgRec, 2.0f, save_.hoverbootsUnlocked ? GOLD : ORANGE);
     DrawText("OVERDRIVE HOVERBOOTS (FLAGSHIP GADGET)", static_cast<int>(hgRec.x + 20), static_cast<int>(hgRec.y + 12), 20, GOLD);
@@ -2912,7 +2936,7 @@ void RailGame::RenderRaritaniumLab2D() {
         }
     }
 
-    Rectangle backBtn = { 60.0f, 608.0f, 220.0f, 46.0f };
+    Rectangle backBtn = { labX, 608.0f, 220.0f, 46.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 15), 16, WHITE);
@@ -2924,21 +2948,21 @@ void RailGame::RenderRaritaniumLab2D() {
 
 void RailGame::RenderArmorWardrobe2D() {
     // Top Header Banner
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, 115, { 10, 14, 26, 235 });
-    DrawLine(0, 115, VIRTUAL_WIDTH, 115, PURPLE);
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 115, { 10, 14, 26, 235 });
+    DrawLine(0, 115, static_cast<int>(virtualWidth_), 115, PURPLE);
 
     const char* pre = "BOLTAX ADVANCED DEFENSE SYSTEMS & WARDROBE LAB";
     int pw = MeasureText(pre, 15);
-    DrawText(pre, (VIRTUAL_WIDTH - pw) / 2, 16, 15, SKYBLUE);
+    DrawText(pre, static_cast<int>((virtualWidth_ - pw) / 2), 16, 15, SKYBLUE);
 
     const char* title = "ARMOR SUITS & CLANK OUTFITS";
     int tw = MeasureText(title, 42);
-    DrawText(title, (VIRTUAL_WIDTH - tw) / 2, 36, 42, GOLD);
+    DrawText(title, static_cast<int>((virtualWidth_ - tw) / 2), 36, 42, GOLD);
 
     char curBuf[96];
     std::snprintf(curBuf, sizeof(curBuf), "BOLTS: %d   |   RARITANIUM: %d", save_.bolts, save_.raritanium);
     int cw = MeasureText(curBuf, 18);
-    DrawText(curBuf, (VIRTUAL_WIDTH - cw) / 2, 85, 18, (save_.raritanium > 0) ? SKYBLUE : LIGHTGRAY);
+    DrawText(curBuf, static_cast<int>((virtualWidth_ - cw) / 2), 85, 18, (save_.raritanium > 0) ? SKYBLUE : LIGHTGRAY);
 
     // -------------------------------------------------------------
     // LEFT SIDE: 3D CHARACTER SHOWCASE PLAQUE
@@ -2968,8 +2992,9 @@ void RailGame::RenderArmorWardrobe2D() {
     // -------------------------------------------------------------
     // RIGHT SIDE: TABS & CATALOG
     // -------------------------------------------------------------
-    Rectangle tabLombax = { 580.0f, 130.0f, 320.0f, 44.0f };
-    Rectangle tabClank  = { 910.0f, 130.0f, 320.0f, 44.0f };
+    float rightColX = virtualWidth_ - 700.0f;
+    Rectangle tabLombax = { rightColX, 130.0f, 320.0f, 44.0f };
+    Rectangle tabClank  = { rightColX + 330.0f, 130.0f, 320.0f, 44.0f };
 
     bool hovL = IsRectHovered(tabLombax);
     bool hovC = IsRectHovered(tabClank);
@@ -3006,7 +3031,7 @@ void RailGame::RenderArmorWardrobe2D() {
     if (wardrobeTab_ == 0) {
         for (int i = 0; i < static_cast<int>(NUM_ARMOR_SUITS); ++i) {
             const auto& a = ARMOR_CATALOG[i];
-            Rectangle cardRec = { 580.0f, startY + i * (cardH + gapY), 650.0f, cardH };
+            Rectangle cardRec = { rightColX, startY + i * (cardH + gapY), 650.0f, cardH };
             bool isPrev = (wardrobePreviewArmor_ == i);
             bool isEquipped = (save_.equippedArmor == i);
             bool isUnlocked = save_.unlockedArmors[i];
@@ -3079,7 +3104,7 @@ void RailGame::RenderArmorWardrobe2D() {
         // Clank Outfits Tab
         for (int i = 0; i < static_cast<int>(NUM_CLANK_SKINS); ++i) {
             const auto& c = CLANK_SKIN_CATALOG[i];
-            Rectangle cardRec = { 580.0f, startY + i * (cardH + 10.0f), 650.0f, cardH };
+            Rectangle cardRec = { rightColX, startY + i * (cardH + 10.0f), 650.0f, cardH };
             bool isPrev = (wardrobePreviewClank_ == i);
             bool isEquipped = (save_.equippedClankSkin == i);
             bool isUnlocked = save_.unlockedClankSkins[i];
@@ -3161,24 +3186,28 @@ void RailGame::RenderArmorWardrobe2D() {
 }
 
 void RailGame::RenderSettings2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 245 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 24, 245 });
+
+    float setW = 1100.0f;
+    float setX = (virtualWidth_ - setW) * 0.5f;
+    float rightColX = setX + 590.0f;
 
     const char* sTitle = "SYSTEM SETTINGS // AUDIO, VISUALS & CONTROLS";
-    DrawText(sTitle, 60, 32, 26, WHITE);
+    DrawText(sTitle, static_cast<int>(setX), 32, 26, WHITE);
 
     char devBuf[128];
     std::snprintf(devBuf, sizeof(devBuf), "ACTIVE INPUT: %s", activeInputDevice_.c_str());
     int dw = MeasureText(devBuf, 16);
-    DrawText(devBuf, VIRTUAL_WIDTH - 60 - dw, 38, 16, GOLD);
+    DrawText(devBuf, static_cast<int>(setX + setW - dw), 38, 16, GOLD);
 
-    DrawLine(60, 72, VIRTUAL_WIDTH - 60, 72, { 255, 255, 255, 55 });
+    DrawLine(static_cast<int>(setX), 72, static_cast<int>(setX + setW), 72, { 255, 255, 255, 55 });
 
     // --- LEFT COLUMN: AUDIO CONTROLS ---
-    DrawText("AUDIO BALANCING", 60, 92, 18, SKYBLUE);
+    DrawText("AUDIO BALANCING", static_cast<int>(setX), 92, 18, SKYBLUE);
 
     auto DrawSlider = [&](float y, const char* label, float& val, Color barCol) {
-        DrawText(label, 60, static_cast<int>(y), 16, WHITE);
-        Rectangle track = { 60.0f, y + 26.0f, 480.0f, 22.0f };
+        DrawText(label, static_cast<int>(setX), static_cast<int>(y), 16, WHITE);
+        Rectangle track = { setX, y + 26.0f, 480.0f, 22.0f };
         DrawRectangleRec(track, { 18, 24, 38, 255 });
         DrawRectangleLinesEx(track, 1.5f, { 80, 110, 150, 200 });
 
@@ -3206,7 +3235,7 @@ void RailGame::RenderSettings2D() {
     DrawSlider(252.0f, "SOUND EFFECTS (SFX)", save_.sfxVolume, ORANGE);
 
     // Mute Toggle Button
-    Rectangle muteBtn = { 60.0f, 324.0f, 240.0f, 44.0f };
+    Rectangle muteBtn = { setX, 324.0f, 240.0f, 44.0f };
     bool isMuted = audio_.IsMuted();
     DrawRectangleRec(muteBtn, isMuted ? Color{ 75, 25, 30, 255 } : Color{ 22, 45, 38, 255 });
     DrawRectangleLinesEx(muteBtn, 1.8f, isMuted ? RED : GREEN);
@@ -3217,9 +3246,9 @@ void RailGame::RenderSettings2D() {
     }
 
     // Screen Flashes Toggle
-    DrawText("SCREEN FLASH EFFECTS:", 60, 382, 15, WHITE);
-    Rectangle flashOnBtn = { 60.0f, 404.0f, 115.0f, 36.0f };
-    Rectangle flashOffBtn = { 185.0f, 404.0f, 115.0f, 36.0f };
+    DrawText("SCREEN FLASH EFFECTS:", static_cast<int>(setX), 382, 15, WHITE);
+    Rectangle flashOnBtn = { setX, 404.0f, 115.0f, 36.0f };
+    Rectangle flashOffBtn = { setX + 125.0f, 404.0f, 115.0f, 36.0f };
     DrawRectangleRec(flashOnBtn, save_.screenFlashes ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
     DrawRectangleLinesEx(flashOnBtn, save_.screenFlashes ? 2.0f : 1.2f, save_.screenFlashes ? GOLD : GRAY);
     DrawText("ENABLED", static_cast<int>(flashOnBtn.x + 22), static_cast<int>(flashOnBtn.y + 10), 13, save_.screenFlashes ? GOLD : LIGHTGRAY);
@@ -3231,10 +3260,10 @@ void RailGame::RenderSettings2D() {
     if (IsButtonClicked(flashOffBtn)) { save_.screenFlashes = false; audio_.PlayUiClick(); }
 
     // --- GAMEPLAY SOUNDTRACK JUKEBOX SELECTOR ---
-    DrawText("GAMEPLAY SOUNDTRACK JUKEBOX [N]:", 60, 456, 15, WHITE);
-    Rectangle prevTrackBtn = { 60.0f, 478.0f, 42.0f, 38.0f };
-    Rectangle nextTrackBtn = { 538.0f, 478.0f, 42.0f, 38.0f };
-    Rectangle trackCardRec = { 108.0f, 478.0f, 424.0f, 38.0f };
+    DrawText("GAMEPLAY SOUNDTRACK JUKEBOX [N]:", static_cast<int>(setX), 456, 15, WHITE);
+    Rectangle prevTrackBtn = { setX, 478.0f, 42.0f, 38.0f };
+    Rectangle nextTrackBtn = { setX + 478.0f, 478.0f, 42.0f, 38.0f };
+    Rectangle trackCardRec = { setX + 48.0f, 478.0f, 424.0f, 38.0f };
 
     DrawRectangleRec(prevTrackBtn, IsRectHovered(prevTrackBtn) ? Color{ 40, 65, 100, 255 } : Color{ 20, 28, 44, 220 });
     DrawRectangleLinesEx(prevTrackBtn, 1.5f, SKYBLUE);
@@ -3262,17 +3291,17 @@ void RailGame::RenderSettings2D() {
     int tlw = MeasureText(tLabel, 12);
     DrawText(tLabel, static_cast<int>(trackCardRec.x + (trackCardRec.width - tlw) / 2.0f), static_cast<int>(trackCardRec.y + 12), 12, save_.musicTrackChoice == 0 ? GOLD : WHITE);
 
-    DrawText("* Press [N] during gameplay to skip track instantly", 60, 524, 12, { 140, 180, 220, 200 });
+    DrawText("* Press [N] during gameplay to skip track instantly", static_cast<int>(setX), 524, 12, { 140, 180, 220, 200 });
 
     // --- RIGHT COLUMN: VISUALS, GAMEPAD & CONTROLS ---
-    DrawText("VISUALS, CONTROLS & GAMEPAD", 650, 92, 18, SKYBLUE);
+    DrawText("VISUALS, CONTROLS & GAMEPAD", static_cast<int>(rightColX), 92, 18, SKYBLUE);
 
     // Screen Shake Intensity
-    DrawText("CAMERA SHAKE INTENSITY:", 650, 124, 16, WHITE);
+    DrawText("CAMERA SHAKE INTENSITY:", static_cast<int>(rightColX), 124, 16, WHITE);
     const char* shakeLabels[3] = { "OFF (0%)", "NORMAL (50%)", "INTENSE (100%)" };
     float shakeVals[3] = { 0.0f, 0.5f, 1.0f };
     for (int i = 0; i < 3; ++i) {
-        Rectangle sb = { 650.0f + i * 168.0f, 150.0f, 156.0f, 38.0f };
+        Rectangle sb = { rightColX + i * 168.0f, 150.0f, 156.0f, 38.0f };
         bool sel = (std::abs(save_.screenShakeScale - shakeVals[i]) < 0.15f);
         DrawRectangleRec(sb, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
         DrawRectangleLinesEx(sb, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
@@ -3284,11 +3313,11 @@ void RailGame::RenderSettings2D() {
     }
 
     // Target FPS
-    DrawText("TARGET PERFORMANCE FPS:", 650, 206, 16, WHITE);
+    DrawText("TARGET PERFORMANCE FPS:", static_cast<int>(rightColX), 206, 16, WHITE);
     int fpsVals[3] = { 60, 120, 30 };
     const char* fpsLabels[3] = { "60 FPS (BALANCED)", "120 FPS (ULTRA)", "30 FPS (SAVER)" };
     for (int f = 0; f < 3; ++f) {
-        Rectangle fb = { 650.0f + f * 168.0f, 232.0f, 156.0f, 38.0f };
+        Rectangle fb = { rightColX + f * 168.0f, 232.0f, 156.0f, 38.0f };
         bool sel = (save_.targetFps == fpsVals[f]);
         DrawRectangleRec(fb, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
         DrawRectangleLinesEx(fb, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
@@ -3301,10 +3330,10 @@ void RailGame::RenderSettings2D() {
     }
 
     // Swipe Sensitivity
-    DrawText("SWIPE RAIL-SWITCH SENSITIVITY:", 650, 288, 16, WHITE);
+    DrawText("SWIPE RAIL-SWITCH SENSITIVITY:", static_cast<int>(rightColX), 288, 16, WHITE);
     const char* sensLabels[3] = { "LOW (PRECISE)", "MEDIUM (NORMAL)", "HIGH (FAST)" };
     for (int s = 0; s < 3; ++s) {
-        Rectangle sensBtn = { 650.0f + s * 168.0f, 314.0f, 156.0f, 38.0f };
+        Rectangle sensBtn = { rightColX + s * 168.0f, 314.0f, 156.0f, 38.0f };
         bool sel = (save_.swipeSensitivity == s);
         DrawRectangleRec(sensBtn, sel ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
         DrawRectangleLinesEx(sensBtn, sel ? 2.0f : 1.2f, sel ? GOLD : GRAY);
@@ -3316,9 +3345,9 @@ void RailGame::RenderSettings2D() {
     }
 
     // Handedness
-    DrawText("MOBILE ACTION BUTTONS HANDEDNESS:", 650, 370, 16, WHITE);
-    Rectangle handRight = { 650.0f, 396.0f, 210.0f, 38.0f };
-    Rectangle handLeft  = { 872.0f, 396.0f, 210.0f, 38.0f };
+    DrawText("MOBILE ACTION BUTTONS HANDEDNESS:", static_cast<int>(rightColX), 370, 16, WHITE);
+    Rectangle handRight = { rightColX, 396.0f, 210.0f, 38.0f };
+    Rectangle handLeft  = { rightColX + 222.0f, 396.0f, 210.0f, 38.0f };
     DrawRectangleRec(handRight, !save_.leftHandedControls ? Color{ 35, 65, 105, 255 } : Color{ 18, 24, 38, 220 });
     DrawRectangleLinesEx(handRight, !save_.leftHandedControls ? 2.0f : 1.2f, !save_.leftHandedControls ? GOLD : GRAY);
     DrawText("RIGHT-HANDED (DEFAULT)", static_cast<int>(handRight.x + 12), static_cast<int>(handRight.y + 11), 13, !save_.leftHandedControls ? GOLD : LIGHTGRAY);
@@ -3330,7 +3359,7 @@ void RailGame::RenderSettings2D() {
     if (IsButtonClicked(handLeft)) { save_.leftHandedControls = true; audio_.PlayUiClick(); }
 
     // Clear Save Data Button (Right Column)
-    Rectangle resetBtn = { 650.0f, 468.0f, 310.0f, 42.0f };
+    Rectangle resetBtn = { rightColX, 468.0f, 310.0f, 42.0f };
     DrawRectangleRec(resetBtn, showResetConfirm_ ? Color{ 110, 30, 35, 255 } : Color{ 48, 20, 26, 230 });
     DrawRectangleLinesEx(resetBtn, 2.0f, RED);
     DrawText(showResetConfirm_ ? "CONFIRM RESET PROGRESS?" : "CLEAR SAVE DATA (RESET)", static_cast<int>(resetBtn.x + 18), static_cast<int>(resetBtn.y + 13), 14, WHITE);
@@ -3356,7 +3385,7 @@ void RailGame::RenderSettings2D() {
         }
     }
     if (showResetConfirm_) {
-        Rectangle cancelReset = { 975.0f, 468.0f, 110.0f, 42.0f };
+        Rectangle cancelReset = { rightColX + 325.0f, 468.0f, 110.0f, 42.0f };
         DrawRectangleRec(cancelReset, { 28, 38, 52, 240 });
         DrawRectangleLinesEx(cancelReset, 1.5f, SKYBLUE);
         DrawText("CANCEL", static_cast<int>(cancelReset.x + 20), static_cast<int>(cancelReset.y + 13), 14, WHITE);
@@ -3364,13 +3393,13 @@ void RailGame::RenderSettings2D() {
     }
 
     // --- BOTTOM ROW: FOOTER INFO & BACK ---
-    DrawLine(60, 545, VIRTUAL_WIDTH - 60, 545, { 255, 255, 255, 45 });
+    DrawLine(static_cast<int>(setX), 545, static_cast<int>(setX + setW), 545, { 255, 255, 255, 45 });
 
     const char* bInfo = "RATCHET & CLANK: RAILFINITY  |  v1.3.0 EXPANSION  |  SEBINY LABS ENGINE";
     int biw = MeasureText(bInfo, 13);
-    DrawText(bInfo, (VIRTUAL_WIDTH - biw) / 2, 555, 13, { 140, 175, 215, 180 });
+    DrawText(bInfo, static_cast<int>((virtualWidth_ - biw) / 2), 555, 13, { 140, 175, 215, 180 });
 
-    Rectangle backBtn = { 60.0f, 580.0f, 260.0f, 48.0f };
+    Rectangle backBtn = { setX, 580.0f, 260.0f, 48.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK", static_cast<int>(backBtn.x + 98), static_cast<int>(backBtn.y + 16), 16, WHITE);
@@ -3382,17 +3411,20 @@ void RailGame::RenderSettings2D() {
 }
 
 void RailGame::RenderCareerStats2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 245 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 24, 245 });
+
+    float cardW = 1160.0f;
+    float cardX = (virtualWidth_ - cardW) * 0.5f;
 
     const char* sTitle = "GALACTIC CAREER DOSSIER";
-    DrawText(sTitle, 60, 32, 22, GOLD);
+    DrawText(sTitle, static_cast<int>(cardX), 32, 22, GOLD);
 
     char boltBuf[128];
     std::snprintf(boltBuf, sizeof(boltBuf), "CURRENT: %d BOLTS  |  %d RARITANIUM", save_.bolts, save_.raritanium);
     int bbw = MeasureText(boltBuf, 15);
-    DrawText(boltBuf, VIRTUAL_WIDTH - 60 - bbw, 36, 15, SKYBLUE);
+    DrawText(boltBuf, static_cast<int>(cardX + cardW - bbw), 36, 15, SKYBLUE);
 
-    DrawLine(60, 68, VIRTUAL_WIDTH - 60, 68, { 255, 255, 255, 55 });
+    DrawLine(static_cast<int>(cardX), 68, static_cast<int>(cardX + cardW), 68, { 255, 255, 255, 55 });
 
     auto DrawStatRow = [](float x, float y, float w, const char* label, const std::string& val, Color valCol) {
         DrawText(label, static_cast<int>(x), static_cast<int>(y), 15, WHITE);
@@ -3402,7 +3434,7 @@ void RailGame::RenderCareerStats2D() {
     };
 
     // LEFT CARD: FLIGHT & COMBAT RECORDS
-    Rectangle leftCard = { 60.0f, 84.0f, 560.0f, 475.0f };
+    Rectangle leftCard = { cardX, 84.0f, 560.0f, 475.0f };
     DrawRectangleRec(leftCard, { 14, 20, 36, 230 });
     DrawRectangleLinesEx(leftCard, 2.0f, ORANGE);
     DrawRectangle(static_cast<int>(leftCard.x), static_cast<int>(leftCard.y), static_cast<int>(leftCard.width), 34, { 38, 22, 16, 240 });
@@ -3430,7 +3462,7 @@ void RailGame::RenderCareerStats2D() {
     DrawStatRow(leftCard.x + 20, sy, leftCard.width - 40, "Equipped Gadgetron Weapon:", GetWeaponCatalog()[save_.equippedWeapon].name, SKYBLUE);
 
     // RIGHT CARD: ARSENAL & HARDWARE ACCREDITATION
-    Rectangle rightCard = { 660.0f, 84.0f, 560.0f, 475.0f };
+    Rectangle rightCard = { cardX + 600.0f, 84.0f, 560.0f, 475.0f };
     DrawRectangleRec(rightCard, { 14, 20, 36, 230 });
     DrawRectangleLinesEx(rightCard, 2.0f, SKYBLUE);
     DrawRectangle(static_cast<int>(rightCard.x), static_cast<int>(rightCard.y), static_cast<int>(rightCard.width), 34, { 18, 28, 48, 240 });
@@ -3463,8 +3495,8 @@ void RailGame::RenderCareerStats2D() {
     DrawStatRow(rightCard.x + 20, sy, rightCard.width - 40, "Current Soundtrack:", audio_.GetCurrentActionTrackName(), ORANGE);
 
     // Bottom Navigation Bar
-    DrawLine(60, 580, VIRTUAL_WIDTH - 60, 580, { 255, 255, 255, 45 });
-    Rectangle statsBackBtn = { 60.0f, 600.0f, 260.0f, 48.0f };
+    DrawLine(static_cast<int>(cardX), 580, static_cast<int>(cardX + cardW), 580, { 255, 255, 255, 45 });
+    Rectangle statsBackBtn = { cardX, 600.0f, 260.0f, 48.0f };
     DrawRectangleRec(statsBackBtn, IsRectHovered(statsBackBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(statsBackBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU [ESC]", static_cast<int>(statsBackBtn.x + 36), static_cast<int>(statsBackBtn.y + 16), 16, WHITE);
@@ -3475,14 +3507,18 @@ void RailGame::RenderCareerStats2D() {
 }
 
 void RailGame::RenderSkillPoints2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 24, 235 });
-    DrawText("INTERGALACTIC SKILL POINTS // CHALLENGES & REWARDS", 60, 38, 28, GOLD);
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 24, 235 });
+
+    float spW = 1140.0f;
+    float spX = (virtualWidth_ - spW) * 0.5f;
+
+    DrawText("INTERGALACTIC SKILL POINTS // CHALLENGES & REWARDS", static_cast<int>(spX), 38, 28, GOLD);
 
     const auto& cat = GetSkillPointCatalog();
     for (int i = 0; i < static_cast<int>(NUM_SKILL_POINTS); ++i) {
         int col = i % 2;
         int row = i / 2;
-        Rectangle r = { 60.0f + col * 580.0f, 92.0f + row * 92.0f, 560.0f, 82.0f };
+        Rectangle r = { spX + col * 580.0f, 92.0f + row * 92.0f, 560.0f, 82.0f };
         bool done = save_.skillPoints[i];
 
         DrawRectangleRec(r, done ? Color{ 26, 46, 62, 240 } : Color{ 16, 20, 32, 225 });
@@ -3496,7 +3532,7 @@ void RailGame::RenderSkillPoints2D() {
         DrawText(rew, static_cast<int>(r.x + 410), static_cast<int>(r.y + 12), 15, done ? GREEN : SKYBLUE);
     }
 
-    Rectangle backBtn = { 60.0f, 575.0f, 220.0f, 48.0f };
+    Rectangle backBtn = { spX, 575.0f, 220.0f, 48.0f };
     DrawRectangleRec(backBtn, IsRectHovered(backBtn) ? Color{ 45, 68, 100, 255 } : Color{ 24, 36, 56, 255 });
     DrawRectangleLinesEx(backBtn, 2.0f, ORANGE);
     DrawText("< BACK TO MENU", static_cast<int>(backBtn.x + 34), static_cast<int>(backBtn.y + 16), 16, WHITE);
@@ -3507,14 +3543,14 @@ void RailGame::RenderSkillPoints2D() {
 }
 
 void RailGame::RenderPauseOverlay2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 8, 12, 22, 200 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 8, 12, 22, 200 });
     const char* t = "HOLOCOMM PAUSED";
     int tw = MeasureText(t, 40);
-    DrawText(t, (VIRTUAL_WIDTH - tw) / 2, 220, 40, GOLD);
+    DrawText(t, static_cast<int>((virtualWidth_ - tw) / 2), 220, 40, GOLD);
 
-    Rectangle resBtn      = { VIRTUAL_WIDTH / 2.0f - 160.0f, 285.0f, 320.0f, 52.0f };
-    Rectangle settingsBtn = { VIRTUAL_WIDTH / 2.0f - 160.0f, 350.0f, 320.0f, 52.0f };
-    Rectangle menuBtn     = { VIRTUAL_WIDTH / 2.0f - 160.0f, 415.0f, 320.0f, 52.0f };
+    Rectangle resBtn      = { virtualWidth_ / 2.0f - 160.0f, 285.0f, 320.0f, 52.0f };
+    Rectangle settingsBtn = { virtualWidth_ / 2.0f - 160.0f, 350.0f, 320.0f, 52.0f };
+    Rectangle menuBtn     = { virtualWidth_ / 2.0f - 160.0f, 415.0f, 320.0f, 52.0f };
 
     DrawRectangleRec(resBtn, IsRectHovered(resBtn) ? Color{ 40, 75, 110, 255 } : Color{ 22, 38, 60, 255 });
     DrawRectangleLinesEx(resBtn, 2.0f, SKYBLUE);
@@ -3545,14 +3581,14 @@ void RailGame::RenderPauseOverlay2D() {
 }
 
 void RailGame::RenderGameOver2D() {
-    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, { 12, 8, 18, 220 });
+    DrawRectangle(0, 0, static_cast<int>(virtualWidth_), 720, { 12, 8, 18, 220 });
 
     const char* goTitle = "NANOTECH DEPLETED // WIPEOUT!";
     int gow = MeasureText(goTitle, 44);
-    DrawText(goTitle, (VIRTUAL_WIDTH - gow) / 2, 165, 44, ORANGE);
+    DrawText(goTitle, static_cast<int>((virtualWidth_ - gow) / 2), 165, 44, ORANGE);
 
-    DrawRectangle(VIRTUAL_WIDTH / 2 - 250, 240, 500, 190, { 16, 22, 38, 240 });
-    DrawRectangleLinesEx({ VIRTUAL_WIDTH / 2.0f - 250.0f, 240.0f, 500.0f, 190.0f }, 2.0f, GOLD);
+    DrawRectangle(static_cast<int>(virtualWidth_ / 2 - 250), 240, 500, 190, { 16, 22, 38, 240 });
+    DrawRectangleLinesEx({ virtualWidth_ / 2.0f - 250.0f, 240.0f, 500.0f, 190.0f }, 2.0f, GOLD);
 
     char l1[96], l2[96], l3[96], l4[96];
     std::snprintf(l1, sizeof(l1), "DISTANCE GRINDED: %d m   (BEST: %d m)",
@@ -3561,13 +3597,13 @@ void RailGame::RenderGameOver2D() {
     std::snprintf(l3, sizeof(l3), "RARITANIUM MINED: +%d", runRaritaniumEarned_);
     std::snprintf(l4, sizeof(l4), "CRATES SMASHED: %d   |   DRONES BLASTED: %d", runCrates_, runKills_);
 
-    DrawText(l1, VIRTUAL_WIDTH / 2 - 215, 264, 20, WHITE);
-    DrawText(l2, VIRTUAL_WIDTH / 2 - 215, 304, 19, GOLD);
-    DrawText(l3, VIRTUAL_WIDTH / 2 - 215, 342, 18, SKYBLUE);
-    DrawText(l4, VIRTUAL_WIDTH / 2 - 215, 380, 17, LIGHTGRAY);
+    DrawText(l1, static_cast<int>(virtualWidth_ / 2 - 215), 264, 20, WHITE);
+    DrawText(l2, static_cast<int>(virtualWidth_ / 2 - 215), 304, 19, GOLD);
+    DrawText(l3, static_cast<int>(virtualWidth_ / 2 - 215), 342, 18, SKYBLUE);
+    DrawText(l4, static_cast<int>(virtualWidth_ / 2 - 215), 380, 17, LIGHTGRAY);
 
-    Rectangle retryBtn = { VIRTUAL_WIDTH / 2.0f - 250.0f, 455.0f, 240.0f, 56.0f };
-    Rectangle menuBtn  = { VIRTUAL_WIDTH / 2.0f + 10.0f,  455.0f, 240.0f, 56.0f };
+    Rectangle retryBtn = { virtualWidth_ / 2.0f - 250.0f, 455.0f, 240.0f, 56.0f };
+    Rectangle menuBtn  = { virtualWidth_ / 2.0f + 10.0f,  455.0f, 240.0f, 56.0f };
 
     DrawRectangleRec(retryBtn, IsRectHovered(retryBtn) ? Color{ 40, 95, 65, 255 } : Color{ 24, 64, 46, 255 });
     DrawRectangleLinesEx(retryBtn, 2.0f, GREEN);
@@ -3590,7 +3626,7 @@ void RailGame::RenderSkillToast2D() const {
     if (!toast_.active) return;
 
     float alpha = std::clamp(toast_.timer * 1.5f, 0.0f, 1.0f);
-    Rectangle box = { VIRTUAL_WIDTH / 2.0f - 260.0f, 105.0f, 520.0f, 64.0f };
+    Rectangle box = { virtualWidth_ / 2.0f - 260.0f, 105.0f, 520.0f, 64.0f };
     DrawRectangleRec(box, { 16, 28, 48, static_cast<unsigned char>(235 * alpha) });
     DrawRectangleLinesEx(box, 2.0f, GOLD);
 
@@ -3609,7 +3645,7 @@ void RailGame::RenderRadioComm2D() const {
 
     float boxW = 580.0f;
     float boxH = 92.0f;
-    float boxX = (VIRTUAL_WIDTH - boxW) * 0.5f;
+    float boxX = (virtualWidth_ - boxW) * 0.5f;
     float boxY = 82.0f;
 
     Color borderCol = (radioComm_.speaker == CommSpeaker::DR_NEFARIOUS) ? Color{ 210, 60, 255, aByte } :

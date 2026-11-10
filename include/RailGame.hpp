@@ -179,6 +179,8 @@ private:
     Texture2D rivetEyeDiff_{};
     bool rivetTexturesLoaded_ = false;
     std::vector<Texture2D> defaultModelTextures_{};
+    Shader worldHighpShader_{};
+    bool worldHighpShaderLoaded_ = false;
 
     PlayerLombax player_{};
     BossDropship boss_{};

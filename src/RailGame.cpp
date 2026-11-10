@@ -175,6 +175,48 @@ void RailGame::Init() {
     rivetFur2_      = TryLoadTex({ "assets/models/ratchet/RivetFur2.png",      "models/ratchet/RivetFur2.png",      "../assets/models/ratchet/RivetFur2.png" });
     rivetEyeDiff_   = TryLoadTex({ "assets/models/ratchet/RivetEyeDiff.png",   "models/ratchet/RivetEyeDiff.png",   "../assets/models/ratchet/RivetEyeDiff.png" });
     rivetTexturesLoaded_ = (rivetHeadDiff_.id != 0);
+
+#if defined(PLATFORM_ANDROID)
+    // OpenGL ES 2.0 default Raylib shader uses mediump float (10-bit half-float), causing severe vertex
+    // Z-quantization, diagonal polygon slicing, and asset pop-out on Mali GPUs. Force 32-bit highp float!
+    const char* vHighp =
+        "#version 100\n"
+        "precision highp float;\n"
+        "attribute highp vec3 vertexPosition;\n"
+        "attribute mediump vec2 vertexTexCoord;\n"
+        "attribute mediump vec4 vertexColor;\n"
+        "uniform highp mat4 mvp;\n"
+        "varying mediump vec2 fragTexCoord;\n"
+        "varying mediump vec4 fragColor;\n"
+        "void main()\n"
+        "{\n"
+        "    fragTexCoord = vertexTexCoord;\n"
+        "    fragColor = vertexColor;\n"
+        "    gl_Position = mvp * vec4(vertexPosition, 1.0);\n"
+        "}\n";
+    const char* fMedp =
+        "#version 100\n"
+        "precision mediump float;\n"
+        "varying vec2 fragTexCoord;\n"
+        "varying vec4 fragColor;\n"
+        "uniform sampler2D texture0;\n"
+        "uniform vec4 colDiffuse;\n"
+        "void main()\n"
+        "{\n"
+        "    vec4 texelColor = texture2D(texture0, fragTexCoord);\n"
+        "    gl_FragColor = texelColor * colDiffuse * fragColor;\n"
+        "}\n";
+    worldHighpShader_ = LoadShaderFromMemory(vHighp, fMedp);
+    if (worldHighpShader_.id != 0) {
+        worldHighpShaderLoaded_ = true;
+        if (ratchetModelLoaded_) {
+            for (int i = 0; i < ratchetModel_.materialCount; ++i) {
+                ratchetModel_.materials[i].shader = worldHighpShader_;
+            }
+        }
+        TraceLog(LOG_INFO, "ANDROID ES2: Loaded 32-bit highp vertex shader (ID %u)", worldHighpShader_.id);
+    }
+#endif
 }
 
 void RailGame::Shutdown() {
@@ -188,6 +230,10 @@ void RailGame::Shutdown() {
     if (ratchetModelLoaded_) {
         UnloadModel(ratchetModel_);
         ratchetModelLoaded_ = false;
+    }
+    if (worldHighpShaderLoaded_) {
+        UnloadShader(worldHighpShader_);
+        worldHighpShaderLoaded_ = false;
     }
     if (splashLogo_.id != 0) {
         UnloadTexture(splashLogo_);
@@ -399,6 +445,11 @@ int RailGame::GetCorridorMinLaneAt(float worldZ) const {
 
 bool RailGame::IsRailActiveAt(int lane, float z) const {
     if (lane < 0 || lane >= NUM_LANES) return false;
+    float worldZ = totalWorldTravel_ + z;
+    int minLane = GetCorridorMinLaneAt(worldZ);
+    if (lane < minLane || lane > minLane + 2) {
+        return false; // Strictly capped at 3 active rails at a time!
+    }
     return !IsRailGapAt(lane, z);
 }
 

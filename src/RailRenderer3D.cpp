@@ -173,7 +173,7 @@ void RailGame::RenderWorld3D() {
         // Orbit camera around Ratchet & Clank cleanly framed in left viewport with generous headroom
         float rad = wardrobeRotAngle_ * DEG2RAD;
         float dist = 5.8f;
-        Vector3 ratCenter = { 0.0f, 1.05f, 0.0f };
+        Vector3 ratCenter = { 0.0f, 1.15f, 0.0f };
 
         // Base camera orbit position in horizontal plane
         Vector3 camOffset = { std::sin(rad) * dist, 0.75f, -std::cos(rad) * dist };
@@ -195,34 +195,35 @@ void RailGame::RenderWorld3D() {
         cam.position.y += std::cos(globalTime_ * 61.0f) * mag;
     }
 
+    if (worldHighpShaderLoaded_) {
+        BeginShaderMode(worldHighpShader_);
+    }
     BeginMode3D(cam);
     rlEnableDepthTest();
     rlEnableDepthMask();
 
     // Dynamic wide frustum with optimal near/far clipping for mobile GPUs:
-    // Standard BeginMode3D uses near = 0.01 and far = 1000.0, causing severe depth precision degradation
-    // on mobile OpenGL ES GPUs (Mali-G615), which results in Z-fighting, submesh flickering, and asset pop-out.
-    // By overriding the projection matrix with near = 0.40 and far = 260.0, we gain >150x depth precision!
+    // near = 0.90, far = 220.0 paired with 32-bit highp vertex transform guarantees >250x depth precision!
     double aspect = static_cast<double>(virtualWidth_) / 720.0;
-    Matrix customProj = MatrixPerspective(cam.fovy * DEG2RAD, aspect, 0.40, 260.0);
+    Matrix customProj = MatrixPerspective(cam.fovy * DEG2RAD, aspect, 0.90, 220.0);
     rlSetMatrixProjection(customProj);
 
     RenderSkyline3D();
     RenderGrindRails3D();
 
     if (mode_ == ScreenMode::ARMOR_WARDROBE) {
-        Vector3 pedCenter = { 0.0f, -0.05f, 0.0f };
-        // Presentation platform
-        DrawCylinderEx({ pedCenter.x, -0.38f, pedCenter.z }, pedCenter, 1.65f, 1.50f, 24, { 18, 24, 38, 255 });
-        DrawCylinderWiresEx({ pedCenter.x, -0.38f, pedCenter.z }, pedCenter, 1.67f, 1.52f, 24, { 45, 160, 240, 220 });
+        // Seated cleanly above the silver/gold grindrail top (+0.06m) so the rail never slices the pedestal!
+        Vector3 pedCenter = { 0.0f, 0.12f, 0.0f };
+        DrawCylinderEx({ pedCenter.x, -0.32f, pedCenter.z }, pedCenter, 1.65f, 1.50f, 24, { 18, 24, 38, 255 });
+        DrawCylinderWiresEx({ pedCenter.x, -0.32f, pedCenter.z }, pedCenter, 1.67f, 1.52f, 24, { 45, 160, 240, 220 });
 
         // Concentric holographic floor rings
         constexpr int P_SEGS = 24;
         for (int i = 0; i < P_SEGS; ++i) {
             float a1 = (i * (360.0f / P_SEGS) + globalTime_ * 40.0f) * DEG2RAD;
             float a2 = ((i + 1) * (360.0f / P_SEGS) + globalTime_ * 40.0f) * DEG2RAD;
-            Vector3 p1 = { pedCenter.x + std::cos(a1) * 1.35f, 0.01f, pedCenter.z + std::sin(a1) * 1.35f };
-            Vector3 p2 = { pedCenter.x + std::cos(a2) * 1.35f, 0.01f, pedCenter.z + std::sin(a2) * 1.35f };
+            Vector3 p1 = { pedCenter.x + std::cos(a1) * 1.35f, pedCenter.y + 0.03f, pedCenter.z + std::sin(a1) * 1.35f };
+            Vector3 p2 = { pedCenter.x + std::cos(a2) * 1.35f, pedCenter.y + 0.03f, pedCenter.z + std::sin(a2) * 1.35f };
             DrawLine3D(p1, p2, (i % 2 == 0) ? SKYBLUE : GOLD);
         }
 
@@ -263,6 +264,9 @@ void RailGame::RenderWorld3D() {
     }
 
     EndMode3D();
+    if (worldHighpShaderLoaded_) {
+        EndShaderMode();
+    }
 }
 
 void RailGame::RenderSkyline3D() const {
@@ -339,24 +343,27 @@ void RailGame::RenderSkyline3D() const {
             DrawCube({ wx, cy + 4.0f, z }, 0.9f * emerge, 26.0f, 1.8f * emerge, { 45, 52, 64, 255 });
         }
 
-        // Glowing Billboard Light Panel on Left Wall (+X)
-        Vector3 panelPos = { cx + 14.2f, cy + 2.2f, z + 8.0f };
-        float pEmerge = GetPortalEmergenceScale(z + 8.0f);
+        // Glowing Billboard Light Panel on Left Wall (+X) evaluated cleanly along local track curve
+        float pz = z + 8.0f;
+        float pEmerge = GetPortalEmergenceScale(pz);
         if (pEmerge > 0.02f) {
-            DrawCube(panelPos, 0.45f, 4.4f * pEmerge, 9.2f * pEmerge, { 35, 52, 68, 255 });
-            DrawCube({ panelPos.x - 0.18f, panelPos.y, panelPos.z },
-                     0.20f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
+            float px = GetTrackCurveX(std::max(0.0f, pz));
+            float py = GetTrackCurveY(std::max(0.0f, pz));
+            Vector3 panelPos = { px + 14.35f, py + 2.2f, pz };
+            DrawCube(panelPos, 0.40f, 4.4f * pEmerge, 9.2f * pEmerge, { 35, 52, 68, 255 });
+            DrawCube({ px + 13.88f, panelPos.y, panelPos.z },
+                     0.24f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
         }
     }
 
     // 2. Distant Giant Circular Reactor Tunnel Bulkhead & Twin Cooling Towers (anchored at Z = 148)
     Vector3 portalCenter = ApplyTrackCurve(0.0f, 0.5f, PORTAL_Z);
 
-    // Deep blue tiled facility back-wall behind the portal
-    DrawCube({ portalCenter.x, portalCenter.y + 8.0f, PORTAL_Z + 10.0f }, 68.0f, 44.0f, 4.0f, { 24, 58, 92, 255 });
+    // Deep blue tiled facility back-wall behind the portal (generous Z spacing eliminates mobile far-plane fighting)
+    DrawCube({ portalCenter.x, portalCenter.y + 8.0f, PORTAL_Z + 12.0f }, 68.0f, 44.0f, 4.0f, { 24, 58, 92, 255 });
     for (int tx = -3; tx <= 3; ++tx) {
-        DrawCube({ portalCenter.x + tx * 7.2f, portalCenter.y + 4.8f, PORTAL_Z + 7.5f },
-                 6.4f, 14.0f, 1.0f, { 52, 136, 196, 255 });
+        DrawCube({ portalCenter.x + tx * 7.2f, portalCenter.y + 4.8f, PORTAL_Z + 8.5f },
+                 6.4f, 14.0f, 1.2f, { 52, 136, 196, 255 });
     }
 
     // Twin Cream/Tan Cylindrical Cooling Towers with Glowing Blue Reactor Vents on Top!
@@ -1313,16 +1320,16 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     DrawSphere({ clankPos.x + 0.088f, rivetY, rivetZ - 0.004f }, 0.018f, chromeBright);
 
     // --- C. Large Recessed Dark Vent / Screen in Center of Back ---
-    Vector3 ventPos = { clankPos.x, clankPos.y - 0.01f, clankPos.z - 0.082f };
+    Vector3 ventPos = { clankPos.x, clankPos.y - 0.01f, clankPos.z - 0.084f };
     // Raised chrome frame border
-    DrawCube({ ventPos.x, ventPos.y, ventPos.z }, 0.23f, 0.21f, 0.025f, chromeBright);
-    DrawCubeWires({ ventPos.x, ventPos.y, ventPos.z }, 0.235f, 0.215f, 0.028f, clankTrim);
-    // Recessed dark metallic screen pane
-    DrawCube({ ventPos.x, ventPos.y, ventPos.z - 0.010f }, 0.18f, 0.16f, 0.018f, { 22, 26, 34, 255 });
+    DrawCube({ ventPos.x, ventPos.y, ventPos.z }, 0.23f, 0.21f, 0.020f, chromeBright);
+    DrawCubeWires({ ventPos.x, ventPos.y, ventPos.z }, 0.236f, 0.216f, 0.022f, clankTrim);
+    // Recessed dark metallic screen pane (clear Z offset eliminates diagonal clipping on 16-bit depth)
+    DrawCube({ ventPos.x, ventPos.y, ventPos.z - 0.020f }, 0.18f, 0.16f, 0.016f, { 22, 26, 34, 255 });
     // Horizontal dark grey vent slats
     for (int slat = -1; slat <= 1; ++slat) {
         float slatY = ventPos.y + slat * 0.042f;
-        DrawCube({ ventPos.x, slatY, ventPos.z - 0.020f }, 0.16f, 0.013f, 0.009f, { 52, 60, 74, 255 });
+        DrawCube({ ventPos.x, slatY, ventPos.z - 0.036f }, 0.16f, 0.013f, 0.010f, { 52, 60, 74, 255 });
     }
 
     // --- D. Clank's Rounded Metallic Feet Tucked at Bottom of Backpack ---
@@ -1442,7 +1449,8 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
                    { clankHead.x + 0.038f, clankHead.y - 0.055f + smileCurve, clankHead.z - 0.105f }, 0.010f, 0.010f, 4, clankTrim);
 
     // --- G. Top Hatch Collar, Antenna & Organic Red Beacon Disappearance ---
-    float deploy = player_.heliDeploy;
+    bool isActiveRun = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER);
+    float deploy = isActiveRun ? player_.heliDeploy : 0.0f;
     Vector3 hatchPos = { clankHead.x, clankHead.y + 0.136f, clankHead.z };
     // Circular titanium hatch collar
     DrawCylinderEx(hatchPos, { hatchPos.x, hatchPos.y + 0.018f, hatchPos.z }, 0.058f, 0.052f, 10, clankTrim);

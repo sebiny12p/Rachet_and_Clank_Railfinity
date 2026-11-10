@@ -102,6 +102,7 @@ void RailGame::RenderFrame() {
     }
 
     // Crucial: ClearBackground clears both the color buffer AND the 3D Depth Buffer of renderTarget_!
+    rlEnableDepthMask();
     ClearBackground(skyTop);
 
     // Disable Depth Mask during 2D background gradient so it does NOT write into the 3D depth buffer!
@@ -195,6 +196,8 @@ void RailGame::RenderWorld3D() {
     }
 
     BeginMode3D(cam);
+    rlEnableDepthTest();
+    rlEnableDepthMask();
 
     // Dynamic wide frustum with optimal near/far clipping for mobile GPUs:
     // Standard BeginMode3D uses near = 0.01 and far = 1000.0, causing severe depth precision degradation
@@ -404,20 +407,20 @@ void RailGame::RenderSkyline3D() const {
 }
 
 void RailGame::RenderGrindRails3D() const {
-    // 1. Draw 5-Lane Tubular Metallic Grindrails continuously across all lanes!
-    constexpr float segLen = 3.0f;
+    // 1. Draw Tubular Metallic Grindrails (Strictly capped at active 3-rail corridor!)
+    constexpr float segLen = 3.5f;
     for (int l = 0; l < NUM_LANES; ++l) {
         float lx = GetLaneX(l);
         for (float z = -10.0f; z < 145.0f; z += segLen) {
             float midZ = z + segLen * 0.5f;
-            if (IsRailGapAt(l, midZ)) {
-                // If previous segment was solid and this one is a broken gap, draw an illuminated sheared terminus cap!
-                if (z > 0.0f && !IsRailGapAt(l, midZ - segLen)) {
+            if (!IsRailActiveAt(l, midZ)) {
+                // Not active or in broken gap: draw terminus cap if preceding segment was active
+                if (z > 0.0f && IsRailActiveAt(l, midZ - segLen)) {
                     Vector3 pTerm = ApplyTrackCurve(lx, -0.10f, z);
                     DrawCube(pTerm, 0.72f, 0.44f, 0.36f, { 255, 120, 20, 240 });
                     DrawCubeWires(pTerm, 0.76f, 0.48f, 0.40f, YELLOW);
                 }
-                continue; // Intentional broken gap hazard to hop over
+                continue;
             }
             Vector3 pA = ApplyTrackCurve(lx, -0.10f, z);
             Vector3 pB = ApplyTrackCurve(lx, -0.10f, z + segLen + 0.06f);
@@ -429,11 +432,13 @@ void RailGame::RenderGrindRails3D() const {
             // Bright Silver/Chrome Center Grind Pipe
             DrawCylinderEx(pA, pB, 0.16f, 0.16f, 8, { 205, 218, 228, 255 });
 
-            // Twin Warm Gold/Brass Side Guide Tubes
-            DrawCylinderEx({ pA.x - 0.24f, pA.y - 0.03f, pA.z }, { pB.x - 0.24f, pB.y - 0.03f, pB.z },
-                           0.09f, 0.09f, 6, { 222, 188, 86, 255 });
-            DrawCylinderEx({ pA.x + 0.24f, pA.y - 0.03f, pA.z }, { pB.x + 0.24f, pB.y - 0.03f, pB.z },
-                           0.09f, 0.09f, 6, { 222, 188, 86, 255 });
+            // Twin Warm Gold/Brass Side Guide Tubes (drawn within 42m for maximum mobile GPU efficiency)
+            if (z < 42.0f) {
+                DrawCylinderEx({ pA.x - 0.24f, pA.y - 0.03f, pA.z }, { pB.x - 0.24f, pB.y - 0.03f, pB.z },
+                               0.09f, 0.09f, 6, { 222, 188, 86, 255 });
+                DrawCylinderEx({ pA.x + 0.24f, pA.y - 0.03f, pA.z }, { pB.x + 0.24f, pB.y - 0.03f, pB.z },
+                               0.09f, 0.09f, 6, { 222, 188, 86, 255 });
+            }
         }
     }
 

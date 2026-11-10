@@ -56,6 +56,17 @@ float GetPortalEmergenceScale(float z) {
 }
 } // namespace
 
+inline void DrawLowPolySphere(Vector3 center, float radius, Color color) {
+    if (radius <= 0.08f) {
+        DrawSphereEx(center, radius, 6, 6, color);
+    } else if (radius <= 0.25f) {
+        DrawSphereEx(center, radius, 8, 8, color);
+    } else {
+        DrawSphereEx(center, radius, 12, 12, color);
+    }
+}
+#define DrawSphere(...) DrawLowPolySphere(__VA_ARGS__)
+
 void RailGame::RenderFrame() {
     UpdateVirtualResolution();
 
@@ -93,7 +104,10 @@ void RailGame::RenderFrame() {
     // Crucial: ClearBackground clears both the color buffer AND the 3D Depth Buffer of renderTarget_!
     ClearBackground(skyTop);
 
+    // Disable Depth Mask during 2D background gradient so it does NOT write into the 3D depth buffer!
+    rlDisableDepthMask();
     DrawRectangleGradientV(0, 0, static_cast<int>(virtualWidth_), 720, skyTop, skyBot);
+    rlEnableDepthMask();
 
     RenderWorld3D();
 
@@ -185,15 +199,10 @@ void RailGame::RenderWorld3D() {
     // Dynamic wide frustum with optimal near/far clipping for mobile GPUs:
     // Standard BeginMode3D uses near = 0.01 and far = 1000.0, causing severe depth precision degradation
     // on mobile OpenGL ES GPUs (Mali-G615), which results in Z-fighting, submesh flickering, and asset pop-out.
-    // By overriding the projection matrix with near = 0.35 and far = 240.0, we gain >140x depth precision!
-    rlMatrixMode(RL_PROJECTION);
-    rlLoadIdentity();
-    double nearPlane = 0.35;
-    double farPlane = 240.0;
-    double top = nearPlane * std::tan(cam.fovy * 0.5 * DEG2RAD);
-    double right = top * (static_cast<double>(virtualWidth_) / 720.0);
-    rlFrustum(-right, right, -top, top, nearPlane, farPlane);
-    rlMatrixMode(RL_MODELVIEW);
+    // By overriding the projection matrix with near = 0.40 and far = 260.0, we gain >150x depth precision!
+    double aspect = static_cast<double>(virtualWidth_) / 720.0;
+    Matrix customProj = MatrixPerspective(cam.fovy * DEG2RAD, aspect, 0.40, 260.0);
+    rlSetMatrixProjection(customProj);
 
     RenderSkyline3D();
     RenderGrindRails3D();

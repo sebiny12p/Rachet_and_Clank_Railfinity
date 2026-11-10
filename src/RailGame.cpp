@@ -126,43 +126,54 @@ void RailGame::Init() {
     }
 
     // Load Sebiny Labs Branding Splash Logo
-    const char* splashPath = FileExists("assets/sebiny_splash_logo.png") ? "assets/sebiny_splash_logo.png"
-                           : FileExists("../assets/sebiny_splash_logo.png") ? "../assets/sebiny_splash_logo.png" : nullptr;
-    if (splashPath) {
-        splashLogo_ = LoadTexture(splashPath);
-    }
+    auto TryLoadTex = [](const std::initializer_list<const char*>& paths) -> Texture2D {
+        for (const char* p : paths) {
+#if !defined(PLATFORM_ANDROID)
+            if (!FileExists(p)) continue;
+#endif
+            Texture2D tex = LoadTexture(p);
+            if (tex.id != 0) return tex;
+        }
+        return Texture2D{};
+    };
+
+    splashLogo_ = TryLoadTex({ "assets/sebiny_splash_logo.png", "sebiny_splash_logo.png", "../assets/sebiny_splash_logo.png" });
 
     // Load Authentic 3D Ratchet Head Model (PS3 A Crack in Time)
-    const char* modelPath = FileExists("assets/models/ratchet/ratchet_head.obj") ? "assets/models/ratchet/ratchet_head.obj"
-                          : FileExists("../assets/models/ratchet/ratchet_head.obj") ? "../assets/models/ratchet/ratchet_head.obj"
-                          : FileExists("assets/models/ratchet/Armor0.obj") ? "assets/models/ratchet/Armor0.obj"
-                          : FileExists("../assets/models/ratchet/Armor0.obj") ? "../assets/models/ratchet/Armor0.obj" : nullptr;
-    if (modelPath) {
-        ratchetModel_ = LoadModel(modelPath);
-        ratchetModelLoaded_ = (ratchetModel_.meshCount > 0);
-        if (ratchetModelLoaded_) {
+    const char* modelCandidates[] = {
+        "assets/models/ratchet/ratchet_head.obj",
+        "models/ratchet/ratchet_head.obj",
+        "../assets/models/ratchet/ratchet_head.obj",
+        "assets/models/ratchet/Armor0.obj",
+        "models/ratchet/Armor0.obj",
+        "../assets/models/ratchet/Armor0.obj"
+    };
+    for (const char* path : modelCandidates) {
+#if !defined(PLATFORM_ANDROID)
+        if (!FileExists(path)) continue;
+#endif
+        Model m = LoadModel(path);
+        if (m.meshCount > 0) {
+            ratchetModel_ = m;
+            ratchetModelLoaded_ = true;
             TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials) from %s",
-                     ratchetModel_.meshCount, ratchetModel_.materialCount, modelPath);
+                     ratchetModel_.meshCount, ratchetModel_.materialCount, path);
             defaultModelTextures_.resize(ratchetModel_.materialCount);
             for (int i = 0; i < ratchetModel_.materialCount; ++i) {
                 defaultModelTextures_[i] = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
                 TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u",
                          i, ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id);
             }
+            break;
         }
     }
 
     // Load Rivet Alternate Dimensional Lombax Textures
-    auto LoadTex = [](const char* p1, const char* p2) -> Texture2D {
-        if (FileExists(p1)) return LoadTexture(p1);
-        if (FileExists(p2)) return LoadTexture(p2);
-        return Texture2D{};
-    };
-    rivetHeadDiff_  = LoadTex("assets/models/ratchet/RivetHeadDiff.png",  "../assets/models/ratchet/RivetHeadDiff.png");
-    rivetHead2Diff_ = LoadTex("assets/models/ratchet/RivetHead2Diff.png", "../assets/models/ratchet/RivetHead2Diff.png");
-    rivetFur_       = LoadTex("assets/models/ratchet/RivetFur.png",       "../assets/models/ratchet/RivetFur.png");
-    rivetFur2_      = LoadTex("assets/models/ratchet/RivetFur2.png",      "../assets/models/ratchet/RivetFur2.png");
-    rivetEyeDiff_   = LoadTex("assets/models/ratchet/RivetEyeDiff.png",   "../assets/models/ratchet/RivetEyeDiff.png");
+    rivetHeadDiff_  = TryLoadTex({ "assets/models/ratchet/RivetHeadDiff.png",  "models/ratchet/RivetHeadDiff.png",  "../assets/models/ratchet/RivetHeadDiff.png" });
+    rivetHead2Diff_ = TryLoadTex({ "assets/models/ratchet/RivetHead2Diff.png", "models/ratchet/RivetHead2Diff.png", "../assets/models/ratchet/RivetHead2Diff.png" });
+    rivetFur_       = TryLoadTex({ "assets/models/ratchet/RivetFur.png",       "models/ratchet/RivetFur.png",       "../assets/models/ratchet/RivetFur.png" });
+    rivetFur2_      = TryLoadTex({ "assets/models/ratchet/RivetFur2.png",      "models/ratchet/RivetFur2.png",      "../assets/models/ratchet/RivetFur2.png" });
+    rivetEyeDiff_   = TryLoadTex({ "assets/models/ratchet/RivetEyeDiff.png",   "models/ratchet/RivetEyeDiff.png",   "../assets/models/ratchet/RivetEyeDiff.png" });
     rivetTexturesLoaded_ = (rivetHeadDiff_.id != 0);
 }
 

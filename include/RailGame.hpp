@@ -178,6 +178,12 @@ private:
     Texture2D rivetFur2_{};
     Texture2D rivetEyeDiff_{};
     bool rivetTexturesLoaded_ = false;
+    Texture2D ratchetHeadDiff_{};
+    Texture2D ratchetHead2Diff_{};
+    Texture2D ratchetFur_{};
+    Texture2D ratchetFur2_{};
+    Texture2D ratchetEyeDiff_{};
+    bool ratchetTexturesLoaded_ = false;
     std::vector<Texture2D> defaultModelTextures_{};
     Shader worldHighpShader_{};
     bool worldHighpShaderLoaded_ = false;

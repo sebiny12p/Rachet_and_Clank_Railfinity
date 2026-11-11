@@ -1570,23 +1570,32 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
     Vector3 headPos = { neckTop.x, neckTop.y + 0.22f, neckTop.z + 0.02f };
 
     if (ratchetModelLoaded_) {
-        // --- TEXTURE SWAP FOR RIVET (ALTERNATE DIMENSIONAL LOMBAX) ---
-        if (rivetTexturesLoaded_) {
-            if (isRivet) {
-                if (ratchetModel_.materialCount > 0 && rivetHead2Diff_.id != 0)
-                    ratchetModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHead2Diff_;
-                if (ratchetModel_.materialCount > 1 && rivetFur2_.id != 0)
-                    ratchetModel_.materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur2_;
-                if (ratchetModel_.materialCount > 2 && rivetFur_.id != 0)
-                    ratchetModel_.materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur_;
-                if (ratchetModel_.materialCount > 3 && rivetEyeDiff_.id != 0)
-                    ratchetModel_.materials[3].maps[MATERIAL_MAP_DIFFUSE].texture = rivetEyeDiff_;
-                if (ratchetModel_.materialCount > 4 && rivetHeadDiff_.id != 0)
-                    ratchetModel_.materials[4].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHeadDiff_;
-            } else {
-                for (int m = 0; m < ratchetModel_.materialCount && m < static_cast<int>(defaultModelTextures_.size()); ++m) {
-                    ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = defaultModelTextures_[m];
-                }
+        // --- SYMMETRIC TEXTURE BINDING FOR RATCHET & RIVET ---
+        if (isRivet && rivetTexturesLoaded_) {
+            if (ratchetModel_.materialCount > 0 && rivetHead2Diff_.id != 0)
+                ratchetModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHead2Diff_;
+            if (ratchetModel_.materialCount > 1 && rivetFur2_.id != 0)
+                ratchetModel_.materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur2_;
+            if (ratchetModel_.materialCount > 2 && rivetFur_.id != 0)
+                ratchetModel_.materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = rivetFur_;
+            if (ratchetModel_.materialCount > 3 && rivetEyeDiff_.id != 0)
+                ratchetModel_.materials[3].maps[MATERIAL_MAP_DIFFUSE].texture = rivetEyeDiff_;
+            if (ratchetModel_.materialCount > 4 && rivetHeadDiff_.id != 0)
+                ratchetModel_.materials[4].maps[MATERIAL_MAP_DIFFUSE].texture = rivetHeadDiff_;
+        } else if (ratchetTexturesLoaded_) {
+            if (ratchetModel_.materialCount > 0 && ratchetHead2Diff_.id != 0)
+                ratchetModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetHead2Diff_;
+            if (ratchetModel_.materialCount > 1 && ratchetFur2_.id != 0)
+                ratchetModel_.materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetFur2_;
+            if (ratchetModel_.materialCount > 2 && ratchetFur_.id != 0)
+                ratchetModel_.materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetFur_;
+            if (ratchetModel_.materialCount > 3 && ratchetEyeDiff_.id != 0)
+                ratchetModel_.materials[3].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetEyeDiff_;
+            if (ratchetModel_.materialCount > 4 && ratchetHeadDiff_.id != 0)
+                ratchetModel_.materials[4].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetHeadDiff_;
+        } else {
+            for (int m = 0; m < ratchetModel_.materialCount && m < static_cast<int>(defaultModelTextures_.size()); ++m) {
+                ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = defaultModelTextures_[m];
             }
         }
 

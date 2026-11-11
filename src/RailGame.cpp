@@ -162,40 +162,43 @@ void RailGame::Init() {
             // all materials into 1 untextured material. Reconstruct the exact 5 materials & submesh bindings!
             if (ratchetModel_.materialCount < 5) {
                 Material* expanded = static_cast<Material*>(RL_CALLOC(5, sizeof(Material)));
-                for (int m = 0; m < 5; ++m) {
-                    expanded[m] = LoadMaterialDefault();
+                for (int mm = 0; mm < 5; ++mm) {
+                    expanded[mm] = LoadMaterialDefault();
                 }
                 if (ratchetModel_.materials != nullptr) {
                     RL_FREE(ratchetModel_.materials);
                 }
                 ratchetModel_.materials = expanded;
                 ratchetModel_.materialCount = 5;
-                constexpr int submeshMats[6] = { 0, 1, 2, 3, 4, 2 };
-                for (int sm = 0; sm < ratchetModel_.meshCount && sm < 6; ++sm) {
-                    ratchetModel_.meshMaterial[sm] = submeshMats[sm];
-                }
             }
-            const char* defaultTexFiles[5][3] = {
-                { "assets/models/ratchet/RatHead2Diff.png",    "models/ratchet/RatHead2Diff.png",    "../assets/models/ratchet/RatHead2Diff.png" },
-                { "assets/models/ratchet/RatFur2.png",         "models/ratchet/RatFur2.png",         "../assets/models/ratchet/RatFur2.png" },
-                { "assets/models/ratchet/RatFur.png",          "models/ratchet/RatFur.png",          "../assets/models/ratchet/RatFur.png" },
-                { "assets/models/ratchet/EyeDiff.png",         "models/ratchet/EyeDiff.png",         "../assets/models/ratchet/EyeDiff.png" },
-                { "assets/models/ratchet/RatchetHeadDiff.png", "models/ratchet/RatchetHeadDiff.png", "../assets/models/ratchet/RatchetHeadDiff.png" }
-            };
+            constexpr int submeshMats[6] = { 0, 1, 2, 3, 4, 2 };
+            for (int sm = 0; sm < ratchetModel_.meshCount && sm < 6; ++sm) {
+                ratchetModel_.meshMaterial[sm] = submeshMats[sm];
+            }
             defaultModelTextures_.resize(ratchetModel_.materialCount);
             for (int i = 0; i < ratchetModel_.materialCount; ++i) {
-                Texture2D curTex = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
-                if (curTex.id <= 1 && i < 5) {
-                    Texture2D fallback = TryLoadTex({ defaultTexFiles[i][0], defaultTexFiles[i][1], defaultTexFiles[i][2] });
-                    if (fallback.id != 0) {
-                        curTex = fallback;
-                        ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture = curTex;
-                    }
-                }
-                defaultModelTextures_[i] = curTex;
-                TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u", i, curTex.id);
+                defaultModelTextures_[i] = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
+                ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
             }
             break;
+        }
+    }
+
+    // Explicitly load Ratchet Default Textures identically to Rivet (guarantees APK AAssetManager load on Android!)
+    ratchetHead2Diff_ = TryLoadTex({ "assets/models/ratchet/RatHead2Diff.png",    "models/ratchet/RatHead2Diff.png",    "../assets/models/ratchet/RatHead2Diff.png" });
+    ratchetFur2_      = TryLoadTex({ "assets/models/ratchet/RatFur2.png",         "models/ratchet/RatFur2.png",         "../assets/models/ratchet/RatFur2.png" });
+    ratchetFur_       = TryLoadTex({ "assets/models/ratchet/RatFur.png",          "models/ratchet/RatFur.png",          "../assets/models/ratchet/RatFur.png" });
+    ratchetEyeDiff_   = TryLoadTex({ "assets/models/ratchet/EyeDiff.png",         "models/ratchet/EyeDiff.png",         "../assets/models/ratchet/EyeDiff.png" });
+    ratchetHeadDiff_  = TryLoadTex({ "assets/models/ratchet/RatchetHeadDiff.png", "models/ratchet/RatchetHeadDiff.png", "../assets/models/ratchet/RatchetHeadDiff.png" });
+    ratchetTexturesLoaded_ = (ratchetHead2Diff_.id != 0 || ratchetHeadDiff_.id != 0);
+    if (ratchetModelLoaded_ && ratchetModel_.materialCount >= 5) {
+        if (ratchetHead2Diff_.id != 0) ratchetModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetHead2Diff_;
+        if (ratchetFur2_.id != 0)      ratchetModel_.materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetFur2_;
+        if (ratchetFur_.id != 0)       ratchetModel_.materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetFur_;
+        if (ratchetEyeDiff_.id != 0)   ratchetModel_.materials[3].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetEyeDiff_;
+        if (ratchetHeadDiff_.id != 0)  ratchetModel_.materials[4].maps[MATERIAL_MAP_DIFFUSE].texture = ratchetHeadDiff_;
+        for (int i = 0; i < 5 && i < static_cast<int>(defaultModelTextures_.size()); ++i) {
+            defaultModelTextures_[i] = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
         }
     }
 
@@ -258,10 +261,15 @@ void RailGame::Shutdown() {
     if (rivetHead2Diff_.id != 0) UnloadTexture(rivetHead2Diff_);
     if (rivetFur_.id != 0)       UnloadTexture(rivetFur_);
     if (rivetFur2_.id != 0)      UnloadTexture(rivetFur2_);
-    if (rivetEyeDiff_.id != 0)   UnloadTexture(rivetEyeDiff_);
+    if (rivetEyeDiff_.id != 0)     UnloadTexture(rivetEyeDiff_);
+    if (ratchetHeadDiff_.id != 0)  UnloadTexture(ratchetHeadDiff_);
+    if (ratchetHead2Diff_.id != 0) UnloadTexture(ratchetHead2Diff_);
+    if (ratchetFur_.id != 0)       UnloadTexture(ratchetFur_);
+    if (ratchetFur2_.id != 0)      UnloadTexture(ratchetFur2_);
+    if (ratchetEyeDiff_.id != 0)   UnloadTexture(ratchetEyeDiff_);
     if (ratchetModelLoaded_) {
-        for (int m = 0; m < ratchetModel_.materialCount && m < static_cast<int>(defaultModelTextures_.size()); ++m) {
-            ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = defaultModelTextures_[m];
+        for (int m = 0; m < ratchetModel_.materialCount; ++m) {
+            ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = Texture2D{};
         }
         UnloadModel(ratchetModel_);
         ratchetModelLoaded_ = false;

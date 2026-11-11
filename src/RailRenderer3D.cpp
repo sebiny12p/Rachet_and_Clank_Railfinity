@@ -2565,6 +2565,24 @@ void RailGame::RenderHud2D() {
         DrawText("! TRACK ENDING AHEAD: HOP OVER !", static_cast<int>(virtualWidth_ * 0.5f - 185), 177, 18, RED);
     }
 
+    // First-Run Control Hint Pill (fades cleanly after 4.5s on a player's very first run)
+    if (save_.totalRunsStarted <= 1 && runTime_ < 4.5f) {
+        float fade = (runTime_ > 3.5f) ? std::clamp(1.0f - (runTime_ - 3.5f), 0.0f, 1.0f) : 1.0f;
+        unsigned char bgA = static_cast<unsigned char>(fade * 210.0f);
+        unsigned char txtA = static_cast<unsigned char>(fade * 245.0f);
+#if defined(PLATFORM_ANDROID)
+        const char* hint = "CONTROLS: Swipe L/R = Switch Rail  |  Swipe Down = Slide  |  [JUMP] = Jump / Glide  |  [FIRE] = Wrench / Gun";
+#else
+        const char* hint = hasGamepad
+            ? "CONTROLS: [L-Stick] Rail  |  [(A)] Jump / Glide  |  [(B)] Slide  |  [(X) / RT] Attack"
+            : "CONTROLS: [A/D] Switch Rail  |  [SPACE] Jump / Hold Glide  |  [S] Slide  |  [CLICK / J] Attack";
+#endif
+        int hw = MeasureText(hint, 14);
+        DrawRectangle(static_cast<int>(virtualWidth_ * 0.5f - hw * 0.5f - 18), 86, hw + 36, 32, { 10, 16, 28, bgA });
+        DrawRectangleLines(static_cast<int>(virtualWidth_ * 0.5f - hw * 0.5f - 18), 86, hw + 36, 32, Color{ 80, 195, 255, txtA });
+        DrawText(hint, static_cast<int>(virtualWidth_ * 0.5f - hw * 0.5f), 95, 14, Color{ 230, 245, 255, txtA });
+    }
+
     // Sector Entry Banner
     if (sectorBannerTimer_ > 0.0f) {
         const char* sName = GetSectorName(GetCurrentSector());

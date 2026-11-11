@@ -64,12 +64,16 @@ Level up weapons through combat usage from base V1 up to devastating V5 Omega, a
 
 ---
 
-## 4 Procedural Galactic Sectors & Dread-Dropships
+## 8 Procedural Galactic Sectors & Dread-Dropships
 
-1. **Metropolis Kerwan:** Soaring neon art-deco spires, yellow hovering air-taxis, and bright blue skies.
-2. **Megacorp Weapons Park:** Industrial foundries, conveyor tracks, and fiery smelting conduits.
-3. **Zordoom Prison Grindway:** Deep-space maximum security containment sector with purple nebulae and searchlights.
-4. **The Dimensionator Rift:** Dimensional rifts tearing open the sky, shifting between alternate reality skylines.
+1. **Metropolis Kerwan (Solana Galaxy):** High-altitude metallic monorails, canyon skyways, and luminous billboards.
+2. **Corson V — Nefarious City (Polaris):** Neon-magenta cyberpunk skyline with aerodynamic hovering air-taxis.
+3. **Planet Gaspar — Volcanic Core:** Molten magma chambers with erupting pyro-geysers along the grindrails.
+4. **Pokitaru — Jowai Resort Coast:** Sunlit azure ocean vistas with leaping cyber-piranhas across the track.
+5. **Torren IV — Molonoth Scrap Fields:** Rusted wasteland canyons with swinging industrial scrap-metal cranes.
+6. **Megacorp Weapons Park (Bogon Galaxy):** Heavy industrial foundries, shielded enforcers, and plasma defense turrets.
+7. **Zordoom Prison Maximum Security:** High-security galactic penitentiary with crimson lockdown grids.
+8. **Dimensionator Rift Anomaly:** Psionic violet dimensional tear blending all realities and hazards at peak speed.
 - **Megacorp Dread-Dropship Battles:** Arrives overhead at sector milestones with 3 targetable core turrets (`Left`, `Center`, `Right`) deploying heavy laser sweeps.
 
 ---

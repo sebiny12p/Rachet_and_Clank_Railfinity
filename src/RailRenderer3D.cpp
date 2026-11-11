@@ -2284,20 +2284,45 @@ void RailGame::RenderLombaxHero3D(Vector3 pos, float tiltDeg, bool sliding, bool
 }
 
 void RailGame::RenderHud2D() {
+    // Project 3D world positions accurately into the virtual canvas (virtualWidth_ x 720)
+    // instead of GetScreenWidth()/GetScreenHeight() so reticles & callouts align identically on Android & PC!
+    Camera3D activeCam = camera_;
+    if (cameraShake_ > 0.0f) {
+        float mag = cameraShake_ * cameraShake_ * 0.65f * save_.screenShakeScale;
+        activeCam.position.x += std::sin(globalTime_ * 73.0f) * mag;
+        activeCam.position.y += std::cos(globalTime_ * 61.0f) * mag;
+    }
+    Matrix matView = MatrixLookAt(activeCam.position, activeCam.target, activeCam.up);
+    Matrix matProj = MatrixPerspective(activeCam.fovy * DEG2RAD, static_cast<double>(virtualWidth_) / 720.0, 0.90, 220.0);
+    auto ProjectToVirtual = [&](Vector3 worldPos, Vector2& outScr) -> bool {
+        Quaternion wp = { worldPos.x, worldPos.y, worldPos.z, 1.0f };
+        wp = QuaternionTransform(wp, matView);
+        wp = QuaternionTransform(wp, matProj);
+        if (wp.w <= 0.1f) return false;
+        float ndcX = wp.x / wp.w;
+        float ndcY = -wp.y / wp.w;
+        outScr.x = (ndcX + 1.0f) * 0.5f * virtualWidth_;
+        outScr.y = (ndcY + 1.0f) * 0.5f * 720.0f;
+        return (outScr.x >= -40.0f && outScr.x <= virtualWidth_ + 40.0f &&
+                outScr.y >= -40.0f && outScr.y <= 760.0f);
+    };
+
     // 2D Tactical Action Callouts & Target Reticles projected over 3D Crates, Obstacles & Enemies!
     for (const auto& h : hazards_) {
         if (!h.active || h.z < 3.5f || h.z > 58.0f) continue;
 
         float rawLx = GetLaneX(h.lane);
         Vector3 worldTop = ApplyTrackCurve(rawLx, 2.25f, h.z);
-        Vector2 scr = GetWorldToScreen(worldTop, camera_);
+        Vector2 scr{};
+        if (!ProjectToVirtual(worldTop, scr)) continue;
         int sx = static_cast<int>(scr.x);
         int sy = static_cast<int>(scr.y);
 
         // Enemy Lock-On Reticle + Floating HP Bar
         if (h.kind == HazardKind::THUG_DRONE || h.kind == HazardKind::SHIELDED_ENFORCER) {
             Vector3 bodyWorld = ApplyTrackCurve(rawLx, 1.40f, h.z);
-            Vector2 bodyScr = GetWorldToScreen(bodyWorld, camera_);
+            Vector2 bodyScr = scr;
+            ProjectToVirtual(bodyWorld, bodyScr);
             int bx = static_cast<int>(bodyScr.x);
             int by = static_cast<int>(bodyScr.y);
             if (h.lane == player_.currentLane) {

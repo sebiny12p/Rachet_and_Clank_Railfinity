@@ -158,11 +158,42 @@ void RailGame::Init() {
             ratchetModelLoaded_ = true;
             TraceLog(LOG_INFO, "RATCHET 3D MODEL: Successfully loaded (%d meshes, %d materials) from %s",
                      ratchetModel_.meshCount, ratchetModel_.materialCount, path);
+            // On Android, LoadOBJ cannot chdir into APK assets, so tinyobj skips .mtl files and collapses
+            // all materials into 1 untextured material. Reconstruct the exact 5 materials & submesh bindings!
+            if (ratchetModel_.materialCount < 5) {
+                Material* expanded = static_cast<Material*>(RL_CALLOC(5, sizeof(Material)));
+                for (int m = 0; m < 5; ++m) {
+                    expanded[m] = LoadMaterialDefault();
+                }
+                if (ratchetModel_.materials != nullptr) {
+                    RL_FREE(ratchetModel_.materials);
+                }
+                ratchetModel_.materials = expanded;
+                ratchetModel_.materialCount = 5;
+                constexpr int submeshMats[6] = { 0, 1, 2, 3, 4, 2 };
+                for (int sm = 0; sm < ratchetModel_.meshCount && sm < 6; ++sm) {
+                    ratchetModel_.meshMaterial[sm] = submeshMats[sm];
+                }
+            }
+            const char* defaultTexFiles[5][3] = {
+                { "assets/models/ratchet/RatHead2Diff.png",    "models/ratchet/RatHead2Diff.png",    "../assets/models/ratchet/RatHead2Diff.png" },
+                { "assets/models/ratchet/RatFur2.png",         "models/ratchet/RatFur2.png",         "../assets/models/ratchet/RatFur2.png" },
+                { "assets/models/ratchet/RatFur.png",          "models/ratchet/RatFur.png",          "../assets/models/ratchet/RatFur.png" },
+                { "assets/models/ratchet/EyeDiff.png",         "models/ratchet/EyeDiff.png",         "../assets/models/ratchet/EyeDiff.png" },
+                { "assets/models/ratchet/RatchetHeadDiff.png", "models/ratchet/RatchetHeadDiff.png", "../assets/models/ratchet/RatchetHeadDiff.png" }
+            };
             defaultModelTextures_.resize(ratchetModel_.materialCount);
             for (int i = 0; i < ratchetModel_.materialCount; ++i) {
-                defaultModelTextures_[i] = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
-                TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u",
-                         i, ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture.id);
+                Texture2D curTex = ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
+                if (curTex.id <= 1 && i < 5) {
+                    Texture2D fallback = TryLoadTex({ defaultTexFiles[i][0], defaultTexFiles[i][1], defaultTexFiles[i][2] });
+                    if (fallback.id != 0) {
+                        curTex = fallback;
+                        ratchetModel_.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture = curTex;
+                    }
+                }
+                defaultModelTextures_[i] = curTex;
+                TraceLog(LOG_INFO, "Material %d: diffuse texture ID = %u", i, curTex.id);
             }
             break;
         }
@@ -204,6 +235,7 @@ void RailGame::Init() {
         "void main()\n"
         "{\n"
         "    vec4 texelColor = texture2D(texture0, fragTexCoord);\n"
+        "    if (texelColor.a < 0.05) discard;\n"
         "    gl_FragColor = texelColor * colDiffuse * fragColor;\n"
         "}\n";
     worldHighpShader_ = LoadShaderFromMemory(vHighp, fMedp);
@@ -228,6 +260,9 @@ void RailGame::Shutdown() {
     if (rivetFur2_.id != 0)      UnloadTexture(rivetFur2_);
     if (rivetEyeDiff_.id != 0)   UnloadTexture(rivetEyeDiff_);
     if (ratchetModelLoaded_) {
+        for (int m = 0; m < ratchetModel_.materialCount && m < static_cast<int>(defaultModelTextures_.size()); ++m) {
+            ratchetModel_.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = defaultModelTextures_[m];
+        }
         UnloadModel(ratchetModel_);
         ratchetModelLoaded_ = false;
     }
@@ -519,7 +554,14 @@ bool RailGame::IsButtonClicked(Rectangle r) const {
 }
 
 void RailGame::SwitchLane(int delta) {
-    int target = std::clamp(player_.currentLane + delta, 0, NUM_LANES - 1);
+    int rawTarget = player_.currentLane + delta;
+    if (rawTarget < 0 || rawTarget >= NUM_LANES) return;
+    int minL = GetCorridorMinLaneAt(totalWorldTravel_);
+    int maxL = minL + 2;
+    if (rawTarget < minL || rawTarget > maxL) {
+        return; // Strictly prevent hopping onto non-existent rails outside active 3-rail corridor!
+    }
+    int target = rawTarget;
     if (target != player_.currentLane) {
         player_.currentLane = target;
         player_.isHopping = true;

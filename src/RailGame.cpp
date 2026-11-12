@@ -418,6 +418,16 @@ void RailGame::StartNewRun(bool dailySeed) {
     player_.heliFuel = player_.maxHeliFuel;
     player_.multiplierTier = 1;
     player_.multiplierProgress = 0.0f;
+    static constexpr std::array<int, NUM_WEAPONS> BASE_AMMO = { 999, 45, 24, 30, 18, 20 };
+    for (int w = 0; w < static_cast<int>(NUM_WEAPONS); ++w) {
+        if (w == 0) {
+            player_.weaponMaxAmmo[w] = 999;
+        } else {
+            int lvlBonus = (save_.weaponLevels[w] - 1) * std::max(2, BASE_AMMO[w] / 8);
+            player_.weaponMaxAmmo[w] = BASE_AMMO[w] + lvlBonus;
+        }
+        player_.weaponAmmo[w] = player_.weaponMaxAmmo[w];
+    }
 
     boss_ = BossDropship{};
     for (auto& h : hazards_) h.active = false;
@@ -648,10 +658,48 @@ void RailGame::CycleEquippedWeapon(int delta) {
     }
 }
 
+void RailGame::GrantWeaponAmmo(int percent, bool allGuns) {
+    if (allGuns) {
+        for (int w = 1; w < static_cast<int>(NUM_WEAPONS); ++w) {
+            if (!save_.unlockedWeapons[w]) continue;
+            int add = std::max(1, (player_.weaponMaxAmmo[w] * percent) / 100);
+            player_.weaponAmmo[w] = std::min(player_.weaponMaxAmmo[w], player_.weaponAmmo[w] + add);
+        }
+        return;
+    }
+    int target = -1;
+    int eq = save_.equippedWeapon;
+    if (eq > 0 && save_.unlockedWeapons[eq] && player_.weaponAmmo[eq] < player_.weaponMaxAmmo[eq]) {
+        target = eq;
+    } else {
+        float lowestFrac = 1.0f;
+        for (int w = 1; w < static_cast<int>(NUM_WEAPONS); ++w) {
+            if (!save_.unlockedWeapons[w]) continue;
+            float frac = static_cast<float>(player_.weaponAmmo[w]) / static_cast<float>(std::max(1, player_.weaponMaxAmmo[w]));
+            if (frac < lowestFrac) {
+                lowestFrac = frac;
+                target = w;
+            }
+        }
+    }
+    if (target > 0) {
+        int add = std::max(1, (player_.weaponMaxAmmo[target] * percent) / 100);
+        player_.weaponAmmo[target] = std::min(player_.weaponMaxAmmo[target], player_.weaponAmmo[target] + add);
+    }
+}
+
 void RailGame::TriggerFireWeapon() {
     if (player_.weaponCooldown > 0.0f) return;
 
     int wIdx = save_.equippedWeapon;
+    if (wIdx > 0 && player_.weaponAmmo[wIdx] <= 0) {
+        // Out of ammo: auto-fallback to unlimited OmniWrench 8000 so player can smash crates!
+        save_.equippedWeapon = 0;
+        wIdx = 0;
+    }
+    if (wIdx > 0) {
+        player_.weaponAmmo[wIdx] = std::max(0, player_.weaponAmmo[wIdx] - 1);
+    }
     const auto& wDef = WEAPON_CATALOG[wIdx];
     int wLvl = save_.weaponLevels[wIdx];
     bool isGolden = save_.goldenWeapons[wIdx];
@@ -1602,6 +1650,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
     if (curSec != lastSector_) {
         lastSector_ = curSec;
         sectorBannerTimer_ = 3.5f;
+        GrantWeaponAmmo(50, true);
         screenFlashColor_ = (curSec == GalaxySector::CORSON_V || curSec == GalaxySector::DIMENSIONATOR_RIFT) ? MAGENTA
                           : (curSec == GalaxySector::GASPAR_VOLCANIC || curSec == GalaxySector::TORREN_IV_SCRAP) ? ORANGE
                           : (curSec == GalaxySector::ZORDOOM_PRISON) ? RED : SKYBLUE;
@@ -1945,6 +1994,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
                 } else {
                     runCrates_++;
                     save_.totalCratesSmashed++;
+                    GrantWeaponAmmo(30, false);
                     if (runCrates_ >= 25) AwardSkillPoint(1); // WRENCH NINJA
                     if (isRari) AwardSkillPoint(8);           // RARITANIUM MINER
                 }
@@ -1989,6 +2039,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
                     } else if (h.kind == HazardKind::BOLT_CRATE || h.kind == HazardKind::RARITANIUM_CACHE || h.kind == HazardKind::NANOTECH_CRATE) {
                         runCrates_++;
                         save_.totalCratesSmashed++;
+                        GrantWeaponAmmo(30, false);
                     }
                     continue;
                 }
@@ -2201,6 +2252,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
                             } else {
                                 runCrates_++;
                                 save_.totalCratesSmashed++;
+                                GrantWeaponAmmo(20, false);
                                 if (runCrates_ >= 25) AwardSkillPoint(1); // WRENCH NINJA
                                 if (wasRari) AwardSkillPoint(8);          // RARITANIUM MINER
                             }

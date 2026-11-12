@@ -59,6 +59,7 @@ private:
     void SpawnProjectile(Vector3 pos, Vector3 vel, int lane, WeaponId wId, float dmg, float radius, Color col, bool friendly, int bounces = 0);
     void SpawnParticleBurst3D(Vector3 pos, int count, Color color, float minSpd, float maxSpd, float size, float life);
     void TriggerBossDropship();
+    void GrantWeaponAmmo(int percent, bool allGuns = false);
 
     // Helpers (5-Lane Matrix: Lane 0 = +6.4m, Lane 1 = +3.2m, Lane 2 = 0m, Lane 3 = -3.2m, Lane 4 = -6.4m)
     static float GetLaneX(int lane) { return (2 - lane) * LANE_WIDTH; }

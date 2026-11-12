@@ -2733,8 +2733,22 @@ void RailGame::RenderHud2D() {
         if (unlocked) {
             char lvlTxt[16];
             std::snprintf(lvlTxt, sizeof(lvlTxt), "V%d", save_.weaponLevels[w]);
-            DrawText(lvlTxt, static_cast<int>(sr.x + 17), static_cast<int>(sr.y + 28), 20,
+            DrawText(lvlTxt, static_cast<int>(sr.x + 17), static_cast<int>(sr.y + 22), 18,
                      (save_.weaponLevels[w] >= 5) ? GOLD : weaps[w].projectileColor);
+            if (w == 0) {
+                DrawText("INF", static_cast<int>(sr.x + 19), static_cast<int>(sr.y + 44), 12, SKYBLUE);
+            } else {
+                int curA = player_.weaponAmmo[w];
+                int maxA = std::max(1, player_.weaponMaxAmmo[w]);
+                float frac = static_cast<float>(curA) / static_cast<float>(maxA);
+                Color aCol = (curA <= 0) ? RED : (frac <= 0.25f) ? ORANGE : WHITE;
+                char ammoTxt[16];
+                std::snprintf(ammoTxt, sizeof(ammoTxt), "%d", curA);
+                int aw = MeasureText(ammoTxt, 13);
+                DrawText(ammoTxt, static_cast<int>(sr.x + (sr.width - aw) * 0.5f), static_cast<int>(sr.y + 43), 13, aCol);
+                DrawRectangle(static_cast<int>(sr.x + 4), static_cast<int>(sr.y + sr.height - 5),
+                              static_cast<int>((sr.width - 8) * frac), 3, aCol);
+            }
         } else {
             DrawText("LOCK", static_cast<int>(sr.x + 9), static_cast<int>(sr.y + 30), 15, GRAY);
         }
@@ -2747,9 +2761,12 @@ void RailGame::RenderHud2D() {
     DrawRectangle(20, static_cast<int>(720.0f - 96.0f), 480, 76, { 12, 18, 32, 220 });
     DrawRectangleLinesEx({ 20.0f, 720.0f - 96.0f, 480.0f, 76.0f }, 1.5f, weaps[eq].projectileColor);
     DrawText(wTitle, 32, static_cast<int>(720.0f - 88.0f), 18, WHITE);
-    char xpLine[64];
-    if (eqLvl >= 5) std::snprintf(xpLine, sizeof(xpLine), "OMEGA MASTERWORK V5");
-    else std::snprintf(xpLine, sizeof(xpLine), "LEVEL V%d  |  WEAP XP: %d / %d", eqLvl, save_.weaponXp[eq], eqLvl * 120);
+    char xpLine[96];
+    char ammoSeg[32];
+    if (eq == 0) std::snprintf(ammoSeg, sizeof(ammoSeg), "AMMO: INF");
+    else std::snprintf(ammoSeg, sizeof(ammoSeg), "AMMO: %d/%d", player_.weaponAmmo[eq], player_.weaponMaxAmmo[eq]);
+    if (eqLvl >= 5) std::snprintf(xpLine, sizeof(xpLine), "OMEGA MASTERWORK V5  |  %s", ammoSeg);
+    else std::snprintf(xpLine, sizeof(xpLine), "LEVEL V%d  |  WEAP XP: %d / %d  |  %s", eqLvl, save_.weaponXp[eq], eqLvl * 120, ammoSeg);
     DrawText(xpLine, 32, static_cast<int>(720.0f - 65.0f), 14, GOLD);
     DrawText(weaps[eq].specialPerk, 32, static_cast<int>(720.0f - 44.0f), 12, SKYBLUE);
 

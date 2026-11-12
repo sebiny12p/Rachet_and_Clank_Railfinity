@@ -360,6 +360,8 @@ struct PlayerLombax {
     float laneSwitchCooldown = 0.0f;
     int bufferedLaneDelta = 0;
     float bufferedLaneTimer = 0.0f;
+    std::array<int, NUM_WEAPONS> weaponAmmo = { 999, 45, 24, 30, 18, 20 };
+    std::array<int, NUM_WEAPONS> weaponMaxAmmo = { 999, 45, 24, 30, 18, 20 };
 
     bool grounded = true;
     bool heliGliding = false;

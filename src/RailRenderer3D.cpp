@@ -2736,19 +2736,21 @@ void RailGame::RenderMainMenu2D() {
         int descFs = 14;
         while (descFs > 10 && MeasureText(desc, descFs) > maxW) descFs--;
 
-        DrawText(label, static_cast<int>(r.x + 18), static_cast<int>(r.y + 12), labelFs, WHITE);
-        DrawText(desc, static_cast<int>(r.x + 18), static_cast<int>(r.y + 38), descFs, LIGHTGRAY);
+        int textBlockH = labelFs + 5 + descFs;
+        int topPad = std::max(8, (static_cast<int>(r.height) - textBlockH) / 2);
+        DrawText(label, static_cast<int>(r.x + 18), static_cast<int>(r.y) + topPad, labelFs, WHITE);
+        DrawText(desc, static_cast<int>(r.x + 18), static_cast<int>(r.y) + topPad + labelFs + 5, descFs, LIGHTGRAY);
         return IsButtonClicked(r);
     };
 
-    Rectangle btnPlay     = { 50.0f, 185.0f, 400.0f, 52.0f };
-    Rectangle btnDaily    = { 50.0f, 243.0f, 400.0f, 52.0f };
-    Rectangle btnVendor   = { 50.0f, 301.0f, 400.0f, 52.0f };
-    Rectangle btnLab      = { 50.0f, 359.0f, 400.0f, 52.0f };
-    Rectangle btnWardrobe = { 50.0f, 417.0f, 400.0f, 52.0f };
-    Rectangle btnCareer   = { 50.0f, 475.0f, 400.0f, 52.0f };
-    Rectangle btnSkills   = { virtualWidth_ - 380.0f, 185.0f, 330.0f, 52.0f };
-    Rectangle btnSettings = { virtualWidth_ - 380.0f, 243.0f, 330.0f, 52.0f };
+    Rectangle btnPlay     = { 50.0f, 182.0f, 400.0f, 58.0f };
+    Rectangle btnDaily    = { 50.0f, 247.0f, 400.0f, 58.0f };
+    Rectangle btnVendor   = { 50.0f, 312.0f, 400.0f, 58.0f };
+    Rectangle btnLab      = { 50.0f, 377.0f, 400.0f, 58.0f };
+    Rectangle btnWardrobe = { 50.0f, 442.0f, 400.0f, 58.0f };
+    Rectangle btnCareer   = { 50.0f, 507.0f, 400.0f, 58.0f };
+    Rectangle btnSkills   = { virtualWidth_ - 380.0f, 182.0f, 330.0f, 58.0f };
+    Rectangle btnSettings = { virtualWidth_ - 380.0f, 247.0f, 330.0f, 58.0f };
 
     if (MenuButton(btnPlay, "LAUNCH GRINDRAIL RUN", "High-Speed Planetary Grindrails", ORANGE)) {
         StartNewRun(false);
@@ -2801,18 +2803,18 @@ void RailGame::RenderMainMenu2D() {
     }
 
     // Controls Reference Box on Right
-    DrawRectangle(static_cast<int>(virtualWidth_ - 380), 304, 330, 224, { 12, 18, 32, 225 });
-    DrawRectangleLines(static_cast<int>(virtualWidth_ - 380), 304, 330, 224, SKYBLUE);
-    DrawText("CONTROLS & GAMEPAD", static_cast<int>(virtualWidth_ - 362), 314, 16, GOLD);
-    DrawText("> Left Stick / A-D: Switch Rail", static_cast<int>(virtualWidth_ - 362), 334, 13, WHITE);
-    DrawText("> (A) / SPACE / Swipe Up: Jump", static_cast<int>(virtualWidth_ - 362), 354, 13, WHITE);
-    DrawText("> Hold (A) / SPACE: Clank Glide", static_cast<int>(virtualWidth_ - 362), 374, 13, WHITE);
-    DrawText("> (B) / S / Swipe Down: Slide", static_cast<int>(virtualWidth_ - 362), 394, 13, WHITE);
-    DrawText("> (X) / RT / Click / F: Fire / Wrench", static_cast<int>(virtualWidth_ - 362), 414, 13, WHITE);
-    DrawText("> (Y) / L-Shift: Overdrive Boots", static_cast<int>(virtualWidth_ - 362), 434, 13, GOLD);
-    DrawText("> LB / RB / 1-6: Cycle Weapons", static_cast<int>(virtualWidth_ - 362), 454, 13, WHITE);
-    DrawText("> N: Skip OST Track  |  C: Career Stats", static_cast<int>(virtualWidth_ - 362), 474, 12, SKYBLUE);
-    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", static_cast<int>(virtualWidth_ - 362), 494, 12, LIGHTGRAY);
+    DrawRectangle(static_cast<int>(virtualWidth_ - 380), 314, 330, 251, { 12, 18, 32, 225 });
+    DrawRectangleLines(static_cast<int>(virtualWidth_ - 380), 314, 330, 251, SKYBLUE);
+    DrawText("CONTROLS & GAMEPAD", static_cast<int>(virtualWidth_ - 362), 326, 16, GOLD);
+    DrawText("> Left Stick / A-D: Switch Rail", static_cast<int>(virtualWidth_ - 362), 350, 13, WHITE);
+    DrawText("> (A) / SPACE / Swipe Up: Jump", static_cast<int>(virtualWidth_ - 362), 372, 13, WHITE);
+    DrawText("> Hold (A) / SPACE: Clank Glide", static_cast<int>(virtualWidth_ - 362), 394, 13, WHITE);
+    DrawText("> (B) / S / Swipe Down: Slide", static_cast<int>(virtualWidth_ - 362), 416, 13, WHITE);
+    DrawText("> (X) / RT / Click / F: Fire / Wrench", static_cast<int>(virtualWidth_ - 362), 438, 13, WHITE);
+    DrawText("> (Y) / L-Shift: Overdrive Boots", static_cast<int>(virtualWidth_ - 362), 460, 13, GOLD);
+    DrawText("> LB / RB / 1-6: Cycle Weapons", static_cast<int>(virtualWidth_ - 362), 482, 13, WHITE);
+    DrawText("> N: Skip OST Track  |  C: Career Stats", static_cast<int>(virtualWidth_ - 362), 506, 12, SKYBLUE);
+    DrawText("> START / ESC / P: Pause  |  F11: Fullscreen", static_cast<int>(virtualWidth_ - 362), 528, 12, LIGHTGRAY);
 
     RenderBrandingFooter2D();
 }

@@ -432,6 +432,7 @@ struct Projectile3D {
     float damage = 15.0f;
     float radius = 0.6f;
     float life = 2.5f;
+    float maxRange = 135.0f;
     int bouncesLeft = 0;
     Color color = ORANGE;
 };

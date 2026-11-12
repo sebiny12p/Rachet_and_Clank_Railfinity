@@ -393,7 +393,14 @@ void RailGame::StartNewRun(bool dailySeed) {
     runRaritaniumEarned_ = 0;
     runKills_ = 0;
     runCrates_ = 0;
-    lastSector_ = GalaxySector::METROPOLIS_KERWAN;
+    for (int i = 0; i < NUM_SECTORS; ++i) {
+        sectorOrder_[i] = static_cast<GalaxySector>(i);
+    }
+    for (int i = NUM_SECTORS - 1; i > 0; --i) {
+        int j = rng_.RangeInt(0, i);
+        std::swap(sectorOrder_[i], sectorOrder_[j]);
+    }
+    lastSector_ = sectorOrder_[0];
     sectorBannerTimer_ = 3.2f;
 
     // Reset Lombax Player
@@ -496,9 +503,16 @@ bool RailGame::IsRailActiveAt(int lane, float z) const {
     return !IsRailGapAt(lane, z);
 }
 
+GalaxySector RailGame::GetSectorAtDistance(float distMeters) const {
+    int stage = (static_cast<int>(std::max(0.0f, distMeters)) / 500) % NUM_SECTORS;
+    if (static_cast<int>(sectorOrder_[0]) == 0 && static_cast<int>(sectorOrder_[1]) == 0) {
+        return static_cast<GalaxySector>(stage);
+    }
+    return sectorOrder_[stage];
+}
+
 GalaxySector RailGame::GetCurrentSector() const {
-    int stage = (static_cast<int>(distanceMeters_) / 500) % NUM_SECTORS;
-    return static_cast<GalaxySector>(stage);
+    return GetSectorAtDistance(distanceMeters_);
 }
 
 const char* RailGame::GetSectorName(GalaxySector s) const {
@@ -1037,6 +1051,18 @@ void RailGame::SpawnProjectile(Vector3 pos, Vector3 vel, int lane, WeaponId wId,
             p.damage = dmg;
             p.radius = radius;
             p.life = 2.2f;
+            if (friendly) {
+                switch (wId) {
+                    case WeaponId::OMNIWRENCH_8000: p.maxRange = 38.0f; break;
+                    case WeaponId::SHOCK_BLASTER:   p.maxRange = 34.0f; break;
+                    case WeaponId::BUZZ_BLADES:     p.maxRange = 56.0f; break;
+                    case WeaponId::COMBUSTER:       p.maxRange = 68.0f; break;
+                    case WeaponId::RYNO_INFINITE:   p.maxRange = 88.0f; break;
+                    case WeaponId::PLASMA_STRIKER:  p.maxRange = 128.0f; break;
+                }
+            } else {
+                p.maxRange = 135.0f;
+            }
             p.bouncesLeft = bounces;
             p.color = col;
             return;
@@ -2059,6 +2085,11 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
         p.pos = Vector3Add(p.pos, Vector3Scale(p.vel, dt));
         p.life -= dt;
+        if (p.friendly && p.pos.z > p.maxRange) {
+            SpawnParticleBurst3D(p.pos, 5, p.color, 1.0f, 3.5f, 0.14f, 0.18f);
+            p.active = false;
+            continue;
+        }
         if (p.life <= 0.0f || p.pos.z > 135.0f || p.pos.z < -15.0f) {
             p.active = false;
             continue;

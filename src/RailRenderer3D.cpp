@@ -185,7 +185,7 @@ void RailGame::RenderFrame() {
 
     bool inRun = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER);
     GalaxySector sec = inRun ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
-    GalaxySector nextSec = static_cast<GalaxySector>((static_cast<int>(sec) + 1) % NUM_SECTORS);
+    GalaxySector nextSec = inRun ? GetSectorAtDistance(distanceMeters_ + 500.0f) : GalaxySector::METROPOLIS_KERWAN;
     float sectorRem = inRun ? std::fmod(distanceMeters_, 500.0f) : 0.0f;
     float blend = inRun ? std::clamp((sectorRem - 460.0f) / 40.0f, 0.0f, 1.0f) : 0.0f;
 
@@ -388,7 +388,7 @@ void RailGame::RenderSkyline3D() const {
     constexpr float PORTAL_Z = 148.0f;
     bool inRun = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER);
     GalaxySector sec = inRun ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
-    GalaxySector nextSec = static_cast<GalaxySector>((static_cast<int>(sec) + 1) % NUM_SECTORS);
+    GalaxySector nextSec = inRun ? GetSectorAtDistance(distanceMeters_ + 500.0f) : GalaxySector::METROPOLIS_KERWAN;
     float sectorRem = inRun ? std::fmod(distanceMeters_, 500.0f) : 0.0f;
     float blend = inRun ? std::clamp((sectorRem - 460.0f) / 40.0f, 0.0f, 1.0f) : 0.0f;
 
@@ -456,7 +456,7 @@ void RailGame::RenderSkyline3D() const {
 
         float cx = GetTrackCurveX(std::max(0.0f, z));
         float cy = GetTrackCurveY(std::max(0.0f, z));
-        GalaxySector zSec = inRun ? static_cast<GalaxySector>((static_cast<int>(std::max(0.0f, distanceMeters_ + z / 1.8f)) / 500) % NUM_SECTORS) : sec;
+        GalaxySector zSec = inRun ? GetSectorAtDistance(distanceMeters_ + z / 1.8f) : sec;
         bool zEnclosed = (zSec == GalaxySector::MEGACORP_FACILITY || zSec == GalaxySector::ZORDOOM_PRISON);
 
         if (zEnclosed) {

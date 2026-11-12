@@ -69,6 +69,7 @@ private:
     bool IsRailActiveAt(int lane, float z) const;
     bool IsRailGapAt(int lane, float z) const;
     GalaxySector GetCurrentSector() const;
+    GalaxySector GetSectorAtDistance(float distMeters) const;
     const char* GetSectorName(GalaxySector s) const;
     Vector2 GetVirtualMouse() const;
     Vector2 ToVirtualCoords(Vector2 screenPos) const;
@@ -140,6 +141,7 @@ private:
     Color screenFlashColor_ = WHITE;
     float sectorBannerTimer_ = 0.0f;
     GalaxySector lastSector_ = GalaxySector::METROPOLIS_KERWAN;
+    std::array<GalaxySector, NUM_SECTORS> sectorOrder_{};
 
     // Touch / Mouse Swipe & Tap Gesture Tracking
     bool pointerDown_ = false;

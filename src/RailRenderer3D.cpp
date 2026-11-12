@@ -443,10 +443,13 @@ void RailGame::RenderSkyline3D() const {
 
     // 3. Scrolling Sector Landmarks & Architecture (Smoothly scaled via GetPortalEmergenceScale -> Zero Pop-In!)
     float baySpacing = 24.0f;
-    float bayOffset = std::fmod(distanceMeters_ * 1.8f, baySpacing);
+    float totalBayDist = distanceMeters_ * 1.8f;
+    long long baseBay = static_cast<long long>(std::floor(totalBayDist / baySpacing));
+    float bayOffset = totalBayDist - static_cast<float>(baseBay) * baySpacing;
 
-    for (int idx = 0; idx < 8; ++idx) {
-        float z = -10.0f - bayOffset + idx * baySpacing;
+    for (int i = 0; i < 8; ++i) {
+        int idx = static_cast<int>(std::abs(baseBay + i));
+        float z = -10.0f - bayOffset + i * baySpacing;
         if (z >= PORTAL_Z - 2.0f) continue;
         float emerge = GetPortalEmergenceScale(z);
         if (emerge <= 0.01f) continue;
@@ -550,7 +553,8 @@ void RailGame::RenderSkyline3D() const {
     if (sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::CORSON_V) {
         for (int s = 0; s < 5; ++s) {
             float dir = (s % 2 == 0) ? 1.0f : -1.0f;
-            float shipX = std::fmod(globalTime_ * (18.0f + s * 4.5f) * dir + s * 37.0f + 180.0f, 120.0f) - 60.0f;
+            float rawShipX = globalTime_ * (18.0f + s * 4.5f) * dir + s * 37.0f;
+            float shipX = std::fmod(std::fmod(rawShipX, 120.0f) + 120.0f, 120.0f) - 60.0f;
             float shipY = 10.0f + (s % 3) * 5.5f;
             float shipZ = 58.0f + s * 16.0f;
             DrawCube({ shipX, shipY, shipZ }, 3.2f, 0.8f, 1.2f, (s % 2 == 0) ? LIGHTGRAY : SKYBLUE);

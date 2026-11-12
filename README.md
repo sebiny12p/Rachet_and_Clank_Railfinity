@@ -15,7 +15,10 @@ An infinite, procedural 3D action grindrail runner built in **C++20** with **Ray
 - 📻 **Dynamic Radio Comm Chatter:** In-run holographic transmissions from Captain Qwark (questionable tactical advice) and Dr. Nefarious (rage-fueled tantrums).
 - 🏆 **Raritanium Lab & Golden Weapons (V8 Mastery):** Forge V5 Omega firearms into Golden Weapons with custom gold plating, incendiary ammo, and ricochet tri-blades.
 - 🎵 **Soundtrack Jukebox:** Cycle between 4 authentic Insomniac soundtracks in real time (*Rift Apart Main Theme*, *A Crack in Time*, *Going Commando - Tabora*, *Up Your Arsenal - Marcadia*).
-- 📊 **Lifetime Career Telemetry Dossier:** Track lifetime grinding distance, bolts collected, crates smashed, dropships destroyed, and favorite loadouts.
+- 🔫 **Tactical Weapon Range & Ammo Loop:** Each of the 5 firearms has its own optimal range (`34m`–`128m`) and ammo reserve, restocked by smashing crates with the unlimited **OmniWrench 8000** (`+30%`) and entering new sectors (`+50%`).
+- 🚆 **Committed Grindrail Movement:** Smooth `0.29s` rail-to-rail flips with input buffering and dynamic 3-rail corridors.
+- 🌍 **Shuffled Galactic Sectors & Smooth Transitions:** Every run randomizes the order of all 8 sectors (or uses the daily seed), complete with 40m atmospheric crossfades, spatial upcoming landmarks, and 3D Warp Gate rings.
+- 👾 **4 Unique Boss Battles:** Face the *Prog Twins Warship*, *Emperor Nefarious Dread-Frigate*, *Captain Slag Sky-Galleon*, and *Bioliterator Dread-Mech*, each with custom 3D hulls and distinct attack patterns.
 
 ---
 
@@ -64,18 +67,24 @@ Level up weapons through combat usage from base V1 up to devastating V5 Omega, a
 
 ---
 
-## 8 Procedural Galactic Sectors & Dread-Dropships
+## 8 Procedural Galactic Sectors & 4 Unique Bosses
 
-1. **Metropolis Kerwan (Solana Galaxy):** High-altitude metallic monorails, canyon skyways, and luminous billboards.
-2. **Corson V — Nefarious City (Polaris):** Neon-magenta cyberpunk skyline with aerodynamic hovering air-taxis.
-3. **Planet Gaspar — Volcanic Core:** Molten magma chambers with erupting pyro-geysers along the grindrails.
-4. **Pokitaru — Jowai Resort Coast:** Sunlit azure ocean vistas with leaping cyber-piranhas across the track.
-5. **Torren IV — Molonoth Scrap Fields:** Rusted wasteland canyons with swinging industrial scrap-metal cranes.
-6. **Megacorp Weapons Park (Bogon Galaxy):** Heavy industrial foundries, shielded enforcers, and plasma defense turrets.
+Each run shuffles the order of all 8 sectors (seeded daily in Daily Challenge mode) with smooth 40m sky/landmark transitions:
+
+1. **Metropolis Kerwan (Solana Galaxy):** Ringed gas giant horizon, futuristic skyscrapers, and cruising hover-traffic.
+2. **Corson V ? Nefarious City (Polaris):** Neon-magenta cyberpunk skyline, diagonal rain, and hovering air-taxis.
+3. **Planet Gaspar ? Volcanic Core:** Molten magma basin with obsidian spires and erupting pyro-geysers.
+4. **Pokitaru ? Jowai Resort Coast:** Sunlit azure ocean, sandy palm-tree islands, and leaping cyber-piranhas.
+5. **Torren IV ? Molonoth Scrap Fields:** Rusted wasteland canyons with industrial scrap towers and crane gantries.
+6. **Megacorp Weapons Park (Bogon Galaxy):** Enclosed industrial foundry with overhead catwalks and shielded enforcers.
 7. **Zordoom Prison Maximum Security:** High-security galactic penitentiary with crimson lockdown grids.
-8. **Dimensionator Rift Anomaly:** Psionic violet dimensional tear blending all realities and hazards at peak speed.
-- **Megacorp Dread-Dropship Battles:** Arrives overhead at sector milestones with 3 targetable core turrets (`Left`, `Center`, `Right`) deploying heavy laser sweeps.
+8. **Dimensionator Rift Anomaly:** Psionic violet dimensional tear with floating crystal obelisks and rift rings.
 
+### Boss Encounters (Every 750m)
+1. **Prog Twins // Command Warship:** Fires synchronized 2-lane plasma carpet-bombing volleys.
+2. **Emperor Nefarious // Dread-Frigate:** Sweeps dual Imperial ground lasers across the rails alongside rapid bolts.
+3. **Captain Slag // Sky-Galleon:** Space-pirate warship firing staggered 3-rail broadside cannon waves.
+4. **Bioliterator // Nefarious Dread-Mech:** Tracks Ratchet's lane, locks on with a crimson telegraph laser, and unleashes a 3-shot burst.
 ---
 
 ## Controls

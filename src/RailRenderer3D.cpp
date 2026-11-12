@@ -1131,6 +1131,73 @@ void RailGame::RenderBossDropship3D() const {
                 DrawSphere(tPos, 0.60f, DARKGRAY);
             }
         }
+    } else if (boss_.bossType == BossType::CAPTAIN_SLAG_CORSAIR) {
+        // CAPTAIN SLAG // SPACE PIRATE SKY-GALLEON (Dark Mahogany, Brass & Glowing Energy Sails)
+        DrawCube(hullPos, 8.2f, 2.5f, 6.2f, { 76, 44, 28, 255 });
+        DrawCubeWires(hullPos, 8.3f, 2.6f, 6.3f, GOLD);
+        // Prow figurehead & twin broadside cannon sponsons
+        DrawCylinderEx({ hullPos.x, hullPos.y - 0.2f, hullPos.z - 3.1f },
+                       { hullPos.x, hullPos.y + 0.4f, hullPos.z - 5.2f }, 1.2f, 0.2f, 6, GOLD);
+        DrawCube({ hullPos.x - 4.8f, hullPos.y, hullPos.z }, 1.6f, 1.3f, 4.6f, { 52, 34, 24, 255 });
+        DrawCube({ hullPos.x + 4.8f, hullPos.y, hullPos.z }, 1.6f, 1.3f, 4.6f, { 52, 34, 24, 255 });
+        // Tall Pirate Mast & Twin Glowing Cyan Energy Sails
+        DrawCylinderEx({ hullPos.x, hullPos.y + 1.2f, hullPos.z },
+                       { hullPos.x, hullPos.y + 6.8f, hullPos.z }, 0.28f, 0.22f, 6, { 165, 130, 65, 255 });
+        DrawCube({ hullPos.x, hullPos.y + 4.4f, hullPos.z + 0.2f }, 6.8f, 3.4f, 0.22f, { 45, 210, 245, 185 });
+        DrawCubeWires({ hullPos.x, hullPos.y + 4.4f, hullPos.z + 0.2f }, 6.85f, 3.45f, 0.25f, GOLD);
+
+        for (int l = 0; l < NUM_LANES; ++l) {
+            Vector3 tPos = ApplyTrackCurve(GetLaneX(l), boss_.hoverY - 1.15f, boss_.z - 1.8f);
+            if (boss_.turretHp[l] > 0.0f) {
+                DrawCylinderEx(tPos, { tPos.x, tPos.y - 0.25f, tPos.z - 1.8f }, 0.55f, 0.38f, 8, { 42, 44, 52, 255 });
+                DrawSphere(tPos, 0.90f, SKYBLUE);
+                DrawSphereWires(tPos, 1.05f, 6, 6, GOLD);
+            } else {
+                DrawSphere(tPos, 0.60f, DARKGRAY);
+            }
+        }
+    } else if (boss_.bossType == BossType::DR_NEFARIOUS_MECH) {
+        // BIOLITERATOR // NEFARIOUS DREAD-MECH (Vertical Cybernetic Walker + 4 Claw Arms + Lock-On Beam)
+        DrawCube({ hullPos.x, hullPos.y + 1.0f, hullPos.z }, 4.6f, 4.8f, 3.6f, { 32, 42, 48, 255 });
+        DrawCubeWires({ hullPos.x, hullPos.y + 1.0f, hullPos.z }, 4.7f, 4.9f, 3.7f, GREEN);
+        // Glowing Crimson Cyclops Visor
+        DrawCube({ hullPos.x, hullPos.y + 2.2f, hullPos.z - 1.85f }, 2.6f, 0.85f, 0.35f, RED);
+        // Rotating Emerald Shield Ring
+        for (int r = 0; r < 8; ++r) {
+            float a1 = (r * 45.0f + globalTime_ * 90.0f) * DEG2RAD;
+            float a2 = ((r + 1) * 45.0f + globalTime_ * 90.0f) * DEG2RAD;
+            Vector3 p1 = { hullPos.x + std::cos(a1) * 3.8f, hullPos.y + 1.0f + std::sin(a1) * 3.8f, hullPos.z - 0.5f };
+            Vector3 p2 = { hullPos.x + std::cos(a2) * 3.8f, hullPos.y + 1.0f + std::sin(a2) * 3.8f, hullPos.z - 0.5f };
+            DrawCylinderEx(p1, p2, 0.16f, 0.16f, 5, GREEN);
+        }
+        // 4 Mechanical Claw Arms
+        for (int side = -1; side <= 1; side += 2) {
+            for (int tier = 0; tier < 2; ++tier) {
+                Vector3 sh = { hullPos.x + side * 2.4f, hullPos.y + 2.2f - tier * 1.8f, hullPos.z };
+                Vector3 el = { hullPos.x + side * 5.2f, hullPos.y + 1.6f - tier * 2.2f, hullPos.z - 1.5f };
+                Vector3 cl = { hullPos.x + side * 4.4f, hullPos.y - 0.4f - tier * 1.6f, hullPos.z - 3.2f };
+                DrawCylinderEx(sh, el, 0.35f, 0.28f, 6, { 58, 66, 76, 255 });
+                DrawCylinderEx(el, cl, 0.28f, 0.16f, 6, { 58, 66, 76, 255 });
+                DrawSphere(cl, 0.45f, RED);
+            }
+        }
+        // Lock-On Laser Telegraph Line down the targeted rail!
+        if (boss_.telegraphTimer > 0.0f && boss_.telegraphLane >= 0) {
+            Vector3 eyePos = { hullPos.x, hullPos.y + 2.2f, hullPos.z - 1.9f };
+            Vector3 lockTarget = ApplyTrackCurve(GetLaneX(boss_.telegraphLane), 0.35f, 0.0f);
+            DrawCylinderEx(eyePos, lockTarget, 0.14f, 0.26f, 6, { 255, 45, 45, 220 });
+            DrawCircle3D(lockTarget, 1.15f, { 0, 1, 0 }, 0.0f, RED);
+        }
+
+        for (int l = 0; l < NUM_LANES; ++l) {
+            Vector3 tPos = ApplyTrackCurve(GetLaneX(l), boss_.hoverY - 1.15f, boss_.z - 1.8f);
+            if (boss_.turretHp[l] > 0.0f) {
+                DrawSphere(tPos, 0.95f, GREEN);
+                DrawSphereWires(tPos, 1.1f, 6, 6, RED);
+            } else {
+                DrawSphere(tPos, 0.60f, DARKGRAY);
+            }
+        }
     } else {
         // PROG TWINS // MEGACORP COMMAND SHIP (Industrial Gunmetal & Hazard Orange)
         DrawCube(hullPos, 9.5f, 2.2f, 4.2f, { 48, 54, 70, 255 });

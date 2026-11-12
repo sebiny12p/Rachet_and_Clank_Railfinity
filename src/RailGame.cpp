@@ -1053,8 +1053,8 @@ void RailGame::SpawnProjectile(Vector3 pos, Vector3 vel, int lane, WeaponId wId,
             p.life = 2.2f;
             if (friendly) {
                 switch (wId) {
-                    case WeaponId::OMNIWRENCH_8000: p.maxRange = 38.0f; break;
-                    case WeaponId::SHOCK_BLASTER:   p.maxRange = 34.0f; break;
+                    case WeaponId::OMNIWRENCH_8000: p.maxRange = 44.0f; break;
+                    case WeaponId::SHOCK_BLASTER:   p.maxRange = 40.0f; break;
                     case WeaponId::BUZZ_BLADES:     p.maxRange = 56.0f; break;
                     case WeaponId::COMBUSTER:       p.maxRange = 68.0f; break;
                     case WeaponId::RYNO_INFINITE:   p.maxRange = 88.0f; break;
@@ -1094,16 +1094,27 @@ void RailGame::SpawnParticleBurst3D(Vector3 pos, int count, Color color, float m
 void RailGame::TriggerBossDropship() {
     boss_.active = true;
     boss_.bossTier++;
-    if (boss_.bossTier % 2 == 1) {
+    int bossChoice = (boss_.bossTier - 1) % 4;
+    if (bossChoice == 0) {
         boss_.bossType = BossType::PROG_TWINS;
         boss_.name = "PROG TWINS // COMMAND WARSHIP";
         TriggerRadioTransmission(CommSpeaker::CAPTAIN_QWARK, "CAPTAIN QWARK",
-                                 "Ratchet! It's the Megacorp Warship! Remember my advice: don't let them shoot you!");
-    } else {
+                                 "Ratchet! It's the Megacorp Warship! Watch out for their twin plasma carpet-bombing!");
+    } else if (bossChoice == 1) {
         boss_.bossType = BossType::EMPEROR_NEFARIOUS_FRIGATE;
         boss_.name = "EMPEROR NEFARIOUS // DREAD-FRIGATE";
         TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
                                  "LOMBAX! Did you think you could escape my Imperial Frigate?! LAWRENCE, DESTROY HIM!");
+    } else if (bossChoice == 2) {
+        boss_.bossType = BossType::CAPTAIN_SLAG_CORSAIR;
+        boss_.name = "CAPTAIN SLAG // SKY-GALLEON";
+        TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                 "Space Pirate Captain Slag incoming! Brace for staggered broadside cannon salvos!");
+    } else {
+        boss_.bossType = BossType::DR_NEFARIOUS_MECH;
+        boss_.name = "BIOLITERATOR // NEFARIOUS DREAD-MECH";
+        TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
+                                 "MY DREAD-MECH HAS LOCKED ONTO YOUR SIGNATURE, LOMBAX! DODGE THIS!");
     }
     boss_.z = 38.0f;
     boss_.hoverX = 0.0f;
@@ -2328,8 +2339,18 @@ void RailGame::UpdatePlayingFixed(float dt) {
 
 void RailGame::UpdateBossFixed(float dt) {
     boss_.phase += 1.6f * dt;
-    boss_.hoverX = std::sin(boss_.phase) * 2.2f;
-    boss_.hoverY = 4.2f + std::cos(boss_.phase * 1.4f) * 0.6f;
+    if (boss_.bossType == BossType::DR_NEFARIOUS_MECH) {
+        // Mech actively tracks Ratchet's lateral position and hovers lower/menacingly
+        boss_.hoverX = Lerp(boss_.hoverX, player_.x, 2.2f * dt);
+        boss_.hoverY = 4.6f + std::sin(boss_.phase * 2.1f) * 0.45f;
+    } else if (boss_.bossType == BossType::CAPTAIN_SLAG_CORSAIR) {
+        // Pirate Galleon rolls smoothly side-to-side like on high seas
+        boss_.hoverX = std::sin(boss_.phase * 0.85f) * 3.2f;
+        boss_.hoverY = 4.4f + std::cos(boss_.phase * 1.8f) * 0.75f;
+    } else {
+        boss_.hoverX = std::sin(boss_.phase) * 2.2f;
+        boss_.hoverY = 4.2f + std::cos(boss_.phase * 1.4f) * 0.6f;
+    }
 
     // Check if all active turrets are destroyed
     bool allTurretsDown = true;
@@ -2348,13 +2369,19 @@ void RailGame::UpdateBossFixed(float dt) {
         screenFlashAlpha_ = 0.6f;
         audio_.PlayExplosion();
         audio_.PlayLevelUp();
+        Color burstCol = (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? PURPLE
+                       : (boss_.bossType == BossType::CAPTAIN_SLAG_CORSAIR) ? SKYBLUE
+                       : (boss_.bossType == BossType::DR_NEFARIOUS_MECH) ? GREEN : ORANGE;
         for (int l = 0; l < NUM_LANES; ++l) {
-            SpawnParticleBurst3D({ GetLaneX(l), 3.5f, boss_.z }, 40, (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? PURPLE : ORANGE, 5.0f, 20.0f, 0.45f, 0.8f);
+            SpawnParticleBurst3D({ GetLaneX(l), 3.5f, boss_.z }, 40, burstCol, 5.0f, 20.0f, 0.45f, 0.8f);
             SpawnBoltShower({ GetLaneX(l), 2.0f, 14.0f }, 12, true);
         }
-        if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
+        if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE || boss_.bossType == BossType::DR_NEFARIOUS_MECH) {
             TriggerRadioTransmission(CommSpeaker::DR_NEFARIOUS, "DR. NEFARIOUS",
                                      "CURSE YOU LOMBAAAAX! This is not over! LAWRENCE, BRING ME MY ESCAPE POD!");
+        } else if (boss_.bossType == BossType::CAPTAIN_SLAG_CORSAIR) {
+            TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
+                                     "Captain Slag's Sky-Galleon has been scuttled! Smooth grinding, Ratchet.");
         } else {
             TriggerRadioTransmission(CommSpeaker::CLANK, "CLANK",
                                      "Command Warship neutralized, Ratchet! Excellent shooting.");
@@ -2363,26 +2390,70 @@ void RailGame::UpdateBossFixed(float dt) {
         return;
     }
 
+    int minL = GetCorridorMinLaneAt(totalWorldTravel_);
+    int maxL = minL + 2;
+
     if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
-        // Sweeping Dual Imperial Laser Beams
+        // Sweeping Dual Imperial Laser Beams (must jump over)
         boss_.laserSweepTimer += dt;
         boss_.laserSweepX = std::sin(boss_.laserSweepTimer * 1.8f) * 5.2f;
 
-        // Player collision with sweeping laser at ground level (Ratchet must jump over it!)
         if (player_.y < 0.95f && std::abs(player_.x - boss_.laserSweepX) < 1.4f && player_.invulnTimer <= 0.0f && player_.hyperBoostTimer <= 0.0f) {
             DamagePlayer(1.0f);
             SpawnParticleBurst3D({ player_.x, 0.5f, 0.0f }, 16, PURPLE, 3.5f, 12.0f, 0.28f, 0.35f);
         }
     }
 
+    // Mech Lock-On Telegraph Countdown -> Fires rapid 3-shot burst down locked lane
+    if (boss_.bossType == BossType::DR_NEFARIOUS_MECH && boss_.telegraphTimer > 0.0f) {
+        boss_.telegraphTimer -= dt;
+        if (boss_.telegraphTimer <= 0.0f) {
+            int lockedLane = std::clamp(boss_.telegraphLane, minL, maxL);
+            for (int k = 0; k < 3; ++k) {
+                SpawnProjectile({ GetLaneX(lockedLane), 1.3f, boss_.z - 2.0f - k * 2.8f }, { 0.0f, 0.0f, -44.0f },
+                                lockedLane, WeaponId::RYNO_INFINITE, 1.0f, 0.72f, GREEN, false, 0);
+            }
+            audio_.PlayBlasterShot();
+            boss_.telegraphLane = -1;
+        }
+    }
+
     boss_.attackCooldown -= dt;
     if (boss_.attackCooldown <= 0.0f) {
-        boss_.attackCooldown = (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? 1.75f : 2.1f;
-        int lane = rng_.RangeInt(0, NUM_LANES - 1);
-        Color projCol = (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) ? PURPLE : RED;
-        SpawnProjectile({ GetLaneX(lane), 1.3f, boss_.z - 2.0f }, { 0.0f, 0.0f, -34.0f },
-                        lane, WeaponId::RYNO_INFINITE, 1.0f, 0.75f, projCol, false, 0);
-        audio_.PlayBlasterShot();
+        if (boss_.bossType == BossType::PROG_TWINS) {
+            // Twin Warship: Fires 2-lane synchronized plasma carpet-bombing (leaves 1 safe lane!)
+            boss_.attackCooldown = 2.05f;
+            int safeLane = rng_.RangeInt(minL, maxL);
+            for (int l = minL; l <= maxL; ++l) {
+                if (l == safeLane) continue;
+                SpawnProjectile({ GetLaneX(l), 1.3f, boss_.z - 2.0f }, { 0.0f, 0.0f, -33.0f },
+                                l, WeaponId::RYNO_INFINITE, 1.0f, 0.80f, ORANGE, false, 0);
+            }
+            audio_.PlayBlasterShot();
+        } else if (boss_.bossType == BossType::EMPEROR_NEFARIOUS_FRIGATE) {
+            // Frigate: Fast single-lane purple bolts alongside its sweeping ground laser
+            boss_.attackCooldown = 1.65f;
+            int lane = rng_.RangeInt(minL, maxL);
+            SpawnProjectile({ GetLaneX(lane), 1.3f, boss_.z - 2.0f }, { 0.0f, 0.0f, -37.0f },
+                            lane, WeaponId::RYNO_INFINITE, 1.0f, 0.75f, PURPLE, false, 0);
+            audio_.PlayBlasterShot();
+        } else if (boss_.bossType == BossType::CAPTAIN_SLAG_CORSAIR) {
+            // Pirate Sky-Galleon: Staggered 3-rail broadside wave (forces lateral rail weaving!)
+            boss_.attackCooldown = 2.25f;
+            bool leftToRight = (static_cast<int>(boss_.phase) % 2 == 0);
+            for (int step = 0; step < 3; ++step) {
+                int l = leftToRight ? (minL + step) : (maxL - step);
+                float zLead = boss_.z - 2.0f + step * 5.2f;
+                SpawnProjectile({ GetLaneX(l), 1.25f, zLead }, { 0.0f, 0.0f, -32.0f },
+                                l, WeaponId::RYNO_INFINITE, 1.0f, 0.82f, SKYBLUE, false, 0);
+            }
+            audio_.PlayBlasterShot();
+        } else {
+            // Bioliterator Dread-Mech: Locks onto Ratchet's current lane for 0.65s then unleashes 3-shot burst
+            boss_.attackCooldown = 2.15f;
+            boss_.telegraphLane = std::clamp(player_.currentLane, minL, maxL);
+            boss_.telegraphTimer = 0.65f;
+        }
     }
 }
 

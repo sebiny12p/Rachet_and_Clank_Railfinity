@@ -456,7 +456,9 @@ struct SkyBuilding {
 
 enum class BossType : int {
     PROG_TWINS = 0,
-    EMPEROR_NEFARIOUS_FRIGATE = 1
+    EMPEROR_NEFARIOUS_FRIGATE = 1,
+    CAPTAIN_SLAG_CORSAIR = 2,
+    DR_NEFARIOUS_MECH = 3
 };
 
 struct BossDropship {

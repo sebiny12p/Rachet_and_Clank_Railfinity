@@ -105,9 +105,48 @@ void RailGame::RenderFrame() {
     rlEnableDepthMask();
     ClearBackground(skyTop);
 
-    // Disable Depth Mask during 2D background gradient so it does NOT write into the 3D depth buffer!
+    // Disable Depth Mask during 2D background gradient & skybox art so it does NOT write into the 3D depth buffer!
     rlDisableDepthMask();
     DrawRectangleGradientV(0, 0, static_cast<int>(virtualWidth_), 720, skyTop, skyBot);
+    {
+        float cx = virtualWidth_ * 0.5f;
+        if (sec == GalaxySector::METROPOLIS_KERWAN) {
+            DrawCircleGradient(static_cast<int>(cx + 260.0f), 145, 92.0f, { 255, 225, 165, 160 }, { 16, 28, 48, 0 });
+            DrawCircle(static_cast<int>(cx + 260.0f), 145, 48.0f, { 215, 175, 115, 195 });
+            DrawEllipse(static_cast<int>(cx + 260.0f), 148, 88.0f, 16.0f, { 245, 215, 155, 110 });
+        } else if (sec == GalaxySector::CORSON_V) {
+            DrawCircleGradient(static_cast<int>(cx - 240.0f), 135, 95.0f, { 255, 70, 200, 140 }, { 20, 10, 36, 0 });
+            DrawCircle(static_cast<int>(cx - 240.0f), 135, 44.0f, { 225, 110, 245, 190 });
+            for (int r = 0; r < 24; ++r) {
+                float rx = std::fmod(r * 137.0f + globalTime_ * 95.0f, virtualWidth_);
+                float ry = std::fmod(r * 89.0f + globalTime_ * 420.0f, 420.0f);
+                DrawLine(static_cast<int>(rx), static_cast<int>(ry), static_cast<int>(rx - 6.0f), static_cast<int>(ry + 22.0f), { 190, 140, 255, 75 });
+            }
+        } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
+            DrawCircleGradient(static_cast<int>(cx + 180.0f), 170, 130.0f, { 255, 110, 30, 175 }, { 32, 10, 8, 0 });
+            DrawCircle(static_cast<int>(cx + 180.0f), 170, 56.0f, { 255, 155, 55, 215 });
+        } else if (sec == GalaxySector::POKITARU_RESORT) {
+            DrawCircleGradient(static_cast<int>(cx - 210.0f), 120, 115.0f, { 255, 245, 170, 210 }, { 35, 115, 215, 0 });
+            DrawCircle(static_cast<int>(cx - 210.0f), 120, 42.0f, { 255, 250, 205, 245 });
+            for (int c = 0; c < 5; ++c) {
+                float cloudX = std::fmod(c * 290.0f + globalTime_ * 18.0f, virtualWidth_ + 220.0f) - 110.0f;
+                float cloudY = 85.0f + (c % 3) * 42.0f;
+                DrawEllipse(static_cast<int>(cloudX), static_cast<int>(cloudY), 76.0f, 18.0f, { 255, 255, 255, 95 });
+                DrawEllipse(static_cast<int>(cloudX + 28.0f), static_cast<int>(cloudY - 7.0f), 48.0f, 15.0f, { 255, 255, 255, 110 });
+            }
+        } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
+            DrawCircle(static_cast<int>(cx + 210.0f), 130, 52.0f, { 225, 155, 95, 145 });
+            DrawCircle(static_cast<int>(cx - 290.0f), 165, 24.0f, { 185, 140, 110, 130 });
+        } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
+            for (int s = 0; s < 42; ++s) {
+                float sx = std::fmod(s * 173.0f, virtualWidth_);
+                float sy = std::fmod(s * 97.0f, 360.0f);
+                DrawCircle(static_cast<int>(sx), static_cast<int>(sy), (s % 3 == 0) ? 2.0f : 1.2f, { 230, 190, 255, 180 });
+            }
+            DrawCircleLines(static_cast<int>(cx), 165, 68.0f + std::sin(globalTime_ * 2.5f) * 6.0f, { 210, 110, 255, 150 });
+            DrawCircleLines(static_cast<int>(cx), 165, 98.0f + std::cos(globalTime_ * 1.9f) * 8.0f, { 120, 220, 255, 110 });
+        }
+    }
     rlEnableDepthMask();
 
     RenderWorld3D();
@@ -271,48 +310,84 @@ void RailGame::RenderWorld3D() {
 
 void RailGame::RenderSkyline3D() const {
     constexpr float PORTAL_Z = 148.0f;
-    GalaxySector sec = GetCurrentSector();
+    GalaxySector sec = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER)
+                       ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
+
+    bool isEnclosed = (sec == GalaxySector::MEGACORP_FACILITY || sec == GalaxySector::ZORDOOM_PRISON);
 
     // Floor & Wall Colors adapted by Planetary Sector Biome
-    Color floorCol = { 46, 56, 52, 255 };
-    Color wallUpper = { 166, 160, 134, 255 };
-    Color wallLower = { 76, 84, 74, 255 };
-    Color neonLight = { 185, 248, 255, 255 };
+    Color floorCol   = { 36, 52, 58, 255 };
+    Color wallUpper  = { 156, 154, 134, 255 };
+    Color wallLower  = { 68, 78, 74, 255 };
+    Color neonLight  = { 125, 235, 255, 255 };
+    Color portalBack = { 24, 58, 92, 255 };
+    Color towerCol   = { 182, 174, 148, 255 };
+    Color archCol    = { 54, 62, 76, 255 };
 
     if (sec == GalaxySector::CORSON_V) {
-        floorCol = { 24, 18, 36, 255 };
-        wallUpper = { 45, 34, 60, 255 };
-        wallLower = { 28, 20, 42, 255 };
-        neonLight = { 255, 55, 185, 255 }; // Hot Magenta Neon
+        floorCol   = { 20, 14, 34, 255 };
+        wallUpper  = { 44, 32, 62, 255 };
+        wallLower  = { 24, 18, 40, 255 };
+        neonLight  = { 255, 55, 185, 255 };
+        portalBack = { 36, 16, 62, 255 };
+        towerCol   = { 58, 42, 82, 255 };
+        archCol    = { 42, 34, 64, 255 };
     } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
-        floorCol = { 215, 65, 15, 255 }; // Active Magma Floor
-        wallUpper = { 52, 32, 28, 255 }; // Basalt Volcanic Obsidian Rock
-        wallLower = { 35, 18, 16, 255 };
-        neonLight = { 255, 140, 25, 255 }; // Magma Core Glow
+        floorCol   = { 205, 58, 12, 255 };
+        wallUpper  = { 54, 32, 28, 255 };
+        wallLower  = { 35, 18, 16, 255 };
+        neonLight  = { 255, 145, 25, 255 };
+        portalBack = { 48, 18, 14, 255 };
+        towerCol   = { 66, 40, 34, 255 };
+        archCol    = { 50, 34, 32, 255 };
     } else if (sec == GalaxySector::POKITARU_RESORT) {
-        floorCol = { 22, 140, 195, 255 }; // Tropical Azure Ocean
-        wallUpper = { 215, 198, 162, 255 }; // Sun-bleached Sandstone
-        wallLower = { 150, 135, 105, 255 };
-        neonLight = { 65, 235, 245, 255 }; // Azure Coral Glow
+        floorCol   = { 18, 132, 188, 255 };
+        wallUpper  = { 215, 198, 162, 255 };
+        wallLower  = { 150, 135, 105, 255 };
+        neonLight  = { 65, 235, 245, 255 };
+        portalBack = { 26, 98, 148, 255 };
+        towerCol   = { 225, 208, 172, 255 };
+        archCol    = { 86, 128, 145, 255 };
     } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
-        floorCol = { 130, 62, 34, 255 }; // Molonoth Rusted Junkyard Floor
-        wallUpper = { 145, 78, 45, 255 }; // Rusted Iron Mesas
-        wallLower = { 85, 42, 24, 255 };
-        neonLight = { 255, 185, 55, 255 }; // Sodium Scrapyard Floodlight
+        floorCol   = { 118, 56, 30, 255 };
+        wallUpper  = { 142, 76, 44, 255 };
+        wallLower  = { 85, 42, 24, 255 };
+        neonLight  = { 255, 185, 55, 255 };
+        portalBack = { 76, 42, 28, 255 };
+        towerCol   = { 132, 78, 48, 255 };
+        archCol    = { 82, 54, 38, 255 };
     } else if (sec == GalaxySector::ZORDOOM_PRISON) {
-        wallUpper = { 38, 42, 58, 255 };
-        wallLower = { 22, 24, 35, 255 };
-        neonLight = { 255, 45, 45, 255 }; // Security Red
+        floorCol   = { 24, 26, 34, 255 };
+        wallUpper  = { 38, 42, 58, 255 };
+        wallLower  = { 22, 24, 35, 255 };
+        neonLight  = { 255, 45, 45, 255 };
+        portalBack = { 40, 18, 24, 255 };
+        towerCol   = { 52, 56, 72, 255 };
     } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
-        wallUpper = { 55, 30, 75, 255 };
-        wallLower = { 32, 18, 48, 255 };
-        neonLight = { 210, 85, 255, 255 }; // Psionic Rift Violet
+        floorCol   = { 24, 12, 42, 255 };
+        wallUpper  = { 55, 30, 75, 255 };
+        wallLower  = { 32, 18, 48, 255 };
+        neonLight  = { 210, 85, 255, 255 };
+        portalBack = { 44, 20, 72, 255 };
+        towerCol   = { 76, 44, 108, 255 };
+        archCol    = { 85, 48, 122, 255 };
     }
 
-    // 1. Continuous Planetary Canyon Floor & Unbroken Side Walls (Zero Pop-In!)
-    DrawCube({ 0.0f, -18.0f, 70.0f }, 96.0f, 2.0f, 190.0f, floorCol);
+    // 1. Wide Planetary Floor / Ocean / Magma Basin
+    DrawCube({ 0.0f, -16.0f, 70.0f }, 160.0f, 2.0f, 210.0f, floorCol);
 
-    // Continuous segmented side walls that follow the track curve from Z = -12 all the way into the back wall at Z = 148!
+    // Animated water ripples or magma fissures below the track
+    if (sec == GalaxySector::POKITARU_RESORT || sec == GalaxySector::GASPAR_VOLCANIC) {
+        Color bandCol = (sec == GalaxySector::POKITARU_RESORT) ? Color{ 75, 210, 245, 160 } : Color{ 255, 165, 35, 210 };
+        float bandOff = std::fmod(distanceMeters_ * 1.4f, 18.0f);
+        for (float bz = 6.0f - bandOff; bz < PORTAL_Z - 4.0f; bz += 18.0f) {
+            if (bz < 0.0f) continue;
+            float cx = GetTrackCurveX(bz);
+            DrawCube({ cx, -14.8f, bz }, 110.0f, 0.3f, 2.2f, bandCol);
+        }
+    }
+
+    // 2. Trackside Curbs (Open-sky worlds) vs Tall Corridor Walls (Megacorp / Zordoom)
     constexpr float wallStep = 10.0f;
     for (float z = -12.0f; z < PORTAL_Z; z += wallStep) {
         float midZ = z + wallStep * 0.5f;
@@ -320,69 +395,160 @@ void RailGame::RenderSkyline3D() const {
         float cy = GetTrackCurveY(std::max(0.0f, midZ));
 
         for (int side = -1; side <= 1; side += 2) {
-            float wx = cx + side * 17.5f;
-            DrawCube({ wx, cy + 5.0f, midZ }, 5.0f, 30.0f, wallStep + 0.4f, wallUpper);
-            DrawCube({ wx - side * 1.8f, cy - 6.8f, midZ }, 5.8f, 9.5f, wallStep + 0.4f, wallLower);
-            DrawCube({ wx - side * 2.5f, cy - 1.9f, midZ }, 0.8f, 0.7f, wallStep + 0.4f, { 42, 48, 58, 255 });
+            if (isEnclosed) {
+                float wx = cx + side * 17.5f;
+                DrawCube({ wx, cy + 5.0f, midZ }, 5.0f, 30.0f, wallStep + 0.4f, wallUpper);
+                DrawCube({ wx - side * 1.8f, cy - 6.8f, midZ }, 5.8f, 9.5f, wallStep + 0.4f, wallLower);
+                DrawCube({ wx - side * 2.5f, cy - 1.9f, midZ }, 0.8f, 0.7f, wallStep + 0.4f, { 42, 48, 58, 255 });
+            } else {
+                // Sleek low trackside guardrail/parapet so the sky, planet, and distant skyline shine through!
+                float wx = cx + side * 15.2f;
+                DrawCube({ wx, cy - 6.8f, midZ }, 2.2f, 9.5f, wallStep + 0.4f, wallLower);
+                DrawCube({ wx, cy - 1.8f, midZ }, 2.6f, 0.9f, wallStep + 0.4f, wallUpper);
+                DrawCube({ wx - side * 1.1f, cy - 1.8f, midZ }, 0.35f, 0.45f, wallStep + 0.4f, neonLight);
+            }
         }
     }
 
-    // Scrolling vertical steel buttress ribs & glowing cyan light panels (smoothly scaled out of the back wall so they NEVER pop!)
+    // 3. Scrolling Sector Landmarks & Architecture (Smoothly scaled via GetPortalEmergenceScale -> Zero Pop-In!)
     float baySpacing = 24.0f;
     float bayOffset = std::fmod(distanceMeters_ * 1.8f, baySpacing);
 
-    for (float z = -10.0f - bayOffset; z < PORTAL_Z - 2.0f; z += baySpacing) {
+    for (int idx = 0; idx < 8; ++idx) {
+        float z = -10.0f - bayOffset + idx * baySpacing;
+        if (z >= PORTAL_Z - 2.0f) continue;
         float emerge = GetPortalEmergenceScale(z);
         if (emerge <= 0.01f) continue;
 
         float cx = GetTrackCurveX(std::max(0.0f, z));
         float cy = GetTrackCurveY(std::max(0.0f, z));
 
-        for (int side = -1; side <= 1; side += 2) {
-            float wx = cx + side * 14.6f;
-            DrawCube({ wx, cy + 4.0f, z }, 0.9f * emerge, 26.0f, 1.8f * emerge, { 45, 52, 64, 255 });
-        }
+        if (isEnclosed) {
+            for (int side = -1; side <= 1; side += 2) {
+                float wx = cx + side * 14.6f;
+                DrawCube({ wx, cy + 4.0f, z }, 0.9f * emerge, 26.0f, 1.8f * emerge, { 45, 52, 64, 255 });
+            }
+            // Overhead industrial catwalk arch connecting both walls!
+            DrawCube({ cx, cy + 12.2f, z }, 29.0f * emerge, 1.4f * emerge, 1.8f * emerge, { 38, 44, 54, 255 });
+            DrawCube({ cx, cy + 11.3f, z }, 14.0f * emerge, 0.35f * emerge, 0.5f * emerge, neonLight);
 
-        // Glowing Billboard Light Panel on Left Wall (+X) evaluated cleanly along local track curve
-        float pz = z + 8.0f;
-        float pEmerge = GetPortalEmergenceScale(pz);
-        if (pEmerge > 0.02f) {
-            float px = GetTrackCurveX(std::max(0.0f, pz));
-            float py = GetTrackCurveY(std::max(0.0f, pz));
-            Vector3 panelPos = { px + 14.35f, py + 2.2f, pz };
-            DrawCube(panelPos, 0.40f, 4.4f * pEmerge, 9.2f * pEmerge, { 35, 52, 68, 255 });
-            DrawCube({ px + 13.88f, panelPos.y, panelPos.z },
-                     0.24f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
+            float pz = z + 8.0f;
+            float pEmerge = GetPortalEmergenceScale(pz);
+            if (pEmerge > 0.02f) {
+                float px = GetTrackCurveX(std::max(0.0f, pz));
+                float py = GetTrackCurveY(std::max(0.0f, pz));
+                Vector3 panelPos = { px + 14.35f, py + 2.2f, pz };
+                DrawCube(panelPos, 0.40f, 4.4f * pEmerge, 9.2f * pEmerge, { 35, 52, 68, 255 });
+                DrawCube({ px + 13.88f, panelPos.y, panelPos.z },
+                         0.24f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
+            }
+        } else if (sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::CORSON_V) {
+            // Futuristic Metropolis / Cyberpunk Skyscrapers flanking the skyway
+            for (int side = -1; side <= 1; side += 2) {
+                float bHeight = 24.0f + ((idx + (side > 0 ? 1 : 0)) % 3) * 11.0f;
+                float bx = cx + side * (24.5f + ((idx % 2) * 4.5f));
+                Color bCol = (sec == GalaxySector::CORSON_V)
+                             ? Color{ 34, 24, 52, 255 } : Color{ 82, 96, 114, 255 };
+                Color bTrim = (sec == GalaxySector::CORSON_V)
+                              ? neonLight : Color{ 165, 225, 255, 255 };
+                DrawCube({ bx, cy - 15.0f + bHeight * 0.5f * emerge, z },
+                         7.5f * emerge, bHeight * emerge, 7.5f * emerge, bCol);
+                // Glowing window/neon bands on inner face
+                DrawCube({ bx - side * 3.85f * emerge, cy - 3.0f + bHeight * 0.35f * emerge, z },
+                         0.3f * emerge, (bHeight * 0.55f) * emerge, 4.2f * emerge, bTrim);
+                // Rooftop antenna beacon
+                DrawCylinderEx({ bx, cy - 15.0f + bHeight * emerge, z },
+                               { bx, cy - 15.0f + (bHeight + 6.0f) * emerge, z },
+                               0.25f * emerge, 0.08f * emerge, 5, DARKGRAY);
+                DrawSphere({ bx, cy - 15.0f + (bHeight + 6.2f) * emerge, z }, 0.45f * emerge, neonLight);
+            }
+        } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
+            // Jagged Obsidian Volcanic Spires rising from the lava sea
+            for (int side = -1; side <= 1; side += 2) {
+                float sH = 18.0f + ((idx + (side > 0 ? 2 : 0)) % 3) * 8.0f;
+                float sx = cx + side * 23.0f;
+                DrawCylinderEx({ sx, -15.5f, z }, { sx, -15.5f + sH * emerge, z },
+                               5.2f * emerge, 0.7f * emerge, 6, { 46, 26, 24, 255 });
+                DrawCylinderEx({ sx - side * 1.4f, -15.5f, z + 3.0f },
+                               { sx - side * 1.4f, -15.5f + (sH * 0.65f) * emerge, z + 3.0f },
+                               3.4f * emerge, 0.5f * emerge, 5, { 68, 32, 24, 255 });
+                // Glowing lava fissure at base
+                DrawCube({ sx - side * 3.5f, -14.3f, z }, 2.2f * emerge, 0.6f, 4.5f * emerge, { 255, 115, 20, 255 });
+            }
+        } else if (sec == GalaxySector::POKITARU_RESORT) {
+            // Sandy Resort Islands & Tropical Palm Trees flanking the ocean rails
+            for (int side = -1; side <= 1; side += 2) {
+                float ix = cx + side * 22.5f;
+                DrawCylinderEx({ ix, -15.2f, z }, { ix, -12.6f, z }, 6.8f * emerge, 5.2f * emerge, 8, { 228, 205, 148, 255 });
+                // Curved palm trunk
+                Vector3 baseP = { ix, -12.8f, z };
+                Vector3 topP  = { ix - side * 2.2f * emerge, -12.8f + 13.5f * emerge, z };
+                DrawCylinderEx(baseP, topP, 0.7f * emerge, 0.42f * emerge, 6, { 128, 86, 48, 255 });
+                // Palm frond crown
+                for (int f = 0; f < 5; ++f) {
+                    float fa = (f * 72.0f + idx * 25.0f) * DEG2RAD;
+                    Vector3 tip = { topP.x + std::cos(fa) * 4.5f * emerge, topP.y - 1.2f * emerge, topP.z + std::sin(fa) * 4.5f * emerge };
+                    DrawCylinderEx(topP, tip, 0.65f * emerge, 0.12f * emerge, 4, { 42, 165, 68, 255 });
+                }
+            }
+        } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
+            // Rusted Scrapyard Towers & Crane Booms
+            for (int side = -1; side <= 1; side += 2) {
+                float tx = cx + side * 23.5f;
+                float tH = 20.0f + (idx % 2) * 9.0f;
+                DrawCube({ tx, -15.0f + tH * 0.5f * emerge, z }, 5.5f * emerge, tH * emerge, 5.5f * emerge, { 112, 62, 38, 255 });
+                DrawCube({ tx - side * 3.0f * emerge, -15.0f + tH * 0.85f * emerge, z },
+                         8.0f * emerge, 1.2f * emerge, 1.6f * emerge, { 165, 115, 48, 255 });
+            }
+        } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
+            // Floating Psionic Crystal Shards & Dimensional Rings
+            for (int side = -1; side <= 1; side += 2) {
+                float kx = cx + side * 22.0f;
+                float ky = cy + 2.0f + std::sin(globalTime_ * 2.0f + idx + side) * 1.4f;
+                DrawCylinderEx({ kx, ky - 5.5f * emerge, z }, { kx, ky + 5.5f * emerge, z },
+                               0.2f * emerge, 2.2f * emerge, 5, { 185, 75, 255, 220 });
+                DrawCylinderEx({ kx, ky + 5.5f * emerge, z }, { kx, ky + 9.0f * emerge, z },
+                               2.2f * emerge, 0.1f * emerge, 5, { 225, 155, 255, 240 });
+            }
         }
     }
 
-    // 2. Distant Giant Circular Reactor Tunnel Bulkhead & Twin Cooling Towers (anchored at Z = 148)
+    // 4. Distant Flying Hover-Traffic in City Sectors (Metropolis / Corson V)
+    if (sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::CORSON_V) {
+        for (int s = 0; s < 5; ++s) {
+            float dir = (s % 2 == 0) ? 1.0f : -1.0f;
+            float shipX = std::fmod(globalTime_ * (18.0f + s * 4.5f) * dir + s * 37.0f + 180.0f, 120.0f) - 60.0f;
+            float shipY = 10.0f + (s % 3) * 5.5f;
+            float shipZ = 58.0f + s * 16.0f;
+            DrawCube({ shipX, shipY, shipZ }, 3.2f, 0.8f, 1.2f, (s % 2 == 0) ? LIGHTGRAY : SKYBLUE);
+            DrawCube({ shipX - dir * 2.2f, shipY, shipZ }, 1.6f, 0.35f, 0.5f, neonLight);
+        }
+    }
+
+    // 5. Distant Circular Reactor / Portal Bulkhead & Twin Towers (anchored at Z = 148, tinted per biome)
     Vector3 portalCenter = ApplyTrackCurve(0.0f, 0.5f, PORTAL_Z);
 
-    // Deep blue tiled facility back-wall behind the portal (generous Z spacing eliminates mobile far-plane fighting)
-    DrawCube({ portalCenter.x, portalCenter.y + 8.0f, PORTAL_Z + 12.0f }, 68.0f, 44.0f, 4.0f, { 24, 58, 92, 255 });
-    for (int tx = -3; tx <= 3; ++tx) {
-        DrawCube({ portalCenter.x + tx * 7.2f, portalCenter.y + 4.8f, PORTAL_Z + 8.5f },
-                 6.4f, 14.0f, 1.2f, { 52, 136, 196, 255 });
+    if (isEnclosed || sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::TORREN_IV_SCRAP) {
+        DrawCube({ portalCenter.x, portalCenter.y + 8.0f, PORTAL_Z + 12.0f }, 68.0f, 44.0f, 4.0f, portalBack);
+        for (int tx = -3; tx <= 3; ++tx) {
+            DrawCube({ portalCenter.x + tx * 7.2f, portalCenter.y + 4.8f, PORTAL_Z + 8.5f },
+                     6.4f, 14.0f, 1.2f, { neonLight.r, neonLight.g, neonLight.b, 140 });
+        }
     }
 
-    // Twin Cream/Tan Cylindrical Cooling Towers with Glowing Blue Reactor Vents on Top!
+    // Twin Cylindrical Towers with Glowing Reactor Vents on Top
     for (int side = -1; side <= 1; side += 2) {
         float towerX = portalCenter.x + side * 12.6f;
         float towerZ = PORTAL_Z + 3.0f;
         DrawCylinderEx({ towerX, portalCenter.y - 10.0f, towerZ },
-                       { towerX, portalCenter.y + 12.5f, towerZ }, 3.8f, 3.8f, 12, { 182, 174, 148, 255 });
+                       { towerX, portalCenter.y + 12.5f, towerZ }, 3.8f, 3.8f, 12, towerCol);
         DrawCylinderEx({ towerX, portalCenter.y + 12.5f, towerZ },
-                       { towerX, portalCenter.y + 15.5f, towerZ }, 4.6f, 3.1f, 12, { 196, 188, 162, 255 });
+                       { towerX, portalCenter.y + 15.5f, towerZ }, 4.6f, 3.1f, 12, towerCol);
         DrawCylinderEx({ towerX, portalCenter.y + 15.5f, towerZ },
-                       { towerX, portalCenter.y + 19.2f, towerZ }, 2.5f, 2.5f, 10, { 35, 115, 255, 255 });
-        for (int r = -1; r <= 1; ++r) {
-            DrawCube({ towerX + r * 1.0f, portalCenter.y + 17.5f, towerZ - 2.0f },
-                     0.38f, 3.4f, 0.38f, { 120, 210, 255, 255 });
-        }
+                       { towerX, portalCenter.y + 19.2f, towerZ }, 2.5f, 2.5f, 10, neonLight);
     }
 
-    // Giant Bolted Octagonal/Circular Dark-Steel Tunnel Archway Ring around the Reactor!
+    // Giant Bolted Circular Archway Ring around the Portal
     constexpr int ARCH_SEGMENTS = 16;
     float archRadius = 9.6f;
     for (int i = 0; i < ARCH_SEGMENTS; ++i) {
@@ -390,21 +556,20 @@ void RailGame::RenderSkyline3D() const {
         float a2 = (static_cast<float>(i + 1) / ARCH_SEGMENTS) * 6.283185f;
         Vector3 p1 = { portalCenter.x + std::cos(a1) * archRadius, portalCenter.y + std::sin(a1) * archRadius, PORTAL_Z };
         Vector3 p2 = { portalCenter.x + std::cos(a2) * archRadius, portalCenter.y + std::sin(a2) * archRadius, PORTAL_Z };
-        DrawCylinderEx(p1, p2, 1.75f, 1.75f, 8, { 54, 62, 76, 255 });
+        DrawCylinderEx(p1, p2, 1.75f, 1.75f, 8, archCol);
         DrawSphere({ p1.x, p1.y, PORTAL_Z - 1.5f }, 0.48f, { 28, 32, 42, 255 });
     }
 
-    // Large Trapezoidal Keystone Wedge at the 12-o'clock top of the Circular Arch
     DrawCylinderEx({ portalCenter.x, portalCenter.y + 7.4f, PORTAL_Z - 1.2f },
-                   { portalCenter.x, portalCenter.y + 14.8f, PORTAL_Z - 1.2f }, 1.8f, 3.8f, 4, { 96, 106, 122, 255 });
+                   { portalCenter.x, portalCenter.y + 14.8f, PORTAL_Z - 1.2f }, 1.8f, 3.8f, 4, archCol);
 
-    // Central Dark-Teal Spherical Reactor Core inside the Archway
+    // Central Spherical Reactor / Warp Core inside the Archway
     DrawSphere(portalCenter, 5.4f, { 26, 78, 82, 255 });
-    DrawSphereWires(portalCenter, 5.45f, 8, 8, { 42, 112, 118, 255 });
+    DrawSphereWires(portalCenter, 5.45f, 8, 8, neonLight);
     DrawSphere({ portalCenter.x - 1.5f, portalCenter.y + 2.4f, portalCenter.z - 4.6f }, 0.40f, { 210, 250, 255, 255 });
     DrawSphere({ portalCenter.x + 1.3f, portalCenter.y + 2.6f, portalCenter.z - 4.6f }, 0.40f, { 210, 250, 255, 255 });
 
-    // Twin Glowing Red-Orange Intake Ports where the Grindrails connect directly into the Reactor Sphere!
+    // Twin Glowing Intake Ports where the Grindrails connect into the Reactor Sphere
     Vector3 leftPort  = { portalCenter.x + 1.85f, portalCenter.y - 0.35f, portalCenter.z - 4.9f };
     Vector3 rightPort = { portalCenter.x - 1.85f, portalCenter.y - 0.35f, portalCenter.z - 4.9f };
     DrawSphere(leftPort,  0.95f, { 255, 65, 35, 255 });
@@ -412,7 +577,6 @@ void RailGame::RenderSkyline3D() const {
     DrawSphere(leftPort,  0.50f, YELLOW);
     DrawSphere(rightPort, 0.50f, YELLOW);
 }
-
 void RailGame::RenderGrindRails3D() const {
     // 1. Draw Tubular Metallic Grindrails (Strictly capped at active 3-rail corridor!)
     constexpr float segLen = 3.5f;
@@ -439,13 +603,11 @@ void RailGame::RenderGrindRails3D() const {
             // Bright Silver/Chrome Center Grind Pipe
             DrawCylinderEx(pA, pB, 0.16f, 0.16f, 8, { 205, 218, 228, 255 });
 
-            // Twin Warm Gold/Brass Side Guide Tubes (drawn within 42m for maximum mobile GPU efficiency)
-            if (z < 42.0f) {
-                DrawCylinderEx({ pA.x - 0.24f, pA.y - 0.03f, pA.z }, { pB.x - 0.24f, pB.y - 0.03f, pB.z },
-                               0.09f, 0.09f, 6, { 222, 188, 86, 255 });
-                DrawCylinderEx({ pA.x + 0.24f, pA.y - 0.03f, pA.z }, { pB.x + 0.24f, pB.y - 0.03f, pB.z },
-                               0.09f, 0.09f, 6, { 222, 188, 86, 255 });
-            }
+            // Twin Warm Gold/Brass Side Guide Tubes (drawn full corridor depth to eliminate pop-in)
+            DrawCylinderEx({ pA.x - 0.24f, pA.y - 0.03f, pA.z }, { pB.x - 0.24f, pB.y - 0.03f, pB.z },
+                           0.09f, 0.09f, 5, { 222, 188, 86, 255 });
+            DrawCylinderEx({ pA.x + 0.24f, pA.y - 0.03f, pA.z }, { pB.x + 0.24f, pB.y - 0.03f, pB.z },
+                           0.09f, 0.09f, 5, { 222, 188, 86, 255 });
         }
     }
 

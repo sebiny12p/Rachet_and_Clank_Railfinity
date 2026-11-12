@@ -128,9 +128,9 @@ SectorPalette GetSectorPalette(Railfinity::GalaxySector sec) {
                      { 55, 30, 75, 255 }, { 32, 18, 48, 255 }, { 210, 85, 255, 255 },
                      { 44, 20, 72, 255 }, { 76, 44, 108, 255 }, { 85, 48, 122, 255 }, false };
         default: // METROPOLIS_KERWAN
-            return { { 16, 28, 48, 255 }, { 54, 72, 68, 255 }, { 36, 52, 58, 255 },
-                     { 156, 154, 134, 255 }, { 68, 78, 74, 255 }, { 125, 235, 255, 255 },
-                     { 24, 58, 92, 255 }, { 182, 174, 148, 255 }, { 54, 62, 76, 255 }, false };
+            return { { 14, 24, 44, 255 }, { 42, 62, 82, 255 }, { 22, 32, 48, 255 },
+                     { 126, 128, 124, 255 }, { 52, 62, 70, 255 }, { 95, 175, 215, 210 },
+                     { 24, 58, 92, 255 }, { 168, 162, 142, 255 }, { 54, 62, 76, 255 }, false };
     }
 }
 
@@ -482,11 +482,11 @@ void RailGame::RenderSkyline3D() const {
             // Futuristic Metropolis / Cyberpunk Skyscrapers flanking the skyway
             for (int side = -1; side <= 1; side += 2) {
                 float bHeight = 24.0f + ((idx + (side > 0 ? 1 : 0)) % 3) * 11.0f;
-                float bx = cx + side * (24.5f + ((idx % 2) * 4.5f));
+                float bx = cx + side * (27.5f + ((idx % 2) * 5.0f));
                 Color bCol = (zSec == GalaxySector::CORSON_V)
-                             ? Color{ 34, 24, 52, 255 } : Color{ 82, 96, 114, 255 };
+                             ? Color{ 34, 24, 52, 255 } : Color{ 62, 76, 94, 255 };
                 Color bTrim = (zSec == GalaxySector::CORSON_V)
-                              ? neonLight : Color{ 165, 225, 255, 255 };
+                              ? neonLight : Color{ 95, 165, 205, 185 };
                 DrawCube({ bx, cy - 15.0f + bHeight * 0.5f * emerge, z },
                          7.5f * emerge, bHeight * emerge, 7.5f * emerge, bCol);
                 // Glowing window/neon bands on inner face
@@ -648,23 +648,23 @@ void RailGame::RenderGrindRails3D() const {
         }
     }
 
-    // 2. Green-Gray Steel H-Frame Scaffolding Trusses (Enclosing all 5 lanes seamlessly)
-    float trussSpacing = 16.0f;
+    // 2. Clean Dark-Steel H-Frame Support Trusses (spaced cleanly so rails stay readable)
+    float trussSpacing = 22.0f;
     float trussOffset = std::fmod(distanceMeters_ * 2.2f, trussSpacing);
-    Color trussCol = { 52, 88, 80, 255 };
+    Color trussCol = { 34, 44, 56, 255 };
 
     for (float z = 4.0f - trussOffset; z < 142.0f; z += trussSpacing) {
         if (z < -4.0f) continue;
         float emerge = GetPortalEmergenceScale(z);
         if (emerge <= 0.02f) continue;
 
-        Vector3 cCenter = ApplyTrackCurve(GetLaneX(2), -0.35f, z);
-        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 0.9f) * emerge, -0.35f, z);
-        Vector3 cRight  = ApplyTrackCurve((GetLaneX(NUM_LANES - 1) - 0.9f) * emerge, -0.35f, z);
+        Vector3 cCenter = ApplyTrackCurve(GetLaneX(2), -0.42f, z);
+        Vector3 cLeft   = ApplyTrackCurve((GetLaneX(0) + 0.9f) * emerge, -0.42f, z);
+        Vector3 cRight  = ApplyTrackCurve((GetLaneX(NUM_LANES - 1) - 0.9f) * emerge, -0.42f, z);
 
-        DrawCylinderEx(cLeft, cRight, 0.18f * emerge, 0.18f * emerge, 6, trussCol);
+        DrawCylinderEx(cLeft, cRight, 0.13f * emerge, 0.13f * emerge, 6, trussCol);
         DrawCylinderEx({ cLeft.x * 0.7f, cCenter.y - 2.6f * emerge, z },
-                       { cRight.x * 0.7f, cCenter.y - 2.6f * emerge, z }, 0.16f * emerge, 0.16f * emerge, 6, trussCol);
+                       { cRight.x * 0.7f, cCenter.y - 2.6f * emerge, z }, 0.12f * emerge, 0.12f * emerge, 6, trussCol);
         DrawCylinderEx({ cLeft.x * 0.75f, cCenter.y, z },
                        { cLeft.x * 0.75f, cCenter.y - 12.0f * emerge, z }, 0.22f * emerge, 0.22f * emerge, 6, trussCol);
         DrawCylinderEx({ cRight.x * 0.75f, cCenter.y, z },

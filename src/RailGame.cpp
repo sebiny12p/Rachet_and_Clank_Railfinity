@@ -1557,8 +1557,10 @@ void RailGame::UpdatePlayingFixed(float dt) {
     if (curSec != lastSector_) {
         lastSector_ = curSec;
         sectorBannerTimer_ = 3.5f;
-        screenFlashColor_ = SKYBLUE;
-        screenFlashAlpha_ = 0.25f;
+        screenFlashColor_ = (curSec == GalaxySector::CORSON_V || curSec == GalaxySector::DIMENSIONATOR_RIFT) ? MAGENTA
+                          : (curSec == GalaxySector::GASPAR_VOLCANIC || curSec == GalaxySector::TORREN_IV_SCRAP) ? ORANGE
+                          : (curSec == GalaxySector::ZORDOOM_PRISON) ? RED : SKYBLUE;
+        screenFlashAlpha_ = 0.14f;
 
         switch (curSec) {
             case GalaxySector::METROPOLIS_KERWAN:

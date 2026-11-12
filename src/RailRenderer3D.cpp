@@ -67,39 +67,132 @@ inline void DrawLowPolySphere(Vector3 center, float radius, Color color) {
 }
 #define DrawSphere(...) DrawLowPolySphere(__VA_ARGS__)
 
+namespace {
+struct SectorPalette {
+    Color skyTop;
+    Color skyBot;
+    Color floorCol;
+    Color wallUpper;
+    Color wallLower;
+    Color neonLight;
+    Color portalBack;
+    Color towerCol;
+    Color archCol;
+    bool enclosed;
+};
+
+Color LerpCol(Color a, Color b, float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    return {
+        static_cast<unsigned char>(a.r + (b.r - a.r) * t),
+        static_cast<unsigned char>(a.g + (b.g - a.g) * t),
+        static_cast<unsigned char>(a.b + (b.b - a.b) * t),
+        static_cast<unsigned char>(a.a + (b.a - a.a) * t)
+    };
+}
+
+Color ScaleAlpha(Color c, float aScale) {
+    c.a = static_cast<unsigned char>(std::clamp(c.a * aScale, 0.0f, 255.0f));
+    return c;
+}
+
+SectorPalette GetSectorPalette(Railfinity::GalaxySector sec) {
+    using GS = Railfinity::GalaxySector;
+    switch (sec) {
+        case GS::CORSON_V:
+            return { { 20, 10, 36, 255 }, { 78, 22, 92, 255 }, { 20, 14, 34, 255 },
+                     { 44, 32, 62, 255 }, { 24, 18, 40, 255 }, { 255, 55, 185, 255 },
+                     { 36, 16, 62, 255 }, { 58, 42, 82, 255 }, { 42, 34, 64, 255 }, false };
+        case GS::GASPAR_VOLCANIC:
+            return { { 32, 10, 8, 255 }, { 96, 28, 14, 255 }, { 205, 58, 12, 255 },
+                     { 54, 32, 28, 255 }, { 35, 18, 16, 255 }, { 255, 145, 25, 255 },
+                     { 48, 18, 14, 255 }, { 66, 40, 34, 255 }, { 50, 34, 32, 255 }, false };
+        case GS::POKITARU_RESORT:
+            return { { 35, 115, 215, 255 }, { 110, 205, 235, 255 }, { 18, 132, 188, 255 },
+                     { 215, 198, 162, 255 }, { 150, 135, 105, 255 }, { 65, 235, 245, 255 },
+                     { 26, 98, 148, 255 }, { 225, 208, 172, 255 }, { 86, 128, 145, 255 }, false };
+        case GS::TORREN_IV_SCRAP:
+            return { { 50, 32, 20, 255 }, { 125, 78, 45, 255 }, { 118, 56, 30, 255 },
+                     { 142, 76, 44, 255 }, { 85, 42, 24, 255 }, { 255, 185, 55, 255 },
+                     { 76, 42, 28, 255 }, { 132, 78, 48, 255 }, { 82, 54, 38, 255 }, false };
+        case GS::MEGACORP_FACILITY:
+            return { { 12, 32, 54, 255 }, { 38, 68, 78, 255 }, { 36, 52, 58, 255 },
+                     { 156, 154, 134, 255 }, { 68, 78, 74, 255 }, { 125, 235, 255, 255 },
+                     { 24, 58, 92, 255 }, { 182, 174, 148, 255 }, { 54, 62, 76, 255 }, true };
+        case GS::ZORDOOM_PRISON:
+            return { { 24, 16, 36, 255 }, { 62, 42, 54, 255 }, { 24, 26, 34, 255 },
+                     { 38, 42, 58, 255 }, { 22, 24, 35, 255 }, { 255, 45, 45, 255 },
+                     { 40, 18, 24, 255 }, { 52, 56, 72, 255 }, { 54, 62, 76, 255 }, true };
+        case GS::DIMENSIONATOR_RIFT:
+            return { { 18, 12, 42, 255 }, { 74, 38, 96, 255 }, { 24, 12, 42, 255 },
+                     { 55, 30, 75, 255 }, { 32, 18, 48, 255 }, { 210, 85, 255, 255 },
+                     { 44, 20, 72, 255 }, { 76, 44, 108, 255 }, { 85, 48, 122, 255 }, false };
+        default: // METROPOLIS_KERWAN
+            return { { 16, 28, 48, 255 }, { 54, 72, 68, 255 }, { 36, 52, 58, 255 },
+                     { 156, 154, 134, 255 }, { 68, 78, 74, 255 }, { 125, 235, 255, 255 },
+                     { 24, 58, 92, 255 }, { 182, 174, 148, 255 }, { 54, 62, 76, 255 }, false };
+    }
+}
+
+void DrawSectorSkyDecor(Railfinity::GalaxySector sec, float virtualWidth, float globalTime, float alpha) {
+    if (alpha <= 0.01f) return;
+    using GS = Railfinity::GalaxySector;
+    float cx = virtualWidth * 0.5f;
+    if (sec == GS::METROPOLIS_KERWAN) {
+        DrawCircleGradient(static_cast<int>(cx + 260.0f), 145, 92.0f, ScaleAlpha({ 255, 225, 165, 160 }, alpha), { 16, 28, 48, 0 });
+        DrawCircle(static_cast<int>(cx + 260.0f), 145, 48.0f, ScaleAlpha({ 215, 175, 115, 195 }, alpha));
+        DrawEllipse(static_cast<int>(cx + 260.0f), 148, 88.0f, 16.0f, ScaleAlpha({ 245, 215, 155, 110 }, alpha));
+    } else if (sec == GS::CORSON_V) {
+        DrawCircleGradient(static_cast<int>(cx - 240.0f), 135, 95.0f, ScaleAlpha({ 255, 70, 200, 140 }, alpha), { 20, 10, 36, 0 });
+        DrawCircle(static_cast<int>(cx - 240.0f), 135, 44.0f, ScaleAlpha({ 225, 110, 245, 190 }, alpha));
+        for (int r = 0; r < 24; ++r) {
+            float rx = std::fmod(r * 137.0f + globalTime * 95.0f, virtualWidth);
+            float ry = std::fmod(r * 89.0f + globalTime * 420.0f, 420.0f);
+            DrawLine(static_cast<int>(rx), static_cast<int>(ry), static_cast<int>(rx - 6.0f), static_cast<int>(ry + 22.0f),
+                     ScaleAlpha({ 190, 140, 255, 75 }, alpha));
+        }
+    } else if (sec == GS::GASPAR_VOLCANIC) {
+        DrawCircleGradient(static_cast<int>(cx + 180.0f), 170, 130.0f, ScaleAlpha({ 255, 110, 30, 175 }, alpha), { 32, 10, 8, 0 });
+        DrawCircle(static_cast<int>(cx + 180.0f), 170, 56.0f, ScaleAlpha({ 255, 155, 55, 215 }, alpha));
+    } else if (sec == GS::POKITARU_RESORT) {
+        DrawCircleGradient(static_cast<int>(cx - 210.0f), 120, 115.0f, ScaleAlpha({ 255, 245, 170, 210 }, alpha), { 35, 115, 215, 0 });
+        DrawCircle(static_cast<int>(cx - 210.0f), 120, 42.0f, ScaleAlpha({ 255, 250, 205, 245 }, alpha));
+        for (int c = 0; c < 5; ++c) {
+            float cloudX = std::fmod(c * 290.0f + globalTime * 18.0f, virtualWidth + 220.0f) - 110.0f;
+            float cloudY = 85.0f + (c % 3) * 42.0f;
+            DrawEllipse(static_cast<int>(cloudX), static_cast<int>(cloudY), 76.0f, 18.0f, ScaleAlpha({ 255, 255, 255, 95 }, alpha));
+            DrawEllipse(static_cast<int>(cloudX + 28.0f), static_cast<int>(cloudY - 7.0f), 48.0f, 15.0f, ScaleAlpha({ 255, 255, 255, 110 }, alpha));
+        }
+    } else if (sec == GS::TORREN_IV_SCRAP) {
+        DrawCircle(static_cast<int>(cx + 210.0f), 130, 52.0f, ScaleAlpha({ 225, 155, 95, 145 }, alpha));
+        DrawCircle(static_cast<int>(cx - 290.0f), 165, 24.0f, ScaleAlpha({ 185, 140, 110, 130 }, alpha));
+    } else if (sec == GS::DIMENSIONATOR_RIFT) {
+        for (int s = 0; s < 42; ++s) {
+            float sx = std::fmod(s * 173.0f, virtualWidth);
+            float sy = std::fmod(s * 97.0f, 360.0f);
+            DrawCircle(static_cast<int>(sx), static_cast<int>(sy), (s % 3 == 0) ? 2.0f : 1.2f, ScaleAlpha({ 230, 190, 255, 180 }, alpha));
+        }
+        DrawCircleLines(static_cast<int>(cx), 165, 68.0f + std::sin(globalTime * 2.5f) * 6.0f, ScaleAlpha({ 210, 110, 255, 150 }, alpha));
+        DrawCircleLines(static_cast<int>(cx), 165, 98.0f + std::cos(globalTime * 1.9f) * 8.0f, ScaleAlpha({ 120, 220, 255, 110 }, alpha));
+    }
+}
+} // namespace
+
 void RailGame::RenderFrame() {
     UpdateVirtualResolution();
 
     BeginTextureMode(renderTarget_);
 
-    GalaxySector sec = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER)
-                       ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
+    bool inRun = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER);
+    GalaxySector sec = inRun ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
+    GalaxySector nextSec = static_cast<GalaxySector>((static_cast<int>(sec) + 1) % NUM_SECTORS);
+    float sectorRem = inRun ? std::fmod(distanceMeters_, 500.0f) : 0.0f;
+    float blend = inRun ? std::clamp((sectorRem - 460.0f) / 40.0f, 0.0f, 1.0f) : 0.0f;
 
-    // Industrial & Planetary Ratchet & Clank sector atmosphere
-    Color skyTop = { 16, 28, 48, 255 };
-    Color skyBot = { 54, 72, 68, 255 };
-    if (sec == GalaxySector::CORSON_V) {
-        skyTop = { 20, 10, 36, 255 };
-        skyBot = { 78, 22, 92, 255 }; // Cyberpunk neon purple rain haze
-    } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
-        skyTop = { 32, 10, 8, 255 };
-        skyBot = { 96, 28, 14, 255 }; // Volcanic smoldering red/amber
-    } else if (sec == GalaxySector::POKITARU_RESORT) {
-        skyTop = { 35, 115, 215, 255 };
-        skyBot = { 110, 205, 235, 255 }; // Tropical azure & sunlit turquoise
-    } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
-        skyTop = { 50, 32, 20, 255 };
-        skyBot = { 125, 78, 45, 255 }; // Molonoth rust canyon sepia
-    } else if (sec == GalaxySector::MEGACORP_FACILITY) {
-        skyTop = { 12, 32, 54, 255 };
-        skyBot = { 38, 68, 78, 255 };
-    } else if (sec == GalaxySector::ZORDOOM_PRISON) {
-        skyTop = { 24, 16, 36, 255 };
-        skyBot = { 62, 42, 54, 255 };
-    } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
-        skyTop = { 18, 12, 42, 255 };
-        skyBot = { 74, 38, 96, 255 };
-    }
+    SectorPalette palA = GetSectorPalette(sec);
+    SectorPalette palB = GetSectorPalette(nextSec);
+    Color skyTop = LerpCol(palA.skyTop, palB.skyTop, blend);
+    Color skyBot = LerpCol(palA.skyBot, palB.skyBot, blend);
 
     // Crucial: ClearBackground clears both the color buffer AND the 3D Depth Buffer of renderTarget_!
     rlEnableDepthMask();
@@ -108,47 +201,11 @@ void RailGame::RenderFrame() {
     // Disable Depth Mask during 2D background gradient & skybox art so it does NOT write into the 3D depth buffer!
     rlDisableDepthMask();
     DrawRectangleGradientV(0, 0, static_cast<int>(virtualWidth_), 720, skyTop, skyBot);
-    {
-        float cx = virtualWidth_ * 0.5f;
-        if (sec == GalaxySector::METROPOLIS_KERWAN) {
-            DrawCircleGradient(static_cast<int>(cx + 260.0f), 145, 92.0f, { 255, 225, 165, 160 }, { 16, 28, 48, 0 });
-            DrawCircle(static_cast<int>(cx + 260.0f), 145, 48.0f, { 215, 175, 115, 195 });
-            DrawEllipse(static_cast<int>(cx + 260.0f), 148, 88.0f, 16.0f, { 245, 215, 155, 110 });
-        } else if (sec == GalaxySector::CORSON_V) {
-            DrawCircleGradient(static_cast<int>(cx - 240.0f), 135, 95.0f, { 255, 70, 200, 140 }, { 20, 10, 36, 0 });
-            DrawCircle(static_cast<int>(cx - 240.0f), 135, 44.0f, { 225, 110, 245, 190 });
-            for (int r = 0; r < 24; ++r) {
-                float rx = std::fmod(r * 137.0f + globalTime_ * 95.0f, virtualWidth_);
-                float ry = std::fmod(r * 89.0f + globalTime_ * 420.0f, 420.0f);
-                DrawLine(static_cast<int>(rx), static_cast<int>(ry), static_cast<int>(rx - 6.0f), static_cast<int>(ry + 22.0f), { 190, 140, 255, 75 });
-            }
-        } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
-            DrawCircleGradient(static_cast<int>(cx + 180.0f), 170, 130.0f, { 255, 110, 30, 175 }, { 32, 10, 8, 0 });
-            DrawCircle(static_cast<int>(cx + 180.0f), 170, 56.0f, { 255, 155, 55, 215 });
-        } else if (sec == GalaxySector::POKITARU_RESORT) {
-            DrawCircleGradient(static_cast<int>(cx - 210.0f), 120, 115.0f, { 255, 245, 170, 210 }, { 35, 115, 215, 0 });
-            DrawCircle(static_cast<int>(cx - 210.0f), 120, 42.0f, { 255, 250, 205, 245 });
-            for (int c = 0; c < 5; ++c) {
-                float cloudX = std::fmod(c * 290.0f + globalTime_ * 18.0f, virtualWidth_ + 220.0f) - 110.0f;
-                float cloudY = 85.0f + (c % 3) * 42.0f;
-                DrawEllipse(static_cast<int>(cloudX), static_cast<int>(cloudY), 76.0f, 18.0f, { 255, 255, 255, 95 });
-                DrawEllipse(static_cast<int>(cloudX + 28.0f), static_cast<int>(cloudY - 7.0f), 48.0f, 15.0f, { 255, 255, 255, 110 });
-            }
-        } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
-            DrawCircle(static_cast<int>(cx + 210.0f), 130, 52.0f, { 225, 155, 95, 145 });
-            DrawCircle(static_cast<int>(cx - 290.0f), 165, 24.0f, { 185, 140, 110, 130 });
-        } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
-            for (int s = 0; s < 42; ++s) {
-                float sx = std::fmod(s * 173.0f, virtualWidth_);
-                float sy = std::fmod(s * 97.0f, 360.0f);
-                DrawCircle(static_cast<int>(sx), static_cast<int>(sy), (s % 3 == 0) ? 2.0f : 1.2f, { 230, 190, 255, 180 });
-            }
-            DrawCircleLines(static_cast<int>(cx), 165, 68.0f + std::sin(globalTime_ * 2.5f) * 6.0f, { 210, 110, 255, 150 });
-            DrawCircleLines(static_cast<int>(cx), 165, 98.0f + std::cos(globalTime_ * 1.9f) * 8.0f, { 120, 220, 255, 110 });
-        }
+    DrawSectorSkyDecor(sec, virtualWidth_, globalTime_, 1.0f - blend);
+    if (blend > 0.01f) {
+        DrawSectorSkyDecor(nextSec, virtualWidth_, globalTime_, blend);
     }
     rlEnableDepthMask();
-
     RenderWorld3D();
 
     // Screen Flash
@@ -228,10 +285,16 @@ void RailGame::RenderWorld3D() {
         cam.position = Vector3Add(baseCamPos, Vector3Scale(right, shiftRight));
         cam.target   = Vector3Add(ratCenter,  Vector3Scale(right, shiftRight));
         cam.fovy     = 37.0f;
-    } else if (cameraShake_ > 0.0f) {
-        float mag = cameraShake_ * cameraShake_ * 0.65f * save_.screenShakeScale;
-        cam.position.x += std::sin(globalTime_ * 73.0f) * mag;
-        cam.position.y += std::cos(globalTime_ * 61.0f) * mag;
+    } else {
+        if (sectorBannerTimer_ > 2.6f) {
+            float warpT = (sectorBannerTimer_ - 2.6f) / 0.9f;
+            cam.fovy += std::sin(warpT * 3.14159265f) * 6.5f;
+        }
+        if (cameraShake_ > 0.0f) {
+            float mag = cameraShake_ * cameraShake_ * 0.65f * save_.screenShakeScale;
+            cam.position.x += std::sin(globalTime_ * 73.0f) * mag;
+            cam.position.y += std::cos(globalTime_ * 61.0f) * mag;
+        }
     }
 
     if (worldHighpShaderLoaded_) {
@@ -249,6 +312,19 @@ void RailGame::RenderWorld3D() {
 
     RenderSkyline3D();
     RenderGrindRails3D();
+    if (mode_ == ScreenMode::PLAYING && sectorBannerTimer_ > 2.7f) {
+        float t = (sectorBannerTimer_ - 2.7f) / 0.8f;
+        float rz = t * 44.0f - 4.0f;
+        Vector3 rc = ApplyTrackCurve(0.0f, 1.4f, std::max(0.0f, rz));
+        Color wCol = GetSectorPalette(GetCurrentSector()).neonLight;
+        for (int s = 0; s < 16; ++s) {
+            float a1 = (s * 22.5f + globalTime_ * 160.0f) * DEG2RAD;
+            float a2 = ((s + 1) * 22.5f + globalTime_ * 160.0f) * DEG2RAD;
+            Vector3 p1 = { rc.x + std::cos(a1) * 11.5f, rc.y + std::sin(a1) * 8.5f, rz };
+            Vector3 p2 = { rc.x + std::cos(a2) * 11.5f, rc.y + std::sin(a2) * 8.5f, rz };
+            DrawCylinderEx(p1, p2, 0.24f, 0.24f, 5, wCol);
+        }
+    }
 
     if (mode_ == ScreenMode::ARMOR_WARDROBE) {
         // Seated cleanly above the silver/gold grindrail top (+0.06m) so the rail never slices the pedestal!
@@ -310,68 +386,23 @@ void RailGame::RenderWorld3D() {
 
 void RailGame::RenderSkyline3D() const {
     constexpr float PORTAL_Z = 148.0f;
-    GalaxySector sec = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER)
-                       ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
+    bool inRun = (mode_ == ScreenMode::PLAYING || mode_ == ScreenMode::PAUSED || mode_ == ScreenMode::GAME_OVER);
+    GalaxySector sec = inRun ? GetCurrentSector() : GalaxySector::METROPOLIS_KERWAN;
+    GalaxySector nextSec = static_cast<GalaxySector>((static_cast<int>(sec) + 1) % NUM_SECTORS);
+    float sectorRem = inRun ? std::fmod(distanceMeters_, 500.0f) : 0.0f;
+    float blend = inRun ? std::clamp((sectorRem - 460.0f) / 40.0f, 0.0f, 1.0f) : 0.0f;
 
-    bool isEnclosed = (sec == GalaxySector::MEGACORP_FACILITY || sec == GalaxySector::ZORDOOM_PRISON);
+    SectorPalette palA = GetSectorPalette(sec);
+    SectorPalette palB = GetSectorPalette(nextSec);
+    bool isEnclosed = palA.enclosed;
 
-    // Floor & Wall Colors adapted by Planetary Sector Biome
-    Color floorCol   = { 36, 52, 58, 255 };
-    Color wallUpper  = { 156, 154, 134, 255 };
-    Color wallLower  = { 68, 78, 74, 255 };
-    Color neonLight  = { 125, 235, 255, 255 };
-    Color portalBack = { 24, 58, 92, 255 };
-    Color towerCol   = { 182, 174, 148, 255 };
-    Color archCol    = { 54, 62, 76, 255 };
-
-    if (sec == GalaxySector::CORSON_V) {
-        floorCol   = { 20, 14, 34, 255 };
-        wallUpper  = { 44, 32, 62, 255 };
-        wallLower  = { 24, 18, 40, 255 };
-        neonLight  = { 255, 55, 185, 255 };
-        portalBack = { 36, 16, 62, 255 };
-        towerCol   = { 58, 42, 82, 255 };
-        archCol    = { 42, 34, 64, 255 };
-    } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
-        floorCol   = { 205, 58, 12, 255 };
-        wallUpper  = { 54, 32, 28, 255 };
-        wallLower  = { 35, 18, 16, 255 };
-        neonLight  = { 255, 145, 25, 255 };
-        portalBack = { 48, 18, 14, 255 };
-        towerCol   = { 66, 40, 34, 255 };
-        archCol    = { 50, 34, 32, 255 };
-    } else if (sec == GalaxySector::POKITARU_RESORT) {
-        floorCol   = { 18, 132, 188, 255 };
-        wallUpper  = { 215, 198, 162, 255 };
-        wallLower  = { 150, 135, 105, 255 };
-        neonLight  = { 65, 235, 245, 255 };
-        portalBack = { 26, 98, 148, 255 };
-        towerCol   = { 225, 208, 172, 255 };
-        archCol    = { 86, 128, 145, 255 };
-    } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
-        floorCol   = { 118, 56, 30, 255 };
-        wallUpper  = { 142, 76, 44, 255 };
-        wallLower  = { 85, 42, 24, 255 };
-        neonLight  = { 255, 185, 55, 255 };
-        portalBack = { 76, 42, 28, 255 };
-        towerCol   = { 132, 78, 48, 255 };
-        archCol    = { 82, 54, 38, 255 };
-    } else if (sec == GalaxySector::ZORDOOM_PRISON) {
-        floorCol   = { 24, 26, 34, 255 };
-        wallUpper  = { 38, 42, 58, 255 };
-        wallLower  = { 22, 24, 35, 255 };
-        neonLight  = { 255, 45, 45, 255 };
-        portalBack = { 40, 18, 24, 255 };
-        towerCol   = { 52, 56, 72, 255 };
-    } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
-        floorCol   = { 24, 12, 42, 255 };
-        wallUpper  = { 55, 30, 75, 255 };
-        wallLower  = { 32, 18, 48, 255 };
-        neonLight  = { 210, 85, 255, 255 };
-        portalBack = { 44, 20, 72, 255 };
-        towerCol   = { 76, 44, 108, 255 };
-        archCol    = { 85, 48, 122, 255 };
-    }
+    Color floorCol   = LerpCol(palA.floorCol,   palB.floorCol,   blend);
+    Color wallUpper  = LerpCol(palA.wallUpper,  palB.wallUpper,  blend);
+    Color wallLower  = LerpCol(palA.wallLower,  palB.wallLower,  blend);
+    Color neonLight  = LerpCol(palA.neonLight,  palB.neonLight,  blend);
+    Color portalBack = LerpCol(palA.portalBack, palB.portalBack, blend);
+    Color towerCol   = LerpCol(palA.towerCol,   palB.towerCol,   blend);
+    Color archCol    = LerpCol(palA.archCol,    palB.archCol,    blend);
 
     // 1. Wide Planetary Floor / Ocean / Magma Basin
     DrawCube({ 0.0f, -16.0f, 70.0f }, 160.0f, 2.0f, 210.0f, floorCol);
@@ -422,8 +453,10 @@ void RailGame::RenderSkyline3D() const {
 
         float cx = GetTrackCurveX(std::max(0.0f, z));
         float cy = GetTrackCurveY(std::max(0.0f, z));
+        GalaxySector zSec = inRun ? static_cast<GalaxySector>((static_cast<int>(std::max(0.0f, distanceMeters_ + z / 1.8f)) / 500) % NUM_SECTORS) : sec;
+        bool zEnclosed = (zSec == GalaxySector::MEGACORP_FACILITY || zSec == GalaxySector::ZORDOOM_PRISON);
 
-        if (isEnclosed) {
+        if (zEnclosed) {
             for (int side = -1; side <= 1; side += 2) {
                 float wx = cx + side * 14.6f;
                 DrawCube({ wx, cy + 4.0f, z }, 0.9f * emerge, 26.0f, 1.8f * emerge, { 45, 52, 64, 255 });
@@ -442,14 +475,14 @@ void RailGame::RenderSkyline3D() const {
                 DrawCube({ px + 13.88f, panelPos.y, panelPos.z },
                          0.24f, 3.8f * pEmerge, 8.5f * pEmerge, neonLight);
             }
-        } else if (sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::CORSON_V) {
+        } else if (zSec == GalaxySector::METROPOLIS_KERWAN || zSec == GalaxySector::CORSON_V) {
             // Futuristic Metropolis / Cyberpunk Skyscrapers flanking the skyway
             for (int side = -1; side <= 1; side += 2) {
                 float bHeight = 24.0f + ((idx + (side > 0 ? 1 : 0)) % 3) * 11.0f;
                 float bx = cx + side * (24.5f + ((idx % 2) * 4.5f));
-                Color bCol = (sec == GalaxySector::CORSON_V)
+                Color bCol = (zSec == GalaxySector::CORSON_V)
                              ? Color{ 34, 24, 52, 255 } : Color{ 82, 96, 114, 255 };
-                Color bTrim = (sec == GalaxySector::CORSON_V)
+                Color bTrim = (zSec == GalaxySector::CORSON_V)
                               ? neonLight : Color{ 165, 225, 255, 255 };
                 DrawCube({ bx, cy - 15.0f + bHeight * 0.5f * emerge, z },
                          7.5f * emerge, bHeight * emerge, 7.5f * emerge, bCol);
@@ -462,7 +495,7 @@ void RailGame::RenderSkyline3D() const {
                                0.25f * emerge, 0.08f * emerge, 5, DARKGRAY);
                 DrawSphere({ bx, cy - 15.0f + (bHeight + 6.2f) * emerge, z }, 0.45f * emerge, neonLight);
             }
-        } else if (sec == GalaxySector::GASPAR_VOLCANIC) {
+        } else if (zSec == GalaxySector::GASPAR_VOLCANIC) {
             // Jagged Obsidian Volcanic Spires rising from the lava sea
             for (int side = -1; side <= 1; side += 2) {
                 float sH = 18.0f + ((idx + (side > 0 ? 2 : 0)) % 3) * 8.0f;
@@ -475,7 +508,7 @@ void RailGame::RenderSkyline3D() const {
                 // Glowing lava fissure at base
                 DrawCube({ sx - side * 3.5f, -14.3f, z }, 2.2f * emerge, 0.6f, 4.5f * emerge, { 255, 115, 20, 255 });
             }
-        } else if (sec == GalaxySector::POKITARU_RESORT) {
+        } else if (zSec == GalaxySector::POKITARU_RESORT) {
             // Sandy Resort Islands & Tropical Palm Trees flanking the ocean rails
             for (int side = -1; side <= 1; side += 2) {
                 float ix = cx + side * 22.5f;
@@ -491,7 +524,7 @@ void RailGame::RenderSkyline3D() const {
                     DrawCylinderEx(topP, tip, 0.65f * emerge, 0.12f * emerge, 4, { 42, 165, 68, 255 });
                 }
             }
-        } else if (sec == GalaxySector::TORREN_IV_SCRAP) {
+        } else if (zSec == GalaxySector::TORREN_IV_SCRAP) {
             // Rusted Scrapyard Towers & Crane Booms
             for (int side = -1; side <= 1; side += 2) {
                 float tx = cx + side * 23.5f;
@@ -500,7 +533,7 @@ void RailGame::RenderSkyline3D() const {
                 DrawCube({ tx - side * 3.0f * emerge, -15.0f + tH * 0.85f * emerge, z },
                          8.0f * emerge, 1.2f * emerge, 1.6f * emerge, { 165, 115, 48, 255 });
             }
-        } else if (sec == GalaxySector::DIMENSIONATOR_RIFT) {
+        } else if (zSec == GalaxySector::DIMENSIONATOR_RIFT) {
             // Floating Psionic Crystal Shards & Dimensional Rings
             for (int side = -1; side <= 1; side += 2) {
                 float kx = cx + side * 22.0f;
@@ -528,7 +561,7 @@ void RailGame::RenderSkyline3D() const {
     // 5. Distant Circular Reactor / Portal Bulkhead & Twin Towers (anchored at Z = 148, tinted per biome)
     Vector3 portalCenter = ApplyTrackCurve(0.0f, 0.5f, PORTAL_Z);
 
-    if (isEnclosed || sec == GalaxySector::METROPOLIS_KERWAN || sec == GalaxySector::TORREN_IV_SCRAP) {
+    if (isEnclosed) {
         DrawCube({ portalCenter.x, portalCenter.y + 8.0f, PORTAL_Z + 12.0f }, 68.0f, 44.0f, 4.0f, portalBack);
         for (int tx = -3; tx <= 3; ++tx) {
             DrawCube({ portalCenter.x + tx * 7.2f, portalCenter.y + 4.8f, PORTAL_Z + 8.5f },

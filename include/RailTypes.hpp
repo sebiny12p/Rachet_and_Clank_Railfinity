@@ -352,11 +352,14 @@ struct PlayerLombax {
     // Acrobatic Rail-to-Rail Hop Animation
     bool isHopping = false;
     float hopTimer = 0.0f;
-    float hopDuration = 0.22f;
+    float hopDuration = 0.29f;
     float hopStartX = 0.0f;
     float hopTargetX = 0.0f;
     int hopDir = 0;           // -1 = Hop Left, +1 = Hop Right
     float hopRollDeg = 0.0f;
+    float laneSwitchCooldown = 0.0f;
+    int bufferedLaneDelta = 0;
+    float bufferedLaneTimer = 0.0f;
 
     bool grounded = true;
     bool heliGliding = false;

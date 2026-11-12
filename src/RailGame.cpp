@@ -562,6 +562,12 @@ bool RailGame::IsButtonClicked(Rectangle r) const {
 }
 
 void RailGame::SwitchLane(int delta) {
+    if (player_.isHopping || player_.laneSwitchCooldown > 0.0f) {
+        // Buffer intentional lane change rather than allowing mid-air hop-canceling
+        player_.bufferedLaneDelta = (delta > 0) ? 1 : -1;
+        player_.bufferedLaneTimer = 0.14f;
+        return;
+    }
     int rawTarget = player_.currentLane + delta;
     if (rawTarget < 0 || rawTarget >= NUM_LANES) return;
     int minL = GetCorridorMinLaneAt(totalWorldTravel_);
@@ -574,11 +580,13 @@ void RailGame::SwitchLane(int delta) {
         player_.currentLane = target;
         player_.isHopping = true;
         player_.hopTimer = 0.0f;
-        player_.hopDuration = 0.22f; // Quick, responsive acrobatic lateral leap (~0.22s)
+        player_.hopDuration = 0.29f; // Deliberate lateral leap with full commitment (~0.29s)
         player_.hopStartX = player_.x;
         player_.hopTargetX = GetLaneX(target);
         player_.hopDir = (delta > 0) ? 1 : -1;
         player_.landingSquashTimer = 0.0f;
+        player_.bufferedLaneDelta = 0;
+        player_.bufferedLaneTimer = 0.0f;
 
         // Radial burst of magnetic grind boot disengagement sparks
         SpawnParticleBurst3D({ player_.x, player_.y + 0.1f, 0.0f }, 12, SKYBLUE, 3.0f, 8.0f, 0.20f, 0.28f);
@@ -1651,6 +1659,14 @@ void RailGame::UpdatePlayingFixed(float dt) {
         TriggerBossDropship();
     }
 
+    if (player_.laneSwitchCooldown > 0.0f) {
+        player_.laneSwitchCooldown = std::max(0.0f, player_.laneSwitchCooldown - dt);
+    }
+    if (player_.bufferedLaneTimer > 0.0f) {
+        player_.bufferedLaneTimer = std::max(0.0f, player_.bufferedLaneTimer - dt);
+        if (player_.bufferedLaneTimer <= 0.0f) player_.bufferedLaneDelta = 0;
+    }
+
     // Player Horizontal Lane Interpolation & Acrobatic Rail-to-Rail Leap
     if (player_.isHopping) {
         player_.hopTimer += dt;
@@ -1666,6 +1682,7 @@ void RailGame::UpdatePlayingFixed(float dt) {
         if (t >= 1.0f) {
             player_.isHopping = false;
             player_.hopRollDeg = 0.0f;
+            player_.laneSwitchCooldown = 0.05f; // Brief magnetic rail lock settle
             player_.landingSquashTimer = 0.22f; // Knee squash impact
             cameraShake_ = std::max(cameraShake_, 0.14f);
             audio_.PlayRailHop();
@@ -1674,6 +1691,11 @@ void RailGame::UpdatePlayingFixed(float dt) {
             SpawnParticleBurst3D({ player_.hopTargetX, player_.y + 0.08f, 0.0f }, 16, GOLD, 2.5f, 8.0f, 0.22f, 0.32f);
             SpawnParticleBurst3D({ player_.hopTargetX, player_.y + 0.08f, 0.0f }, 8, SKYBLUE, 1.5f, 5.0f, 0.15f, 0.22f);
         }
+    } else if (player_.laneSwitchCooldown <= 0.0f && player_.bufferedLaneDelta != 0) {
+        int queuedDelta = player_.bufferedLaneDelta;
+        player_.bufferedLaneDelta = 0;
+        player_.bufferedLaneTimer = 0.0f;
+        SwitchLane(queuedDelta);
     } else {
         float targetX = GetLaneX(player_.currentLane);
         player_.x = Lerp(player_.x, targetX, 16.0f * dt);

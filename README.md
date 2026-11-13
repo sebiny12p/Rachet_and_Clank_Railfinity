@@ -3,7 +3,10 @@
 An infinite, procedural 3D action grindrail runner built in **C++20** with **Raylib 5.0** for PC and Android, inspired by *Ratchet & Clank: Rift Apart* and *Before the Nexus*. Grind high-speed plasma rails across iconic galactic sectors, deploy Clank's Heli-Pack with authentic procedural animations, smash Bolt Crates and Raritanium caches with the OmniWrench 8000, build a 20x Bolt Multiplier, customize heroes in the 3D Armor Wardrobe Lab (including **playable Rivet & companion Kit!**), evolve weapons to Golden V8 forms, and listen to hilarious holographic radio comms from Captain Qwark and Dr. Nefarious!
 
 > **Studio:** Sebiny Labs  
-> **IP Disclaimer:** Non-commercial fan tribute created for educational and portfolio purposes. *Ratchet & Clank*, *Rift Apart*, and *Before the Nexus* are registered trademarks and copyright of **Sony Interactive Entertainment LLC / Insomniac Games**.
+> **IP Disclaimer:** Non-commercial fan tribute created for educational and portfolio purposes. *Ratchet & Clank*, *Rift Apart*, and *Before the Nexus* are registered trademarks and copyright of **Sony Interactive Entertainment LLC / Insomniac Games**.  
+> **Playable Builds:** [Download Windows `.zip` & Android `.apk` (GitHub Releases)](https://github.com/sebiny12p/Ratchet_and_Clank_Railfinity/releases)
+
+![Ratchet & Clank: Railfinity Gameplay](docs/gameplay.gif)
 
 ---
 
